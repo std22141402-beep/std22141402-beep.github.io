@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.smpro.shop",
+      "sha256_cert_fingerprints": ["CC:15:5C:14:AF:40:79:D2:29:48:D4:B6:09:25:BC:DB:F0:A7:ED:A8:67:F1:2B:73:AD:D7:25:EA:72:FB:DD:CF"]
+    }
+  }
+]
