@@ -1,0 +1,51 @@
+name: Salka — verify live Android links
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SITE: https://std22141402-beep.github.io
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read published build info
+        run: |
+          echo "FP=$(jq -r .certSha256 download/build-info.json)" >> "$GITHUB_ENV"
+          echo "PKG=$(jq -r .packageId download/build-info.json)" >> "$GITHUB_ENV"
+          echo "SIZE=$(jq -r .size download/build-info.json)" >> "$GITHUB_ENV"
+
+      - name: Live assetlinks.json has Salka's fingerprint
+        run: |
+          curl -fsS "$SITE/.well-known/assetlinks.json" -o live.json
+          jq -e --arg p "$PKG" --arg f "$FP" '[.[] | select(.target.package_name==$p and (.target.sha256_cert_fingerprints|index($f)))] | length == 1' live.json
+
+      - name: Supermarket Pro entry is still intact
+        run: jq -e '[.[] | select(.target.package_name=="com.smpro.shop")] | length == 1' live.json
+
+      - name: Google Digital Asset Links API confirms the link
+        run: |
+          for i in 1 2 3 4 5 6; do
+            curl -fsS "https://digitalassetlinks.googleapis.com/v1/assetlinks:check?source.web.site=$SITE&relation=delegate_permission/common.handle_all_urls&target.android_app.package_name=$PKG&target.android_app.certificate.sha256_fingerprint=$FP" -o check.json || true
+            cat check.json || true
+            if jq -e '.linked == true' check.json >/dev/null 2>&1; then exit 0; fi
+            sleep 20
+          done
+          exit 1
+
+      - name: APK is downloadable with the right size
+        run: |
+          curl -fsSL "$SITE/download/salka.apk" -o salka.apk
+          test "$(stat -c %s salka.apk)" = "$SIZE"
+          test "$(sha256sum salka.apk | cut -d' ' -f1)" = "$(jq -r .sha256 download/build-info.json)"
+
+      - name: Download page and web manifest are live
+        run: |
+          curl -fsS "$SITE/download/" | grep -q 'salka.apk'
+          curl -fsS "$SITE/manifest.webmanifest" | jq -e '.shortcuts | length == 4'

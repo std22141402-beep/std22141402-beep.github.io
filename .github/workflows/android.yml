@@ -30,6 +30,11 @@ jobs:
           node-version: '20'
 
       - name: Build, sign and verify
+        env:
+          SALKA_KEYSTORE_B64: ${{ secrets.SALKA_KEYSTORE_B64 }}
+          SALKA_KEYSTORE_PASS: ${{ secrets.SALKA_KEYSTORE_PASS }}
+          SALKA_KEY_PASS: ${{ secrets.SALKA_KEY_PASS }}
+          SALKA_KEY_ALIAS: ${{ secrets.SALKA_KEY_ALIAS }}
         run: node android/build.mjs
 
       - name: Publish build output to the salka-android-build branch

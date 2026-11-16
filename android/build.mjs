@@ -20,8 +20,16 @@ for (const d of [PUB, SEC, WORK]) fs.mkdirSync(d, { recursive: true });
 
 const cfg = JSON.parse(fs.readFileSync('android/config.json', 'utf8'));
 const req = JSON.parse(fs.readFileSync('android/request.json', 'utf8'));
-const PASS = crypto.randomBytes(18).toString('base64url');
+// مفتاح موجود (من أسرار GitHub) — ضروري لأي تحديث للتطبيق المنشور
+const EXIST = process.env.SALKA_KEYSTORE_B64 ? {
+  b64: process.env.SALKA_KEYSTORE_B64.replace(/^data:[^,]*,/, '').replace(/\s+/g, ''),
+  storePass: process.env.SALKA_KEYSTORE_PASS || '',
+  keyPass: process.env.SALKA_KEY_PASS || process.env.SALKA_KEYSTORE_PASS || '',
+  alias: process.env.SALKA_KEY_ALIAS || 'salka',
+} : null;
+const PASS = EXIST ? EXIST.storePass : crypto.randomBytes(18).toString('base64url');
 console.log(`::add-mask::${PASS}`);
+const PUBLISHED = fs.existsSync('download/build-info.json') ? JSON.parse(fs.readFileSync('download/build-info.json', 'utf8')) : null;
 
 const lines = [];
 const SECRETS = [PASS];
@@ -131,11 +139,14 @@ function pwaBuilderBody(withShortcuts) {
     packageId: cfg.packageId,
     pwaUrl: cfg.origin + '/',
     shortcuts: withShortcuts ? manifestShortcuts() : [],
-    signing: {
+    signing: EXIST ? {
+      file: `data:application/octet-stream;base64,${EXIST.b64}`, alias: EXIST.alias, fullName: 'Salka', organization: 'Salka', organizationalUnit: 'Mobile', countryCode: 'IQ',
+      keyPassword: EXIST.keyPass, storePassword: EXIST.storePass,
+    } : {
       file: null, alias: cfg.keyAlias, fullName: 'Salka', organization: 'Salka', organizationalUnit: 'Mobile', countryCode: 'IQ',
       keyPassword: PASS, storePassword: PASS,
     },
-    signingMode: 'new',
+    signingMode: EXIST ? 'mine' : 'new',
     splashScreenFadeOutDuration: 300,
     startUrl: cfg.startUrl,
     themeColor: cfg.themeColor,
@@ -227,7 +238,8 @@ async function viaBubblewrap() {
   const core = require('@bubblewrap/core');
   log('Bubblewrap core:', require('@bubblewrap/core/package.json').version);
   const ksFile = path.join(WORK, 'salka.keystore');
-  newKeystore(ksFile);
+  if (EXIST) fs.writeFileSync(ksFile, Buffer.from(EXIST.b64, 'base64')); else newKeystore(ksFile);
+  const bwAlias = EXIST ? EXIST.alias : cfg.keyAlias, bwKeyPass = EXIST ? EXIST.keyPass : PASS;
   const json = {
     packageId: cfg.packageId,
     host: new URL(cfg.origin).host,
@@ -248,7 +260,7 @@ async function viaBubblewrap() {
     maskableIconUrl: abs(cfg.maskableIcon),
     monochromeIconUrl: abs(cfg.monochromeIcon),
     splashScreenFadeOutDuration: 300,
-    signingKey: { path: ksFile, alias: cfg.keyAlias },
+    signingKey: { path: ksFile, alias: bwAlias },
     appVersionName: req.versionName,
     appVersionCode: req.versionCode,
     appVersion: req.versionName,
@@ -284,10 +296,10 @@ async function viaBubblewrap() {
   const aligned = path.join(WORK, 'aligned.apk');
   const signed = path.join(WORK, 'salka-signed.apk');
   run(t.zipalign, ['-f', '-p', '4', unsigned, aligned]);
-  run(t.apksigner, ['sign', '--ks', ksFile, '--ks-key-alias', cfg.keyAlias, '--ks-pass', `pass:${PASS}`, '--key-pass', `pass:${PASS}`, '--out', signed, aligned]);
-  run('jarsigner', ['-keystore', ksFile, '-storepass', PASS, '-keypass', PASS, '-sigalg', 'SHA256withRSA', '-digestalg', 'SHA-256', aab, cfg.keyAlias]);
+  run(t.apksigner, ['sign', '--ks', ksFile, '--ks-key-alias', bwAlias, '--ks-pass', `pass:${PASS}`, '--key-pass', `pass:${bwKeyPass}`, '--out', signed, aligned]);
+  run('jarsigner', ['-keystore', ksFile, '-storepass', PASS, '-keypass', bwKeyPass, '-sigalg', 'SHA256withRSA', '-digestalg', 'SHA-256', aab, bwAlias]);
   fs.copyFileSync(path.join(proj, 'twa-manifest.json'), path.join(SEC, 'twa-manifest.json'));
-  return { source: 'bubblewrap', apk: signed, aab, keystore: ksFile, storePass: PASS, keyPass: PASS, alias: cfg.keyAlias };
+  return { source: 'bubblewrap', apk: signed, aab, keystore: ksFile, storePass: PASS, keyPass: bwKeyPass, alias: bwAlias };
 }
 
 // --------------------------------------------------------------- التحقق والتغليف
@@ -345,6 +357,14 @@ function encryptSecure() {
 // --------------------------------------------------------------- التشغيل
 async function main() {
   log(`بناء ${cfg.packageId} الإصدار ${req.versionName} (${req.versionCode})`);
+  // حماية: التطبيق منشور بمفتاح، فأي بناء بمفتاح جديد ما يكدر يحدّث النسخ المثبتة
+  if (PUBLISHED && !EXIST && !req.allowNewKey) {
+    throw new Error(`التطبيق منشور بالمفتاح ${PUBLISHED.certSha256}. حتى تبني تحديث، أضف المفتاح لأسرار GitHub (SALKA_KEYSTORE_B64 و SALKA_KEYSTORE_PASS و SALKA_KEY_ALIAS) — أو ضع "allowNewKey": true بملف request.json إذا تريد تطبيق جديد بمفتاح جديد عن قصد.`);
+  }
+  if (PUBLISHED && +req.versionCode <= +PUBLISHED.versionCode && !req.allowNewKey) {
+    throw new Error(`versionCode لازم يكون أكبر من ${PUBLISHED.versionCode} (المنشور حالياً)`);
+  }
+  if (EXIST) { addSecret(EXIST.keyPass); log('التوقيع بالمفتاح الموجود (من أسرار GitHub)'); }
   let pkg = null;
   const errors = [];
   if (req.method !== 'bubblewrap') {
@@ -358,6 +378,7 @@ async function main() {
   if (!pkg) throw new Error('كل الطرق فشلت');
   log('طريقة البناء:', pkg.source);
   const v = verify(pkg);
+  if (EXIST && PUBLISHED && v.fp !== PUBLISHED.certSha256) throw new Error(`المفتاح المستخدم (${v.fp}) مو نفس مفتاح النسخة المنشورة (${PUBLISHED.certSha256})`);
   const apkOut = path.join(PUB, 'salka.apk');
   fs.copyFileSync(pkg.apk, apkOut);
   const apkBuf = fs.readFileSync(apkOut);
