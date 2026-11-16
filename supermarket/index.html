@@ -183,6 +183,8 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .allgood{display:flex;align-items:center;gap:10px;background:var(--ok-soft);color:var(--ok);border-radius:14px;padding:14px;margin-top:18px;font-weight:700;font-size:14.5px}
 .banner{display:flex;align-items:center;gap:10px;background:var(--accent-soft);border-radius:14px;padding:12px;margin-top:14px}
 .banner>.i{color:var(--warn);width:24px;height:24px}
+.banner.inst{background:var(--brand-soft)}
+.banner.inst>.i{color:var(--brand)}
 .banner .t{flex:1;min-width:0}
 .banner b{display:block;font-size:14.5px}
 .banner span{font-size:12.5px;color:var(--ink-2)}
@@ -500,7 +502,7 @@ body.kb-open .toast.show{transform:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 1.5<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 2.0<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -580,6 +582,7 @@ body.kb-open .toast.show{transform:none}
         <div class="fg"><label for="pf-qty">الكمية الموجودة</label><input id="pf-qty" class="inp" inputmode="decimal" placeholder="0" enterkeyhint="next"></div>
         <div class="fg"><label for="pf-min">نبّهني لما تقل عن</label><input id="pf-min" class="inp" inputmode="decimal" placeholder="5" enterkeyhint="next"></div>
       </div>
+      <span class="hint">اكتب 0 إذا ما تريد تنبيه نقص لهذي المادة</span>
       <div class="fg"><label for="pf-note">المورد / ملاحظات</label><input id="pf-note" class="inp" placeholder="اختياري" enterkeyhint="done"></div>
       <div class="sheet-actions">
         <button type="button" class="btn danger" id="pf-del" data-act="delete-product" aria-label="حذف" hidden><svg class="i"><use href="#i-trash"/></svg></button>
@@ -717,23 +720,119 @@ function normalizeDB(d) {
     shortages: Array.isArray(d.shortages) ? d.shortages.map(normShortage).filter(Boolean) : []
   };
 }
-function load() {
-  try { const raw = localStorage.getItem(KEY); if (raw) return normalizeDB(JSON.parse(raw)); } catch (e) { }
-  return normalizeDB({});
+/* ---------- التخزين: IndexedDB (يتحمل عشرات الآلاف من المواد)، وlocalStorage احتياطي ---------- */
+const IDB_NAME = 'supermarket-pro';
+let db = normalizeDB({});
+let dbVer = 0, idxVer = -1, lastStamp = 0;
+const stamp = () => (lastStamp = Math.max(Date.now(), lastStamp + 1));
+const Store = { mode: 'ls', idb: null, timer: null, full: false, savedIds: new Set(), savedStamp: new WeakMap(), bc: null, failShown: false };
+const reqP = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+function idbOpen() {
+  return new Promise((res, rej) => {
+    let r;
+    try { r = indexedDB.open(IDB_NAME, 1); } catch (e) { return rej(e); }
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains('products')) d.createObjectStore('products', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta');
+    };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('blocked'));
+  });
 }
-let db = load();
+function lsRead() { try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+function markSaved() {
+  Store.savedIds = new Set(); Store.savedStamp = new WeakMap();
+  for (const p of db.products) { Store.savedIds.add(p.id); Store.savedStamp.set(p, p.updatedAt); }
+}
+async function idbReadAll() {
+  const tx = Store.idb.transaction(['products', 'meta'], 'readonly');
+  const [products, settings, shortages] = await Promise.all([
+    reqP(tx.objectStore('products').getAll()), reqP(tx.objectStore('meta').get('settings')), reqP(tx.objectStore('meta').get('shortages'))
+  ]);
+  return { products, settings, shortages };
+}
+async function storeBoot() {
+  try {
+    if (!window.indexedDB) throw new Error('no idb');
+    Store.idb = await idbOpen();
+    Store.mode = 'idb';
+    const data = await idbReadAll(), legacy = lsRead();
+    if (!data.settings && !data.products.length && legacy) {
+      // أول تشغيل بعد التحديث: ننقل البيانات القديمة من localStorage
+      db = normalizeDB(legacy); dbVer++;
+      if (await flushNow(true)) { try { localStorage.removeItem(KEY); } catch (e) { } }
+    } else {
+      db = normalizeDB(data); dbVer++; markSaved();
+    }
+    Store.idb.onversionchange = () => { try { Store.idb.close(); } catch (e) { } };
+    try { Store.bc = new BroadcastChannel('smpro'); Store.bc.onmessage = onOtherTab; } catch (e) { }
+  } catch (e) {
+    Store.mode = 'ls'; db = normalizeDB(lsRead() || {}); dbVer++;
+  }
+}
 let persistAsked = false;
-function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(db)); }
-  catch (e) { toast('ما قدرت أحفظ — مساحة المتصفح ممتلئة. احفظ نسخة احتياطية', { type: 'err', ms: 6000 }); }
+function save(opts) {
+  if (opts && opts.full) Store.full = true;
+  dbVer++;
+  clearTimeout(Store.timer);
+  Store.timer = setTimeout(() => { Store.timer = null; flushNow(); }, 150);
   if (!persistAsked) { persistAsked = true; try { navigator.storage && navigator.storage.persist && navigator.storage.persist().catch(() => { }); } catch (e) { } }
 }
+function saveFailed() {
+  if (Store.failShown) return; Store.failShown = true; setTimeout(() => { Store.failShown = false; }, 8000);
+  toast('ما قدرت أحفظ آخر تعديل — احفظ نسخة احتياطية من الإعدادات', { type: 'err', ms: 6000 });
+}
+/* نكتب بس المواد اللي تغيّرت (أو انحذفت)، مو كل القائمة */
+function flushNow(forceFull) {
+  if (Store.mode !== 'idb') {
+    try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { saveFailed(); return Promise.resolve(false); }
+    return Promise.resolve(true);
+  }
+  return new Promise(resolve => {
+    let done = false;
+    const fail = err => { if (done) return; done = true; Store.full = true; saveFailed(err); resolve(false); };
+    try {
+      const full = forceFull || Store.full; Store.full = false;
+      const tx = Store.idb.transaction(['products', 'meta'], 'readwrite'), ps = tx.objectStore('products'), ms = tx.objectStore('meta');
+      const ids = new Set();
+      if (full) ps.clear();
+      for (const p of db.products) {
+        ids.add(p.id);
+        if (full || !Store.savedIds.has(p.id) || Store.savedStamp.get(p) !== p.updatedAt) { ps.put(p); Store.savedStamp.set(p, p.updatedAt); }
+      }
+      if (!full) Store.savedIds.forEach(id => { if (!ids.has(id)) ps.delete(id); });
+      Store.savedIds = ids;
+      ms.put(db.settings, 'settings'); ms.put(db.shortages, 'shortages');
+      tx.oncomplete = () => { if (done) return; done = true; try { Store.bc && Store.bc.postMessage('changed'); } catch (e) { } resolve(true); };
+      tx.onerror = () => fail(tx.error); tx.onabort = () => fail(tx.error);
+    } catch (e) { fail(e); }
+  });
+}
+function flushPending() { if (Store.timer) { clearTimeout(Store.timer); Store.timer = null; flushNow(); } }
+async function onOtherTab() {
+  if (Store.timer || stack.length || Store.mode !== 'idb') return;
+  try { db = normalizeDB(await idbReadAll()); dbVer++; markSaved(); applyTheme(); renderCurrent(); } catch (e) { }
+}
 
-const byId = id => db.products.find(p => p.id === id) || null;
-const byCode = code => code ? (db.products.find(p => p.barcode === code) || null) : null;
+/* ---------- فهارس سريعة ---------- */
+const idIdx = new Map(), codeIdx = new Map(), keyCache = new WeakMap();
+function ensureIdx() {
+  if (idxVer === dbVer) return;
+  idIdx.clear(); codeIdx.clear();
+  for (const p of db.products) { idIdx.set(p.id, p); if (p.barcode && !codeIdx.has(p.barcode)) codeIdx.set(p.barcode, p); }
+  idxVer = dbVer;
+}
+const byId = id => { if (!id) return null; ensureIdx(); return idIdx.get(id) || null; };
+const byCode = code => { if (!code) return null; ensureIdx(); return codeIdx.get(code) || null; };
+function pkey(p) {
+  let k = keyCache.get(p);
+  if (!k || k.n !== p.name || k.c !== p.category) { const nn = norm(p.name); k = { n: p.name, c: p.category, nn, k: nn + ' ' + norm(p.category) }; keyCache.set(p, k); }
+  return k;
+}
+const collator = (() => { try { return new Intl.Collator('ar'); } catch (e) { return { compare: (a, b) => (a < b ? -1 : a > b ? 1 : 0) }; } })();
 const getS = id => db.shortages.find(s => s.id === id) || null;
-const isOut = p => p.qty <= 0;
-const isLow = p => p.qty <= p.minQty;
+const isOut = p => p.minQty > 0 && p.qty <= 0;
+const isLow = p => p.minQty > 0 && p.qty <= p.minQty;
 const unitCost = p => p.pack > 1 ? p.bulk / p.pack : p.bulk;
 const marginPct = p => { const c = unitCost(p); return (c > 0 && p.retail > 0) ? Math.round((p.retail - c) / c * 100) : null; };
 const linkedProduct = s => (s.productId && byId(s.productId)) || (s.barcode && byCode(s.barcode)) || null;
@@ -846,11 +945,15 @@ function daysAgoText(ts) {
 }
 
 /* ---------- Home ---------- */
+function installBanner() {
+  if (isStandalone() || kv.get('smpro.installHide') || !(deferredPrompt || isIOS())) return '';
+  return `<div class="banner inst">${ico('phone')}<div class="t"><b>ثبّت التطبيق على موبايلك</b><span>تطلع أيقونة على الشاشة، يفتح مثل التطبيقات ويشتغل بدون نت</span></div><button class="btn sm pri" data-act="install">تثبيت</button><button class="icon-plain" data-act="install-hide" aria-label="إخفاء">${ico('x')}</button></div>`;
+}
 function renderHome() {
   const P = db.products, S = db.shortages, body = $('#home-body');
   renderHomeResults();
   if (!P.length) {
-    body.innerHTML = `<div class="welcome"><h3>أهلاً بيك 👋</h3><p>ابدأ بإضافة مواد محلك، أو جرّب التطبيق ببيانات تجريبية.</p>
+    body.innerHTML = installBanner() + `<div class="welcome"><h3>أهلاً بيك 👋</h3><p>ابدأ بإضافة مواد محلك، أو جرّب التطبيق ببيانات تجريبية.</p>
       <div class="tiles">
         <button class="tile" data-act="new-product">${ico('plus')}أضف مادة</button>
         <button class="tile" data-act="scan" data-target="lookup">${ico('scan')}امسح باركود</button>
@@ -861,7 +964,7 @@ function renderHome() {
   }
   const low = P.filter(isLow);
   const value = P.reduce((a, p) => a + p.qty * unitCost(p), 0);
-  let h = '';
+  let h = installBanner();
   const lb = db.settings.lastBackup;
   const since = lb || P.reduce((m, p) => Math.min(m, p.createdAt), Date.now());
   if (P.length >= 5 && !ui.backupDismissed && Date.now() - since > (lb ? 7 : 2) * DAY) {
@@ -892,8 +995,9 @@ function searchProducts(q, limit) {
   const nq = norm(q), code = cleanCode(q);
   if (!nq) return [];
   const out = [];
+  const byBarcode = code && /\d{3,}/.test(code);
   for (const p of db.products) {
-    if (norm(p.name).includes(nq) || (code && p.barcode.includes(code)) || norm(p.category).includes(nq)) { out.push(p); if (limit && out.length >= limit) break; }
+    if (pkey(p).k.includes(nq) || (byBarcode && p.barcode.includes(code))) { out.push(p); if (limit && out.length >= limit) break; }
   }
   return out;
 }
@@ -916,27 +1020,42 @@ function homeSubmit() {
 }
 
 /* ---------- Products ---------- */
+let catMemo = { ver: -1, cats: [], lowN: 0 }, plMemo = { key: '', list: [] };
+function catInfo() {
+  if (catMemo.ver !== dbVer) {
+    const set = new Set(); let lowN = 0;
+    for (const p of db.products) { if (p.category) set.add(p.category); if (isLow(p)) lowN++; }
+    catMemo = { ver: dbVer, cats: Array.from(set).sort(collator.compare), lowN };
+  }
+  return catMemo;
+}
+function productList() {
+  const key = [dbVer, ui.q, ui.filter, ui.sort].join('\u0001');
+  if (plMemo.key === key) return plMemo.list;
+  let list = ui.q ? searchProducts(ui.q) : db.products.slice();
+  if (ui.filter === 'low') list = list.filter(isLow);
+  else if (ui.filter !== 'all') list = list.filter(p => p.category === ui.filter);
+  const sorters = {
+    recent: (a, b) => b.updatedAt - a.updatedAt,
+    name: (a, b) => collator.compare(a.name, b.name),
+    qty: (a, b) => (a.qty - a.minQty) - (b.qty - b.minQty),
+    price: (a, b) => b.retail - a.retail
+  };
+  list.sort(sorters[ui.sort] || sorters.recent);
+  plMemo = { key, list };
+  return list;
+}
 function renderProducts() {
   const P = db.products;
-  const cats = Array.from(new Set(P.map(p => p.category).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ar'));
+  const { cats, lowN } = catInfo();
   if (ui.filter !== 'all' && ui.filter !== 'low' && !cats.includes(ui.filter)) ui.filter = 'all';
-  const lowN = P.filter(isLow).length;
   let chips = `<button class="chip ${ui.filter === 'all' ? 'on' : ''}" data-act="filter" data-f="all">الكل</button>`;
   if (lowN) chips += `<button class="chip warn-c ${ui.filter === 'low' ? 'on' : ''}" data-act="filter" data-f="low">قليلة (${lowN})</button>`;
   chips += cats.map(c => `<button class="chip ${ui.filter === c ? 'on' : ''}" data-act="filter" data-f="${esc(c)}">${esc(c)}</button>`).join('');
   $('#p-chips').innerHTML = chips;
   $('#p-sort').value = ui.sort;
 
-  let list = ui.q ? searchProducts(ui.q) : P.slice();
-  if (ui.filter === 'low') list = list.filter(isLow);
-  else if (ui.filter !== 'all') list = list.filter(p => p.category === ui.filter);
-  const sorters = {
-    recent: (a, b) => b.updatedAt - a.updatedAt,
-    name: (a, b) => a.name.localeCompare(b.name, 'ar'),
-    qty: (a, b) => (a.qty - a.minQty) - (b.qty - b.minQty),
-    price: (a, b) => b.retail - a.retail
-  };
-  list.sort(sorters[ui.sort] || sorters.recent);
+  const list = productList();
   $('#p-count').textContent = P.length ? `(${fmt(list.length)})` : '';
 
   const el = $('#p-list');
@@ -975,7 +1094,7 @@ function productCard(p) {
 }
 function changeQty(id, d) {
   const p = byId(id); if (!p) return;
-  p.qty = Math.max(0, round2(p.qty + d)); p.updatedAt = Date.now();
+  p.qty = Math.max(0, round2(p.qty + d)); p.updatedAt = stamp();
   save();
   if (ui.view === 'products') {
     const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
@@ -987,9 +1106,9 @@ function changeQty(id, d) {
 
 /* ---------- Product form ---------- */
 function fillDatalists() {
-  const cats = Array.from(new Set(DEFAULT_CATS.concat(db.products.map(p => p.category).filter(Boolean))));
+  const cats = Array.from(new Set(DEFAULT_CATS.concat(catInfo().cats)));
   $('#cat-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
-  $('#name-list').innerHTML = db.products.slice(0, 500).map(p => `<option value="${esc(p.name)}">`).join('');
+
 }
 function openProductForm(id, preset = {}) {
   const p = id ? byId(id) : null;
@@ -1051,7 +1170,7 @@ function saveProduct() {
     barcode, name, category: $('#pf-cat').value.trim(),
     bulk: Math.max(0, toNum($('#pf-bulk').value)), pack: Math.max(1, Math.round(toNum($('#pf-pack').value)) || 1),
     retail: Math.max(0, toNum($('#pf-retail').value)), qty: Math.max(0, toNum($('#pf-qty').value)),
-    minQty: minRaw === '' ? 5 : Math.max(0, toNum(minRaw)), note: $('#pf-note').value.trim(), updatedAt: Date.now()
+    minQty: minRaw === '' ? 5 : Math.max(0, toNum(minRaw)), note: $('#pf-note').value.trim(), updatedAt: stamp()
   };
   const editing = !!editingProductId;
   let prod;
@@ -1166,7 +1285,7 @@ function saveShortage() {
   const name = $('#sf-name').value.trim();
   if (!name) { toast('اكتب اسم المادة', { type: 'err' }); $('#sf-name').focus(); return; }
   const code = cleanCode($('#sf-code').value);
-  const p = (code && byCode(code)) || db.products.find(x => norm(x.name) === norm(name)) || null;
+  const nn = norm(name), p = (code && byCode(code)) || db.products.find(x => pkey(x).nn === nn) || null;
   const data = { name, barcode: code || (p ? p.barcode : ''), qty: normDigits($('#sf-qty').value).trim(), note: $('#sf-note').value.trim(), productId: p ? p.id : null };
   let msg;
   if (editingShortageId) { Object.assign(getS(editingShortageId), data); msg = 'تم الحفظ ✓'; }
@@ -1198,10 +1317,10 @@ function resolveAdd() {
   const p = linkedProduct(s), n = toNum($('#rs-qty').value);
   if (!(n > 0)) { toast('اكتب الكمية اللي وصلت', { type: 'err' }); $('#rs-qty').focus(); return; }
   const idx = db.shortages.indexOf(s), before = p.qty;
-  p.qty = round2(p.qty + n); p.updatedAt = Date.now();
+  p.qty = round2(p.qty + n); p.updatedAt = stamp();
   db.shortages.splice(idx, 1); save();
   closeSheet('sheet-resolve'); renderCurrent();
-  toast(`انضافت ${fmt(n)} لـ «${p.name}» ✓`, { action: { label: 'تراجع', fn: () => { p.qty = before; db.shortages.splice(idx, 0, s); save(); renderCurrent(); } } });
+  toast(`انضافت ${fmt(n)} لـ «${p.name}» ✓`, { action: { label: 'تراجع', fn: () => { p.qty = before; p.updatedAt = stamp(); db.shortages.splice(idx, 0, s); save(); renderCurrent(); } } });
 }
 function shortageText() {
   let d = '';
@@ -1274,8 +1393,7 @@ function renderSettings() {
   $('#set-sound').checked = !!db.settings.sound;
   $('#last-backup').textContent = daysAgoText(db.settings.lastBackup);
   $('#install-state').textContent = isStandalone() ? 'التطبيق مثبت ✓' : deferredPrompt ? 'اضغط هنا للتثبيت' : isIOS() ? 'من سفاري: زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»' : 'من قائمة المتصفح ⋮ ثم «تثبيت التطبيق»';
-  let kb = 0; try { kb = Math.round((localStorage.getItem(KEY) || '').length * 2 / 1024); } catch (e) { }
-  $('#storage-info').textContent = `${fmt(db.products.length)} مادة · ${fmt(db.shortages.length)} نقص · ${fmt(kb)} كيلوبايت`;
+  $('#storage-info').textContent = `${fmt(db.products.length)} مادة · ${fmt(db.shortages.length)} نقص · ${Store.mode === 'idb' ? 'قاعدة بيانات الجهاز (تتحمل عشرات الآلاف)' : 'ذاكرة المتصفح'}`;
 }
 function applyTheme() {
   const t = db.settings.theme, r = document.documentElement;
@@ -1306,7 +1424,7 @@ async function importJSONFile(file) {
   const ok = await ask({ title: 'استرجاع النسخة؟', msg: `راح تتبدل البيانات الحالية (${db.products.length} مادة) بالنسخة (${next.products.length} مادة، ${next.shortages.length} نقص).`, ok: 'استرجاع' });
   if (!ok) return;
   next.settings.lastBackup = Date.now();
-  db = next; save(); applyTheme(); renderCurrent(); toast('تم استرجاع البيانات ✓');
+  db = next; save({ full: true }); applyTheme(); renderCurrent(); toast('تم استرجاع البيانات ✓');
 }
 const CSV_HEAD = ['الباركود', 'اسم المادة', 'الفئة', 'سعر الجملة', 'عدد القطع بالجملة', 'سعر المفرد', 'الكمية', 'حد التنبيه', 'ملاحظات'];
 const csvCell = v => { const s = String(v == null ? '' : v); return /[",\n\r;\t]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
@@ -1374,6 +1492,11 @@ async function importCSVFile(file) {
   let map = mapHeader(rows[0]), data = rows.slice(1);
   if (map.name === undefined) { map = {}; DEFAULT_ORDER.forEach((k, i) => map[k] = i); data = rows; }
   const get = (r, k) => map[k] === undefined ? '' : String(r[map[k]] == null ? '' : r[map[k]]).trim();
+  if (data.length > 300) { toast(`جاري استيراد ${fmt(data.length)} سطر…`, { ms: 8000 }); await new Promise(r => setTimeout(r, 60)); }
+  ensureIdx();
+  const codeMap = new Map(codeIdx), nameMap = new Map();
+  for (const p of db.products) { const nn = pkey(p).nn; if (!nameMap.has(nn)) nameMap.set(nn, p); }
+  const newOnes = [];
   let added = 0, updated = 0, broken = 0;
   for (const r of data) {
     const name = get(r, 'name'); if (!name) continue;
@@ -1385,10 +1508,17 @@ async function importCSVFile(file) {
     ['bulk', 'pack', 'retail', 'qty', 'minQty'].forEach(k => { const v = get(r, k); if (v !== '') fields[k] = toNum(v); });
     if (map.note !== undefined && get(r, 'note')) fields.note = get(r, 'note');
     if (code) fields.barcode = code;
-    const ex = (code && byCode(code)) || (!code && db.products.find(p => norm(p.name) === norm(name)));
-    if (ex) { Object.assign(ex, normProduct(Object.assign({}, ex, fields)), { id: ex.id, updatedAt: Date.now() }); updated++; }
-    else { const np = normProduct(Object.assign({ barcode: code }, fields)); if (np) { db.products.unshift(np); added++; } }
+    const nn = norm(name);
+    const ex = code ? codeMap.get(code) : nameMap.get(nn);
+    if (ex) { Object.assign(ex, normProduct(Object.assign({}, ex, fields)), { id: ex.id, updatedAt: stamp() }); updated++; }
+    else {
+      // بدون عمود كمية/تنبيه = المادة بدون تنبيه نقص (مفيد لما تستورد قائمة أسعار بس)
+      if (fields.minQty === undefined) fields.minQty = map.qty !== undefined ? 5 : 0;
+      const np = normProduct(Object.assign({ barcode: code, updatedAt: stamp() }, fields));
+      if (np) { newOnes.push(np); if (code) codeMap.set(code, np); if (!nameMap.has(nn)) nameMap.set(nn, np); added++; }
+    }
   }
+  if (newOnes.length) db.products = newOnes.concat(db.products);
   save(); renderCurrent();
   if (!added && !updated) { toast('ما لقيت مواد بالملف — تأكد إن عمود «اسم المادة» موجود', { type: 'err', ms: 5000 }); return; }
   let msg = `تمت إضافة ${added} وتحديث ${updated} مادة ✓`;
@@ -1830,7 +1960,11 @@ const A = {
   'resolve-add': () => resolveAdd(),
   'resolve-remove': () => { const id = resolvingId; closeSheet('sheet-resolve'); removeShortage(id, 'انشالت من القائمة'); },
   'add-low': el => { const p = byId(el.dataset.id); if (p && quickShortage(p)) { save(); renderCurrent(); toast(`أضيفت «${p.name}» للنقص ✓`); } },
-  'add-all-low': () => { let n = 0; db.products.filter(isLow).forEach(p => { if (quickShortage(p)) n++; }); save(); renderCurrent(); toast(`أضيفت ${n} مواد لقائمة النقص ✓`); },
+  'add-all-low': async () => {
+    const cnt = db.products.filter(p => isLow(p) && !inShortage(p)).length;
+    if (cnt > 30 && !(await ask({ title: `إضافة ${fmt(cnt)} مادة للنقص؟`, msg: 'هذا عدد كبير. إذا موادك بدون كميات مضبوطة، خلي «نبّهني لما تقل عن» = 0 للمواد اللي ما تريد تنبيه إلها.', ok: 'أضف الكل' }))) return;
+    let n = 0; db.products.filter(isLow).forEach(p => { if (quickShortage(p)) n++; }); save(); renderCurrent(); toast(`أضيفت ${n} مواد لقائمة النقص ✓`);
+  },
   'share-wa': () => { window.open('https://wa.me/?text=' + encodeURIComponent(shortageText()), '_blank', 'noopener'); },
   share: () => { const text = shortageText(); if (navigator.share) navigator.share({ title: 'قائمة النقص', text }).catch(() => { }); else copyText(text); },
   copy: () => copyText(shortageText()),
@@ -1843,11 +1977,12 @@ const A = {
   'import-csv': () => $('#file-csv').click(),
   'csv-template': () => csvTemplate(),
   'backup-dismiss': () => { ui.backupDismissed = true; renderHome(); },
+  'install-hide': () => { kv.set('smpro.installHide', '1'); renderHome(); },
   demo: async () => { if (db.products.length && !(await ask({ title: 'إضافة بيانات تجريبية؟', msg: 'راح تنضاف 12 مادة تجريبية على موادك الحالية. تقدر تحذفها بعدين.', ok: 'إضافة' }))) return; loadDemo(); },
   wipe: async () => {
     if (!(await ask({ title: 'حذف كل البيانات؟', msg: 'راح تنحذف كل المواد وقائمة النقص من هذا الجهاز. ما تقدر ترجعها إلا من نسخة احتياطية.', ok: 'حذف الكل', danger: true }))) return;
     db = normalizeDB({ settings: { shopName: db.settings.shopName, theme: db.settings.theme, sound: db.settings.sound } });
-    save(); renderCurrent(); toast('انحذفت كل البيانات');
+    save({ full: true }); renderCurrent(); toast('انحذفت كل البيانات');
   },
   install: async () => {
     if (isStandalone()) { toast('التطبيق مثبت من قبل ✓'); return; }
@@ -1950,25 +2085,30 @@ document.addEventListener('focusin', e => {
 document.addEventListener('focusout', () => setTimeout(syncViewport, 120));
 
 /* PWA install + network */
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; if (ui.view === 'settings') renderSettings(); });
-window.addEventListener('appinstalled', () => { deferredPrompt = null; toast('تم تثبيت التطبيق ✓'); if (ui.view === 'settings') renderSettings(); });
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; if (ui.view === 'settings') renderSettings(); if (ui.view === 'home') renderHome(); });
+window.addEventListener('appinstalled', () => { deferredPrompt = null; toast('تم تثبيت التطبيق ✓'); if (ui.view === 'settings') renderSettings(); if (ui.view === 'home') renderHome(); });
 const netState = () => { $('#offline').hidden = navigator.onLine !== false; };
 window.addEventListener('online', netState); window.addEventListener('offline', netState);
 window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (['home', 'products', 'shortage', 'settings'].includes(h) && h !== ui.view) go(h); });
-window.addEventListener('storage', e => { if (e.key === KEY) { db = load(); applyTheme(); renderCurrent(); } });
+window.addEventListener('pagehide', flushPending);
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushPending(); });
 
 /* ================= Init ================= */
-(function init() {
+(async function init() {
   if (history.state && history.state.sheet) { try { history.replaceState(null, ''); } catch (e) { } }
   applyTheme();
   syncViewport();
   const mq = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
   if (mq) { mq.addEventListener ? mq.addEventListener('change', applyTheme) : mq.addListener(applyTheme); }
+  $('#home-body').innerHTML = '<p class="muted" style="text-align:center;padding:30px 0">جاري تحميل المواد…</p>';
+  await storeBoot();
+  applyTheme();
   const h = location.hash.slice(1);
   go(['home', 'products', 'shortage', 'settings'].includes(h) ? h : 'home');
   netState();
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-    window.addEventListener('load', () => {
+    const whenLoaded = fn => (document.readyState === 'complete' ? fn() : window.addEventListener('load', fn));
+    whenLoaded(() => {
       navigator.serviceWorker.register('./sw.js').then(reg => {
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
@@ -1981,6 +2121,8 @@ window.addEventListener('storage', e => { if (e.key === KEY) { db = load(); appl
   }
   // Preload the barcode decoder in the background (only where the built-in detector is missing, e.g. iPhone)
   const idle = window.requestIdleCallback || (fn => setTimeout(fn, 2500));
+  // نجهّز فهرس البحث بالخلفية حتى أول بحث يكون فوري حتى مع آلاف المواد
+  (function warm() { ensureIdx(); const P = db.products; let i = 0; const run = () => { const end = Math.min(P.length, i + 1500); for (; i < end; i++) pkey(P[i]); if (i < P.length) (window.requestIdleCallback || setTimeout)(run); }; (window.requestIdleCallback || setTimeout)(run); })();
   idle(() => { nativeOK().then(ok => { if (!ok && navigator.onLine !== false) loadZX().catch(() => { }); }); });
 })();
 </script>
