@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>سوبرماركت برو</title>
 <meta name="description" content="إدارة مواد المحل وأسعار الجملة والمفرد وقائمة النقص مع قارئ باركود بالكاميرا">
 <meta name="theme-color" content="#F4F2EC" id="meta-theme">
@@ -264,9 +264,9 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .badge{position:absolute;top:7px;inset-inline-start:calc(50% + 4px);min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--danger);color:#fff;font-size:11px;display:grid;place-items:center;font-weight:800;line-height:1}
 
 /* Sheets */
-.sheet-wrap{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-end;justify-content:center;background:rgba(8,12,10,.5);opacity:0;pointer-events:none;transition:opacity .2s}
+.sheet-wrap{position:fixed;left:0;right:0;top:var(--vvt,0px);height:var(--vvh,100%);z-index:100;display:flex;align-items:flex-end;justify-content:center;background:rgba(8,12,10,.5);opacity:0;pointer-events:none;transition:opacity .2s}
 .sheet-wrap.open{opacity:1;pointer-events:auto}
-.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;border-radius:22px 22px 0 0;padding:6px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .26s cubic-bezier(.2,.8,.2,1)}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92vh;max-height:calc(var(--vvh,100vh) * .94);overflow-y:auto;overscroll-behavior:contain;border-radius:22px 22px 0 0;padding:6px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .26s cubic-bezier(.2,.8,.2,1)}
 .sheet-wrap.open .sheet{transform:none}
 .grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:6px auto 10px}
 .sheet-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
@@ -316,7 +316,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 
 /* Scanner */
 .sheet.scan{background:#0B0F0D;color:#fff;padding:0 0 calc(14px + env(safe-area-inset-bottom));overflow-x:hidden}
-.cam{position:relative;background:#000;width:100%;aspect-ratio:1/1;max-height:60vh;max-height:60dvh;min-height:260px;overflow:hidden;border-radius:22px 22px 0 0}
+.cam{position:relative;background:#000;width:100%;aspect-ratio:1/1;max-height:60vh;max-height:calc(var(--vvh,100vh) * .6);min-height:min(260px, calc(var(--vvh,100vh) * .34));overflow:hidden;border-radius:22px 22px 0 0}
 @media (min-width:700px){.cam{border-radius:22px 22px 0 0}}
 .cam video{width:100%;height:100%;object-fit:cover;display:block}
 #scan-lib{width:100%;position:relative;z-index:1}
@@ -354,6 +354,11 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .toast button{color:var(--accent);font-weight:800;padding:4px 8px;font-size:14.5px}
 .toast.err button{color:#fff}
 
+/* keyboard open */
+body.kb-open .nav{display:none}
+body.kb-open .sheet{padding-bottom:14px}
+body.kb-open .toast{bottom:auto;top:calc(var(--vvt,0px) + 10px);transform:translateY(-20px)}
+body.kb-open .toast.show{transform:none}
 #print-area{display:none}
 @media print{
   @page{margin:14mm}
@@ -495,7 +500,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 1.4<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 1.5<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -591,7 +596,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
     <div class="grab"></div>
     <div class="sheet-h"><h3 id="sf-title">إضافة نقص</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
     <form id="sf" novalidate autocomplete="off">
-      <div class="fg"><label for="sf-name">اسم المادة *</label><input id="sf-name" class="inp" placeholder="اكتب الاسم — تطلعلك موادك المشابهة" enterkeyhint="next" autocomplete="off"><div id="sf-sugg" class="sugg" hidden></div></div>
+      <div class="fg"><label for="sf-name">اسم المادة *</label><input id="sf-name" class="inp" data-scroll="start" placeholder="اكتب الاسم — تطلعلك موادك المشابهة" enterkeyhint="next" autocomplete="off"><div id="sf-sugg" class="sugg" hidden></div></div>
       <button type="button" class="btn sm soft" id="sf-to-product" data-act="sf-to-product" style="width:100%;margin:-4px 0 14px" hidden><svg class="i"><use href="#i-plus"/></svg>هذي المادة مو بالمواد — أضفها للمواد</button>
       <div class="fg">
         <label for="sf-code">الباركود (اختياري)</label>
@@ -1915,6 +1920,35 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) stopCamera(); else startCamera();
 });
 
+/* Keyboard: keep sheets and the focused field above the on-screen keyboard */
+const VV = window.visualViewport;
+const isTextEl = el => !!el && ((el.tagName === 'INPUT' && !/^(checkbox|radio|file|button|submit|range|color)$/.test(el.type)) || el.tagName === 'TEXTAREA' || el.isContentEditable);
+let vpW = window.innerWidth, vpBase = Math.max(window.innerHeight, VV ? VV.height : 0);
+function syncViewport() {
+  const hgt = VV ? VV.height : window.innerHeight, top = VV ? VV.offsetTop : 0, st = document.documentElement.style;
+  if (window.innerWidth !== vpW) { vpW = window.innerWidth; vpBase = 0; }
+  const typing = isTextEl(document.activeElement);
+  if (!typing) vpBase = Math.max(vpBase, window.innerHeight, hgt);
+  st.setProperty('--vvh', Math.round(hgt) + 'px');
+  st.setProperty('--vvt', Math.round(top) + 'px');
+  document.body.classList.toggle('kb-open', typing && vpBase - hgt > 120);
+}
+function keepVisible(el) {
+  const sh = el.closest('.sheet'); if (!sh) return;
+  const sr = sh.getBoundingClientRect(), r = el.getBoundingClientRect();
+  const target = el.dataset.scroll === 'start' ? sh.scrollTop + (r.top - sr.top) - 56 : sh.scrollTop + (r.top - sr.top) - (sr.height - r.height) / 2;
+  sh.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+}
+if (VV) { VV.addEventListener('resize', syncViewport); VV.addEventListener('scroll', syncViewport); }
+window.addEventListener('resize', syncViewport);
+window.addEventListener('orientationchange', () => setTimeout(syncViewport, 300));
+document.addEventListener('focusin', e => {
+  if (!isTextEl(e.target)) return;
+  syncViewport();
+  [120, 380].forEach(ms => setTimeout(() => { syncViewport(); if (document.activeElement === e.target) keepVisible(e.target); }, ms));
+});
+document.addEventListener('focusout', () => setTimeout(syncViewport, 120));
+
 /* PWA install + network */
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; if (ui.view === 'settings') renderSettings(); });
 window.addEventListener('appinstalled', () => { deferredPrompt = null; toast('تم تثبيت التطبيق ✓'); if (ui.view === 'settings') renderSettings(); });
@@ -1927,6 +1961,7 @@ window.addEventListener('storage', e => { if (e.key === KEY) { db = load(); appl
 (function init() {
   if (history.state && history.state.sheet) { try { history.replaceState(null, ''); } catch (e) { } }
   applyTheme();
+  syncViewport();
   const mq = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
   if (mq) { mq.addEventListener ? mq.addEventListener('change', applyTheme) : mq.addListener(applyTheme); }
   const h = location.hash.slice(1);
