@@ -376,6 +376,11 @@ a.item{color:inherit;text-decoration:none}.item.dz>.i{color:var(--danger)}
 .item.col{flex-direction:column;align-items:stretch;gap:8px}
 .sinp.wide{width:100%}
 .item.btns{gap:10px;flex-wrap:wrap}
+.item.dev{padding-inline-start:28px;min-height:52px}
+.item.dev .t{font-size:14.5px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--line);flex-shrink:0}
+.dot.on{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+button.sync-chip{cursor:pointer}
 .item.btns .btn{flex:1}
 /* keyboard open */
 body.kb-open .nav{display:none}
@@ -439,7 +444,7 @@ body.kb-open .toast.show{transform:none}
       <div class="logo"><svg class="i"><use href="#i-scan"/></svg></div>
       <div style="min-width:0"><h1 id="shop-name">سوبرماركت</h1><p id="today"></p></div>
     </div>
-    <span class="row-btns"><span class="sync-chip" id="sync-chip" hidden></span><span class="offline" id="offline" hidden>بدون إنترنت · يشتغل عادي</span></span>
+    <span class="row-btns"><button class="sync-chip" id="sync-chip" data-act="go-sync" hidden></button><span class="offline" id="offline" hidden>بدون إنترنت · يشتغل عادي</span></span>
   </div>
 </header>
 
@@ -527,7 +532,7 @@ body.kb-open .toast.show{transform:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 2.3<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 2.4<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -681,6 +686,17 @@ body.kb-open .toast.show{transform:none}
     <p class="cf-msg" style="margin-bottom:12px">اكتب كود المحل اللي يطلع بموبايل صاحب المحل (الإعدادات ← كود المحل).</p>
     <div class="fg"><input id="join-code" class="inp num" dir="ltr" placeholder="XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" enterkeyhint="go" style="text-align:center;font-size:20px;letter-spacing:.08em"></div>
     <div class="sheet-actions"><button class="btn" data-act="close">إلغاء</button><button class="btn pri" data-act="sync-join-go">انضمام</button></div>
+  </div>
+</div>
+
+<!-- Device name -->
+<div class="sheet-wrap" id="sheet-devname" role="dialog" aria-modal="true" aria-labelledby="dn-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="dn-title">اسم هذا الجهاز</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <p class="cf-msg" style="margin-bottom:12px">حتى تعرف كل جهاز بالقائمة، مثلاً: كاشير 1، موبايل أحمد</p>
+    <div class="fg"><input id="dev-name" class="inp" maxlength="30" autocomplete="off" enterkeyhint="done"></div>
+    <div class="sheet-actions"><button class="btn" data-act="close">إلغاء</button><button class="btn pri" data-act="dev-name-save">حفظ</button></div>
   </div>
 </div>
 
@@ -1434,7 +1450,7 @@ function renderLookup() {
 
 /* ---------- Settings ---------- */
 function renderSettings() {
-  renderSync();
+  renderSync(); renderDevices();
   const n = $('#set-name'); if (document.activeElement !== n) n.value = db.settings.shopName || '';
   $$('#set-theme button').forEach(b => b.classList.toggle('on', b.dataset.v === db.settings.theme));
   $('#set-sound').checked = !!db.settings.sound;
@@ -1994,9 +2010,73 @@ const Sync = {
   url: '', code: '', lastU: 0, syncedS: {}, syncedName: null,
   pendingFull: new Map(), pendingDel: new Set(), pendingQty: new Map(),
   remoteVer: new Map(), remoteDel: new Set(), qtyVer: new Map(), remoteS: {},
-  es: [], timer: null, reconnT: null, renderT: null, retry: 0, pushing: false, live: 0, state: 'off', lastOk: 0, remoteQ: [], remoteQT: null, noQuery: false
+  es: [], timer: null, reconnT: null, renderT: null, retry: 0, pushing: false, live: 0, state: 'off', lastOk: 0, remoteQ: [], remoteQT: null, noQuery: false,
+  devices: {}, devT: null, srvOffset: 0
 };
 const syncOn = () => !!(Sync.url && Sync.code);
+/* ---- الأجهزة المفتوحة على نفس الكود ---- */
+const DEVICE_ID = (() => { let id = kv.get('smpro.device'); if (!id) { id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); kv.set('smpro.device', id); } return id; })();
+const KIND_NAME = { iphone: 'آيفون', ipad: 'آيباد', android: 'أندرويد', pc: 'كمبيوتر' };
+function deviceKind() {
+  const ua = navigator.userAgent;
+  if (/iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ipad';
+  if (/iPhone|iPod/.test(ua)) return 'iphone';
+  if (/Android/.test(ua)) return 'android';
+  return 'pc';
+}
+const deviceName = () => kv.get('smpro.devname') || KIND_NAME[deviceKind()];
+function syncHeartbeat(bg) {
+  if (!syncOn() || navigator.onLine === false) return;
+  const body = { name: deviceName(), kind: deviceKind(), last: SV_TS, bg: bg ? 1 : null };
+  fetch(`${Sync.url}/smpro/${Sync.code}/devices/${DEVICE_ID}.json`, { method: 'PATCH', body: JSON.stringify(body) }).catch(() => { });
+}
+function syncHeartbeatStart() {
+  clearInterval(Sync.devT);
+  if (!syncOn()) return;
+  syncHeartbeat(document.hidden);
+  Sync.devT = setInterval(() => { if (!document.hidden) syncHeartbeat(false); renderDevices(); }, 60000);
+}
+function onRemoteDevices(type, path, data) {
+  const segs = path.split('/').filter(Boolean), D = Sync.devices;
+  const setDev = (id, v) => { if (v == null) delete D[id]; else D[id] = v; };
+  if (!segs.length) {
+    if (type === 'put') Sync.devices = (data && typeof data === 'object') ? Object.assign({}, data) : {};
+    else for (const k in (data || {})) { const ks = k.split('/'); if (ks.length === 1) setDev(ks[0], data[k]); else { D[ks[0]] = Object.assign({}, D[ks[0]] || {}); if (data[k] == null) delete D[ks[0]][ks[1]]; else D[ks[0]][ks[1]] = data[k]; } }
+  } else if (segs.length === 1) setDev(segs[0], data);
+  else { D[segs[0]] = Object.assign({}, D[segs[0]] || {}); if (data == null) delete D[segs[0]][segs[1]]; else D[segs[0]][segs[1]] = data; }
+  const me = Sync.devices[DEVICE_ID];
+  if (me && +me.last) { const off = +me.last - Date.now(); if (!Sync.offSeen || +me.last > Sync.offSeen) { Sync.offSeen = +me.last; Sync.srvOffset = off; } }
+  renderDevices();
+}
+function deviceStats() {
+  const now = Date.now() + Sync.srvOffset;
+  const list = Object.keys(Sync.devices).map(id => {
+    const d = Sync.devices[id] || {}, last = +d.last || 0, me = id === DEVICE_ID;
+    return { id, me, name: me ? deviceName() : String(d.name || KIND_NAME[d.kind] || 'جهاز'), kind: d.kind, last, bg: !!d.bg, on: me || (now - last < 150000 && !d.bg) };
+  }).filter(x => x.me || now - x.last < 60 * DAY);
+  if (syncOn() && !list.some(x => x.me)) list.push({ id: DEVICE_ID, me: true, name: deviceName(), kind: deviceKind(), last: now, bg: false, on: true });
+  list.sort((a, b) => (b.me - a.me) || (b.on - a.on) || (b.last - a.last));
+  return { list, online: list.filter(x => x.on).length, total: list.length, now };
+}
+function devicesWord(n) { return n === 1 ? 'جهاز واحد' : n === 2 ? 'جهازين' : n <= 10 ? `${n} أجهزة` : `${n} جهاز`; }
+function agoText(ms) {
+  const m = Math.max(0, Math.round(ms / 60000));
+  if (m < 2) return 'قبل دقيقة'; if (m < 60) return `قبل ${m} دقيقة`;
+  const hr = Math.round(m / 60); if (hr < 24) return hr === 1 ? 'قبل ساعة' : `قبل ${hr} ساعات`;
+  const dd = Math.round(hr / 24); return dd === 1 ? 'أمس' : `قبل ${dd} أيام`;
+}
+function renderDevices() {
+  syncSetState();
+  const cnt = $('#dev-count'), box = $('#dev-list');
+  if (!cnt || !box || !syncOn()) return;
+  const st = deviceStats();
+  cnt.textContent = `${devicesWord(st.online)} ${st.online === 1 ? 'مفتوح' : st.online === 2 ? 'مفتوحين' : 'مفتوحة'} الآن · ${devicesWord(st.total)} بالمجموع`;
+  box.innerHTML = st.list.map(d => `<div class="item dev">
+      <span class="dot ${d.on ? 'on' : ''}"></span>
+      <span class="t">${esc(d.name)}${d.me ? ' <span class="pill ok">هذا الجهاز</span>' : ''}<small>${esc(KIND_NAME[d.kind] || 'جهاز')} · ${d.on ? 'مفتوح الآن' : d.bg && st.now - d.last < 3600000 ? 'بالخلفية' : 'آخر مرة ' + agoText(st.now - d.last)}</small></span>
+      ${d.me ? '<button class="btn sm" data-act="dev-rename">تسمية</button>' : (!d.on ? `<button class="icon-plain" data-act="dev-remove" data-id="${esc(d.id)}" aria-label="شيل من القائمة">${ico('x')}</button>` : '')}
+    </div>`).join('');
+}
 const syncUrlOk = u => /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(firebaseio\.com|firebasedatabase\.app)$/i.test(u) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(u);
 const cleanUrl = u => String(u || '').trim().replace(/\/+$/, '').replace(/\/\.json$/, '');
 function normCode(c) {
@@ -2114,6 +2194,8 @@ function syncConnect() {
   syncOpen(Sync.noQuery ? `${base}/p.json` : `${base}/p.json?orderBy=%22u%22&startAt=${Sync.lastU + 1}`, onRemoteProducts);
   syncOpen(`${base}/s.json`, onRemoteShortages);
   syncOpen(`${base}/meta.json`, onRemoteMeta);
+  syncOpen(`${base}/devices.json`, onRemoteDevices);
+  syncHeartbeatStart();
   syncSetState();
 }
 function syncOpen(url, handler) {
@@ -2286,8 +2368,9 @@ async function syncJoin(raw) {
 }
 async function syncLeave() {
   if (!(await ask({ title: 'فصل هذا الجهاز؟', msg: 'المواد تبقى على هذا الموبايل، بس التعديلات ما راح توصل للأجهزة الثانية ولا توصله تعديلاتهم.', ok: 'فصل', danger: true }))) return;
-  syncStreamsClose(); clearTimeout(Sync.timer);
-  Object.assign(Sync, { code: '', lastU: 0, syncedS: {}, syncedName: null, remoteS: {} });
+  try { fetch(`${Sync.url}/smpro/${Sync.code}/devices/${DEVICE_ID}.json`, { method: 'DELETE' }).catch(() => { }); } catch (e) { }
+  syncStreamsClose(); clearTimeout(Sync.timer); clearInterval(Sync.devT);
+  Object.assign(Sync, { code: '', lastU: 0, syncedS: {}, syncedName: null, remoteS: {}, devices: {} });
   Sync.pendingFull = new Map(); Sync.pendingDel = new Set(); Sync.pendingQty = new Map();
   syncPersist(); syncSetState(); renderSettings(); toast('انفصل الجهاز عن المحل المشترك');
 }
@@ -2301,13 +2384,14 @@ function syncSetState(force) {
   else if (Sync.state === 'denied') st = 'denied';
   else if (navigator.onLine === false) st = 'offline';
   else if (Sync.pushing) st = 'pushing';
-  else if (Sync.live < 3) st = Sync.es.length ? 'connecting' : 'offline';
+  else if (Sync.live < Sync.es.length || !Sync.es.length) st = Sync.es.length ? 'connecting' : 'offline';
   else if (syncPendingCount() || Sync.state === 'error') st = 'pending';
   else st = 'ok';
   Sync.state = st;
   const chip = $('#sync-chip');
   if (chip) {
-    const L = { ok: '✓ متزامن', pushing: '⟳ يرفع…', connecting: '⟳ يتصل…', pending: '⟳ بانتظار الرفع', offline: '', denied: '⚠ المزامنة مرفوضة' };
+    const on = syncOn() ? deviceStats().online : 0;
+    const L = { ok: on > 1 ? `✓ ${devicesWord(on)}` : '✓ متزامن', pushing: '⟳ يرفع…', connecting: '⟳ يتصل…', pending: '⟳ بانتظار الرفع', offline: '', denied: '⚠ المزامنة مرفوضة' };
     chip.hidden = !syncOn() || !L[st]; chip.textContent = L[st] || ''; chip.className = 'sync-chip ' + st;
   }
   const el = $('#sync-status');
@@ -2324,6 +2408,8 @@ function renderSync() {
       <div class="item">${ico('users')}<span class="t">متصل بالمحل المشترك<small id="sync-status">${esc(syncStatusText())}</small></span></div>
       <div class="item">${ico('key')}<span class="t">كود المحل<small class="num code-big">${esc(Sync.code)}</small></span><button class="btn sm wa" data-act="sync-share">${ico('share')}مشاركة</button></div>
       <button class="item" data-act="sync-copy">${ico('copy')}<span class="t">نسخ الكود</span></button>
+      <div class="item">${ico('phone')}<span class="t">الأجهزة على هذا الكود<small id="dev-count"></small></span></div>
+      <div id="dev-list"></div>
       <button class="item dz" data-act="sync-leave">${ico('x')}<span class="t">فصل هذا الجهاز</span></button>`;
   } else {
     const needUrl = !SYNC_DEFAULT_URL;
@@ -2362,6 +2448,10 @@ const A = {
   'sync-join-open': () => { $('#join-code').value = ''; openSheet('sheet-join'); setTimeout(() => $('#join-code').focus(), 200); },
   'sync-join-go': async () => { const ok = await syncJoin($('#join-code').value); if (ok) closeSheet('sheet-join'); },
   'sync-leave': () => syncLeave(),
+  'go-sync': () => { go('settings'); setTimeout(() => { const g = $('#sync-group'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); },
+  'dev-rename': () => { $('#dev-name').value = deviceName(); openSheet('sheet-devname'); setTimeout(() => $('#dev-name').select(), 200); },
+  'dev-name-save': () => { const v = $('#dev-name').value.trim().slice(0, 30); kv.set('smpro.devname', v || null); closeSheet('sheet-devname'); syncHeartbeat(false); renderDevices(); toast('تم ✓'); },
+  'dev-remove': el => { const id = el.dataset.id; fetch(`${Sync.url}/smpro/${Sync.code}/devices/${id}.json`, { method: 'DELETE' }).catch(() => { }); delete Sync.devices[id]; renderDevices(); },
   'sync-copy': () => { const t = Sync.code; const done = () => toast('انتسخ الكود ✓'); if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => toast(t)); else toast(t, { ms: 6000 }); },
   'sync-share': () => {
     const text = `انضم لمحل «${db.settings.shopName}» على سوبرماركت برو حتى نشتغل على نفس المواد:\n${joinLink()}\n\nأو من الإعدادات ← الانضمام بكود: ${Sync.code}`;
@@ -2445,6 +2535,7 @@ $('#sf-name').addEventListener('input', () => {
 });
 ['#sf-code', '#sf-qty', '#sf-note'].forEach(s => $(s).addEventListener('focus', () => { $('#sf-sugg').hidden = true; }));
 $('#sf-name').addEventListener('focus', sfSuggest);
+$('#dev-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['dev-name-save'](); } });
 $('#join-code').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['sync-join-go'](); } });
 $('#rs-qty').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); resolveAdd(); } });
 $('#cam').addEventListener('click', e => { if (!e.target.closest('button')) tapFocus(e); });
@@ -2537,7 +2628,11 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) flush
   }
   window.addEventListener('online', () => { if (syncOn()) { syncConnect(); syncPush(); } });
   window.addEventListener('offline', () => syncSetState());
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && syncOn() && (!Sync.es.length || Sync.es.some(es => es.readyState === 2))) syncConnect(); });
+  document.addEventListener('visibilitychange', () => {
+    if (!syncOn()) return;
+    syncHeartbeat(document.hidden);
+    if (!document.hidden && (!Sync.es.length || Sync.es.some(es => es.readyState === 2))) syncConnect();
+  });
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     const whenLoaded = fn => (document.readyState === 'complete' ? fn() : window.addEventListener('load', fn));
     whenLoaded(() => {
