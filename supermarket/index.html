@@ -296,7 +296,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 
 /* Scanner */
 .sheet.scan{background:#0B0F0D;color:#fff;padding:0 0 calc(14px + env(safe-area-inset-bottom));overflow-x:hidden}
-.cam{position:relative;background:#000;width:100%;aspect-ratio:4/3;max-height:58vh;max-height:58dvh;min-height:240px;overflow:hidden;border-radius:22px 22px 0 0}
+.cam{position:relative;background:#000;width:100%;aspect-ratio:1/1;max-height:60vh;max-height:60dvh;min-height:260px;overflow:hidden;border-radius:22px 22px 0 0}
 @media (min-width:700px){.cam{border-radius:22px 22px 0 0}}
 .cam video{width:100%;height:100%;object-fit:cover;display:block}
 #scan-lib{width:100%;position:relative;z-index:1}
@@ -304,10 +304,13 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .cam.lib{aspect-ratio:auto;max-height:none}
 .cam.lib .cam-frame{display:none}
 .cam-frame{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:2}
-.box{width:86%;height:34%;border-radius:6px;position:relative;box-shadow:0 0 0 100vmax rgba(0,0,0,.42);--c:var(--accent);background:linear-gradient(var(--c),var(--c)) top left/28px 3px,linear-gradient(var(--c),var(--c)) top left/3px 28px,linear-gradient(var(--c),var(--c)) top right/28px 3px,linear-gradient(var(--c),var(--c)) top right/3px 28px,linear-gradient(var(--c),var(--c)) bottom left/28px 3px,linear-gradient(var(--c),var(--c)) bottom left/3px 28px,linear-gradient(var(--c),var(--c)) bottom right/28px 3px,linear-gradient(var(--c),var(--c)) bottom right/3px 28px;background-repeat:no-repeat}
+.box{width:86%;height:30%;border-radius:6px;position:relative;box-shadow:0 0 0 100vmax rgba(0,0,0,.42);--c:var(--accent);background:linear-gradient(var(--c),var(--c)) top left/28px 3px,linear-gradient(var(--c),var(--c)) top left/3px 28px,linear-gradient(var(--c),var(--c)) top right/28px 3px,linear-gradient(var(--c),var(--c)) top right/3px 28px,linear-gradient(var(--c),var(--c)) bottom left/28px 3px,linear-gradient(var(--c),var(--c)) bottom left/3px 28px,linear-gradient(var(--c),var(--c)) bottom right/28px 3px,linear-gradient(var(--c),var(--c)) bottom right/3px 28px;background-repeat:no-repeat}
 .laser{position:absolute;left:5%;right:5%;top:50%;height:2px;background:var(--accent);box-shadow:0 0 12px var(--accent);animation:laser 1.6s ease-in-out infinite}
 .cam:not(.live) .laser{display:none}
-@keyframes laser{0%,100%{transform:translateY(-26px)}50%{transform:translateY(26px)}}
+@keyframes laser{0%,100%{transform:translateY(-36px)}50%{transform:translateY(36px)}}
+.focus-ring{position:absolute;width:70px;height:70px;margin:-35px 0 0 -35px;border:2px solid #fff;border-radius:50%;z-index:3;pointer-events:none;opacity:0}
+.focus-ring.go{animation:fring .9s ease-out}
+@keyframes fring{0%{opacity:1;transform:scale(1.4)}40%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
 .cam-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;z-index:4;pointer-events:none}
 .cam-btn{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center;pointer-events:auto}
 .cam-btn.on{background:var(--accent);color:#1b1205}
@@ -472,7 +475,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 1.1<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 1.2<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -501,6 +504,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
           <button class="cam-btn" id="cam-switch" data-act="cam-switch" aria-label="تبديل الكاميرا" hidden><svg class="i"><use href="#i-camswitch"/></svg></button>
         </div>
       </div>
+      <span class="focus-ring" id="focus-ring"></span>
       <div class="cam-msg" id="cam-msg">جاري تشغيل الكاميرا…</div>
     </div>
     <div class="scan-under">
@@ -509,7 +513,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
         <input id="scan-manual" class="inp" inputmode="numeric" placeholder="أو اكتب الباركود هنا" enterkeyhint="go" autocomplete="off">
         <button class="btn pri" data-act="scan-confirm">تم</button>
       </div>
-      <p class="scan-hint">خلي الباركود بالعرض داخل المربع، وبعّد الموبايل بحدود شبر حتى يوضح</p>
+      <p class="scan-hint">خلي الباركود بالعرض داخل المربع وبعّد الموبايل بحدود شبر. إذا الصورة مضببة اضغط عليها حتى تركّز</p>
     </div>
   </div>
 </div>
@@ -1399,12 +1403,10 @@ function camMsg(text, kind) { const el = $('#cam-msg'); el.textContent = text ||
 async function makeNativeEngine() {
   const sup = await window.BarcodeDetector.getSupportedFormats();
   const det = new window.BarcodeDetector({ formats: sup.filter(f => SHOP_FORMATS.includes(f)) });
-  let n = 0;
   return {
     name: 'native',
-    async decode(canvas, video) {
-      n++;
-      const r = await det.detect(n % 4 === 0 ? video : canvas); // كل رابع فريم نفحص الصورة كاملة احتياطاً
+    async decode(src) {
+      const r = await det.detect(src);
       return r && r.length && r[0].rawValue ? r[0].rawValue : null;
     }
   };
@@ -1520,18 +1522,51 @@ function cropRect(v) {
   x = Math.max(0, x); y = Math.max(0, y); w = Math.max(16, Math.min(vw - x, w)); h = Math.max(16, Math.min(vh - y, h));
   return { x, y, w, h };
 }
+/* تحسين الصورة للباركود المضبب أو الباهت: تنعيم على طول الخطوط + تحديد الحواف بالعرض + رفع التباين */
+function enhanceGray(cx, w, h) {
+  const img = cx.getImageData(0, 0, w, h), d = img.data, n = w * h;
+  const g = new Float32Array(n), hist = new Uint32Array(256), sm = new Float32Array(w);
+  for (let i = 0, j = 0; i < n; i++, j += 4) { const v = (d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8; g[i] = v; hist[v]++; }
+  const cut = n * 0.02; let lo = 0, hi = 255;
+  for (let v = 0, a = 0; v < 256; v++) { a += hist[v]; if (a > cut) { lo = v; break; } }
+  for (let v = 255, a = 0; v >= 0; v--) { a += hist[v]; if (a > cut) { hi = v; break; } }
+  const span = Math.max(24, hi - lo), r = Math.max(1, Math.round(w / 300)), win = 2 * r + 1, amt = 1.6;
+  for (let y = 0; y < h; y++) {
+    const row = y * w, up = y > 0 ? row - w : row, dn = y < h - 1 ? row + w : row;
+    for (let x = 0; x < w; x++) sm[x] = (g[up + x] + 2 * g[row + x] + g[dn + x]) * 0.25;
+    let s = 0;
+    for (let k = -r; k <= r; k++) s += sm[k < 0 ? 0 : (k >= w ? w - 1 : k)];
+    for (let x = 0, j = row * 4; x < w; x++, j += 4) {
+      const o = sm[x] + amt * (sm[x] - s / win);
+      let v = (o - lo) * 255 / span; v = v < 0 ? 0 : (v > 255 ? 255 : v);
+      d[j] = d[j + 1] = d[j + 2] = v;
+      s += sm[Math.min(w - 1, x + r + 1)] - sm[Math.max(0, x - r)];
+    }
+  }
+  cx.putImageData(img, 0, 0);
+}
+/* كل فريم نجرب طريقة مختلفة: عادي، محسّن، وبحجم أصغر (يفيد للمضبب) */
+const VARIANTS = [{ w: 960, fx: false }, { w: 960, fx: true, up: true }, { w: 560, fx: false, full: true }, { w: 560, fx: true }];
 function runLoop(token, engine) {
-  const v = $('#scan-video'), cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+  const v = $('#scan-video'), canv = {};
+  const getCanvas = w => canv[w] || (canv[w] = (() => { const c = document.createElement('canvas'); return { c, x: c.getContext('2d', { willReadFrequently: true }) }; })());
   const next = f => (v.requestVideoFrameCallback ? v.requestVideoFrameCallback(() => f()) : requestAnimationFrame(() => f()));
+  let n = 0;
   const step = async () => {
     if (token !== Scan.session) return;
     if (v.readyState >= 2 && v.videoWidth) {
       try {
-        const r = cropRect(v), k = Math.min(1, MAX_W / r.w);
-        const w = Math.max(1, Math.round(r.w * k)), h = Math.max(1, Math.round(r.h * k));
-        if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-        cx.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, w, h);
-        const code = await engine.decode(cv, v);
+        const vt = VARIANTS[n++ % VARIANTS.length];
+        let src = v;
+        if (!(vt.full && engine.name === 'native')) {
+          const r = cropRect(v), k = Math.min(vt.up ? 2 : 1, vt.w / r.w), C = getCanvas(vt.w);
+          const w = Math.max(1, Math.round(r.w * k)), h = Math.max(1, Math.round(r.h * k));
+          if (C.c.width !== w || C.c.height !== h) { C.c.width = w; C.c.height = h; }
+          C.x.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, w, h);
+          if (vt.fx) enhanceGray(C.x, w, h);
+          src = C.c;
+        }
+        const code = await engine.decode(src);
         if (token !== Scan.session) return;
         if (code && onScanned(code)) return;
       } catch (e) {
@@ -1541,6 +1576,26 @@ function runLoop(token, engine) {
     next(step);
   };
   next(step);
+}
+/* اضغط على الصورة حتى تركّز الكاميرا على هذي النقطة */
+async function tapFocus(e) {
+  const cam = $('#cam'), cr = cam.getBoundingClientRect(), ring = $('#focus-ring');
+  ring.style.left = (e.clientX - cr.left) + 'px'; ring.style.top = (e.clientY - cr.top) + 'px';
+  ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go');
+  const t = Scan.track, v = $('#scan-video'); if (!t || !v.videoWidth) return;
+  const caps = trackCaps(t), fm = caps.focusMode || [];
+  if (!fm.length) return;
+  const vr = v.getBoundingClientRect(), s = Math.max(vr.width / v.videoWidth, vr.height / v.videoHeight);
+  const px = ((e.clientX - vr.left) + (v.videoWidth * s - vr.width) / 2) / s / v.videoWidth;
+  const py = ((e.clientY - vr.top) + (v.videoHeight * s - vr.height) / 2) / s / v.videoHeight;
+  const adv = {};
+  const sc = (navigator.mediaDevices.getSupportedConstraints && navigator.mediaDevices.getSupportedConstraints()) || {};
+  if (sc.pointsOfInterest) adv.pointsOfInterest = [{ x: Math.min(1, Math.max(0, px)), y: Math.min(1, Math.max(0, py)) }];
+  if (fm.includes('single-shot')) adv.focusMode = 'single-shot';
+  if (!Object.keys(adv).length) return;
+  try { await t.applyConstraints({ advanced: [adv] }); } catch (err) { }
+  clearTimeout(Scan.afTimer);
+  if (fm.includes('continuous') && adv.focusMode) Scan.afTimer = setTimeout(() => { if (Scan.track === t) t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => { }); }, 1800);
 }
 
 async function openScanner(target) {
@@ -1755,6 +1810,7 @@ $('#sf-name').addEventListener('input', () => {
   if (p && p.barcode && !$('#sf-code').value) { $('#sf-code').value = p.barcode; shortageLookup(); }
 });
 $('#rs-qty').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); resolveAdd(); } });
+$('#cam').addEventListener('click', e => { if (!e.target.closest('button')) tapFocus(e); });
 $('#scan-manual').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['scan-confirm'](); } });
 $('#set-name').addEventListener('input', e => { db.settings.shopName = e.target.value.trim() || 'سوبرماركت'; save(); renderTop(); });
 $('#set-sound').addEventListener('change', e => { db.settings.sound = e.target.checked; save(); });
