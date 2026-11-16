@@ -24,7 +24,9 @@ const PASS = crypto.randomBytes(18).toString('base64url');
 console.log(`::add-mask::${PASS}`);
 
 const lines = [];
-const clean = (s) => String(s).split(PASS).join('***');
+const SECRETS = [PASS];
+function addSecret(v) { if (v && v.length >= 4 && !SECRETS.includes(v)) { SECRETS.push(v); console.log(`::add-mask::${v}`); } }
+const clean = (s) => SECRETS.reduce((t, x) => t.split(x).join('***'), String(s));
 function log(...a) { const s = clean(a.join(' ')); console.log(s); lines.push(s); }
 function saveLog(status) {
   fs.writeFileSync(path.join(OUT, 'build-log.txt'), lines.join('\n') + '\n');
@@ -76,8 +78,8 @@ function buildTools() {
   return { apksigner: path.join(dir, 'apksigner'), zipalign: path.join(dir, 'zipalign'), aapt2: path.join(dir, 'aapt2'), aapt: path.join(dir, 'aapt') };
 }
 
-function certSha256(keystore) {
-  const out = run('keytool', ['-list', '-v', '-keystore', keystore, '-storepass', PASS, '-alias', cfg.keyAlias]);
+function certSha256(keystore, storePass = PASS, alias = cfg.keyAlias) {
+  const out = run('keytool', ['-list', '-v', '-keystore', keystore, '-storepass', storePass, '-alias', alias]);
   const m = /SHA256:\s*([0-9A-F:]{95})/i.exec(out);
   if (!m) throw new Error('ما لكيت بصمة SHA256 بالمفتاح');
   return m[1].toUpperCase();
@@ -200,9 +202,18 @@ async function viaPwaBuilder(mode, withShortcuts) {
   const apk = files.find((f) => /\.apk$/i.test(f) && !/unsigned/i.test(f));
   const aab = files.find((f) => /\.aab$/i.test(f));
   const ks = files.find((f) => /\.keystore$|\.jks$/i.test(f));
-  if (!apk || !ks) throw new Error('الحزمة ناقصة (APK أو المفتاح)');
+  const info = files.find((f) => /signing-key-info\.txt$/i.test(f));
+  if (!apk || !ks || !info) throw new Error('الحزمة ناقصة (APK أو المفتاح أو معلوماته)');
+  // PWABuilder يولّد كلمات سر خاصة بيه للمفتاح الجديد ويكتبها بهذا الملف
+  const txt = fs.readFileSync(info, 'utf8');
+  const field = (name) => (new RegExp(`^${name}:[ \\t]*(.+?)\\s*$`, 'mi').exec(txt) || [])[1] || '';
+  const storePass = field('Key store password'), keyPass = field('Key password'), alias = field('Key alias');
+  addSecret(storePass); addSecret(keyPass);
+  if (!storePass || !keyPass || !alias) throw new Error('ما كدرت أقرا معلومات المفتاح من signing-key-info.txt');
+  log('اسم المفتاح:', alias);
+  const theirLinks = files.find((f) => /assetlinks\.json$/i.test(f));
   fs.copyFileSync(zip, path.join(SEC, 'pwabuilder-package.zip'));
-  return { source: `pwabuilder-${mode}`, apk, aab, keystore: ks };
+  return { source: `pwabuilder-${mode}`, apk, aab, keystore: ks, storePass, keyPass, alias, theirLinks };
 }
 
 // --------------------------------------------------------------- 2) Bubblewrap
@@ -276,13 +287,17 @@ async function viaBubblewrap() {
   run(t.apksigner, ['sign', '--ks', ksFile, '--ks-key-alias', cfg.keyAlias, '--ks-pass', `pass:${PASS}`, '--key-pass', `pass:${PASS}`, '--out', signed, aligned]);
   run('jarsigner', ['-keystore', ksFile, '-storepass', PASS, '-keypass', PASS, '-sigalg', 'SHA256withRSA', '-digestalg', 'SHA-256', aab, cfg.keyAlias]);
   fs.copyFileSync(path.join(proj, 'twa-manifest.json'), path.join(SEC, 'twa-manifest.json'));
-  return { source: 'bubblewrap', apk: signed, aab, keystore: ksFile };
+  return { source: 'bubblewrap', apk: signed, aab, keystore: ksFile, storePass: PASS, keyPass: PASS, alias: cfg.keyAlias };
 }
 
 // --------------------------------------------------------------- التحقق والتغليف
 function verify(pkg) {
   const t = buildTools();
-  const fp = certSha256(pkg.keystore);
+  const fp = certSha256(pkg.keystore, pkg.storePass, pkg.alias);
+  if (pkg.theirLinks) {
+    const theirs = fs.readFileSync(pkg.theirLinks, 'utf8');
+    log(theirs.toUpperCase().includes(fp) ? 'بصمة assetlinks من PWABuilder مطابقة ✓' : '⚠️ assetlinks من PWABuilder ما بيها نفس البصمة — راح نستخدم بصمتنا المحسوبة');
+  }
   const certs = run(t.apksigner, ['verify', '--verbose', '--print-certs', pkg.apk]);
   const m = /certificate SHA-256 digest:\s*([0-9a-f]{64})/i.exec(certs);
   if (!m) throw new Error('apksigner ما طلع بصمة الشهادة');
@@ -363,9 +378,9 @@ async function main() {
     '',
     `Package ID:      ${cfg.packageId}`,
     `Keystore file:   salka-signing.keystore (PKCS12)`,
-    `Key alias:       ${cfg.keyAlias}`,
-    `Store password:  ${PASS}`,
-    `Key password:    ${PASS}`,
+    `Key alias:       ${pkg.alias}`,
+    `Store password:  ${pkg.storePass}`,
+    `Key password:    ${pkg.keyPass}`,
     `SHA-256:         ${v.fp}`,
     `Version:         ${req.versionName} (${req.versionCode})`,
     `Built:           ${new Date().toISOString()} via ${pkg.source}`,
