@@ -360,16 +360,28 @@ function patchNative(proj) {
   log('طبقة الموقع الأصلية انزرعت ✓ (DelegationService + AndroidManifest + build.gradle)');
 }
 
-/** مكتبة apksig (Apache-2.0) من Maven Central — للتوقيع خارج GitHub (المفتاح ما يطلع للسيرفر) */
+/** مكتبة apksig (Apache-2.0) — نفس النسخة اللي نزّلها Gradle من مستودع گوگل أثناء البناء */
 async function fetchApksig() {
-  const v = cfg.apksigVersion || '8.7.3';
-  const base = `https://repo1.maven.org/maven2/com/android/tools/build/apksig/${v}/apksig-${v}.jar`;
-  const jar = Buffer.from(await (await fetch(base, { signal: AbortSignal.timeout(60000) })).arrayBuffer());
-  const sha1 = (await (await fetch(`${base}.sha1`, { signal: AbortSignal.timeout(30000) })).text()).trim().slice(0, 40);
-  const got = crypto.createHash('sha1').update(jar).digest('hex');
-  if (!jar.length || got !== sha1) throw new Error(`apksig: بصمة غير مطابقة (${got} ≠ ${sha1})`);
-  fs.writeFileSync(path.join(PUB, `apksig-${v}.jar`), jar);
-  log(`apksig ${v} ✓ (sha1 ${sha1})`);
+  const home = process.env.HOME || '/home/runner';
+  const base = path.join(home, '.gradle', 'caches', 'modules-2', 'files-2.1', 'com.android.tools.build', 'apksig');
+  const found = [];
+  if (fs.existsSync(base)) {
+    for (const v of fs.readdirSync(base)) {
+      for (const h of fs.readdirSync(path.join(base, v))) {
+        for (const f of fs.readdirSync(path.join(base, v, h))) if (/^apksig-.*\.jar$/.test(f) && !/sources|javadoc/.test(f)) found.push({ v, h, f: path.join(base, v, h, f) });
+      }
+    }
+  }
+  const cmp = (x, y) => { const a = x.split(/[.-]/).map((n) => parseInt(n, 10) || 0), b = y.split(/[.-]/).map((n) => parseInt(n, 10) || 0); for (let i = 0; i < Math.max(a.length, b.length); i++) if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) - (b[i] || 0); return 0; };
+  found.sort((x, y) => cmp(x.v, y.v));
+  const pick = found[found.length - 1];
+  if (!pick) throw new Error('apksig ما موجود بذاكرة Gradle');
+  const jar = fs.readFileSync(pick.f);
+  const sha1 = crypto.createHash('sha1').update(jar).digest('hex');
+  // Gradle يسمي مجلد الملف ببصمته SHA-1
+  if (sha1 !== pick.h) throw new Error(`apksig: بصمة غير مطابقة (${sha1} ≠ ${pick.h})`);
+  fs.writeFileSync(path.join(PUB, `apksig-${pick.v}.jar`), jar);
+  log(`apksig ${pick.v} ✓ (من مستودع گوگل عبر Gradle، sha1 ${sha1})`);
 }
 
 async function viaCustom() {
