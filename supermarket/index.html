@@ -377,6 +377,22 @@ a.item{color:inherit;text-decoration:none}.item.dz>.i{color:var(--danger)}
 .sinp.wide{width:100%}
 .item.btns{gap:10px;flex-wrap:wrap}
 .item.dev{padding-inline-start:28px;min-height:52px}
+.item.nt-sub{padding-inline-start:48px;min-height:50px}
+.item.nt-sub .t{font-size:14.5px}
+.item.nt-sub.off{opacity:.45;pointer-events:none}
+.bell{position:relative;width:38px;height:38px;border-radius:11px}
+.bell .badge{top:-5px;inset-inline-start:auto;inset-inline-end:-5px}
+.notes{display:flex;flex-direction:column;gap:2px;margin:0 -6px}
+.note-row{display:flex;align-items:flex-start;gap:12px;padding:11px 8px;border-radius:12px;width:100%}
+.note-row:active{background:var(--surface-2)}
+.note-ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex-shrink:0;background:var(--surface-2);color:var(--ink-2)}
+.note-ic.price{background:var(--accent-soft);color:var(--warn)}
+.note-ic.new{background:var(--ok-soft);color:var(--ok)}
+.note-ic.del{background:var(--danger-soft);color:var(--danger)}
+.note-ic.short{background:var(--brand-soft);color:var(--brand)}
+.note-row .t{flex:1;min-width:0}
+.note-row .nt{display:block;font-size:14.5px;font-weight:600;line-height:1.5}
+.note-row small{display:block;font-size:12.5px;color:var(--ink-3)}
 .item.dev .t{font-size:14.5px}
 .dot{width:10px;height:10px;border-radius:50%;background:var(--line);flex-shrink:0}
 .dot.on{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
@@ -435,6 +451,7 @@ body.kb-open .toast.show{transform:none}
   <symbol id="i-camswitch" viewBox="0 0 24 24"><path d="M3.5 8h3l1.5-2.5h8L17.5 8h3v11.5h-17z"/><path d="M9 13.2a3 3 0 0 1 5.3-1.7M15 13.8a3 3 0 0 1-5.3 1.7M14.6 9.6v2h-2M9.4 17.4v-2h2"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M15.5 4.8a3.3 3.3 0 0 1 0 6.4M17.5 14.8c2.2.6 3.6 2.3 4 5.2"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4"/><path d="m10.5 12.5 9-9M16 7l2.5 2.5M18.5 4.5 21 7"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></symbol>
 </svg>
 
@@ -444,7 +461,7 @@ body.kb-open .toast.show{transform:none}
       <div class="logo"><svg class="i"><use href="#i-scan"/></svg></div>
       <div style="min-width:0"><h1 id="shop-name">سوبرماركت</h1><p id="today"></p></div>
     </div>
-    <span class="row-btns"><button class="sync-chip" id="sync-chip" data-act="go-sync" hidden></button><span class="offline" id="offline" hidden>بدون إنترنت · يشتغل عادي</span></span>
+    <span class="row-btns"><button class="sync-chip" id="sync-chip" data-act="go-sync" hidden></button><button class="icon-btn bell" id="bell" data-act="notes" aria-label="التنبيهات" hidden><svg class="i"><use href="#i-bell"/></svg><span class="badge" id="bell-badge" hidden></span></button><span class="offline" id="offline" hidden>بدون إنترنت · يشتغل عادي</span></span>
   </div>
 </header>
 
@@ -512,6 +529,14 @@ body.kb-open .toast.show{transform:none}
     </div>
     <div class="group" id="sync-group"></div>
     <div class="group">
+      <div class="group-h">التنبيهات</div>
+      <label class="item"><svg class="i"><use href="#i-bell"/></svg><span class="t">تنبيهات التعديلات المهمة<small>لما جهاز ثاني يغيّر سعر أو يضيف مادة أو نقص</small></span><input type="checkbox" id="nt-on" class="switch"></label>
+      <label class="item nt-sub"><span class="t">تغيير الأسعار</span><input type="checkbox" id="nt-price" class="switch"></label>
+      <label class="item nt-sub"><span class="t">مواد جديدة أو محذوفة</span><input type="checkbox" id="nt-items" class="switch"></label>
+      <label class="item nt-sub"><span class="t">قائمة النقص</span><input type="checkbox" id="nt-short" class="switch"></label>
+      <label class="item nt-sub"><span class="t">إشعارات الموبايل<small>تطلع حتى لو التطبيق بالخلفية. إذا التطبيق مسدود، تشوف كل التعديلات بالجرس 🔔 أول ما تفتحه</small></span><input type="checkbox" id="nt-system" class="switch"></label>
+    </div>
+    <div class="group">
       <div class="group-h">النسخ الاحتياطي</div>
       <button class="item" data-act="export-json"><svg class="i"><use href="#i-down"/></svg><span class="t">حفظ نسخة احتياطية<small id="last-backup"></small></span></button>
       <button class="item" data-act="import-json"><svg class="i"><use href="#i-up"/></svg><span class="t">استرجاع نسخة احتياطية<small>من ملف ‎.json‎ حفظته سابقاً</small></span></button>
@@ -532,7 +557,7 @@ body.kb-open .toast.show{transform:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 2.4<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 2.5<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -697,6 +722,15 @@ body.kb-open .toast.show{transform:none}
     <p class="cf-msg" style="margin-bottom:12px">حتى تعرف كل جهاز بالقائمة، مثلاً: كاشير 1، موبايل أحمد</p>
     <div class="fg"><input id="dev-name" class="inp" maxlength="30" autocomplete="off" enterkeyhint="done"></div>
     <div class="sheet-actions"><button class="btn" data-act="close">إلغاء</button><button class="btn pri" data-act="dev-name-save">حفظ</button></div>
+  </div>
+</div>
+
+<!-- Notifications -->
+<div class="sheet-wrap" id="sheet-notes" data-backdrop="1" role="dialog" aria-modal="true" aria-labelledby="nn-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="nn-title">التنبيهات</h3><div class="row-btns"><button class="btn sm ghost" data-act="notes-clear">مسح</button><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div></div>
+    <div id="notes-list" class="notes"></div>
   </div>
 </div>
 
@@ -985,6 +1019,7 @@ function renderCurrent() {
   if (stack.includes('sheet-product')) pfQuick();
 }
 function renderTop() {
+  renderBell();
   $('#shop-name').textContent = db.settings.shopName || 'سوبرماركت';
   document.title = (db.settings.shopName || 'سوبرماركت') + ' · إدارة المحل';
   try { $('#today').textContent = new Date().toLocaleDateString('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { }
@@ -1450,7 +1485,7 @@ function renderLookup() {
 
 /* ---------- Settings ---------- */
 function renderSettings() {
-  renderSync(); renderDevices();
+  renderSync(); renderDevices(); renderNotePrefs();
   const n = $('#set-name'); if (document.activeElement !== n) n.value = db.settings.shopName || '';
   $$('#set-theme button').forEach(b => b.classList.toggle('on', b.dataset.v === db.settings.theme));
   $('#set-sound').checked = !!db.settings.sound;
@@ -2103,6 +2138,7 @@ function syncSnapshot() {
   };
 }
 function syncPersist() {
+  if (Store.timer) return;   // الحفظ القادم يكتب كلشي سوا (المواد + آخر تحديث) حتى ما يضيع شي إذا انسد التطبيق
   const snap = syncSnapshot();
   if (Store.mode === 'idb' && Store.idb) { try { Store.idb.transaction('meta', 'readwrite').objectStore('meta').put(snap, 'sync'); } catch (e) { } }
   else { try { localStorage.setItem('smpro.sync', JSON.stringify(snap)); } catch (e) { } }
@@ -2134,8 +2170,8 @@ function syncSchedule(ms) {
   clearTimeout(Sync.timer);
   Sync.timer = setTimeout(syncPush, ms == null ? 350 : ms);
 }
-const remoteProduct = p => ({ id: p.id, barcode: p.barcode, name: p.name, category: p.category, bulk: p.bulk, pack: p.pack, retail: p.retail, qty: p.qty, minQty: p.minQty, note: p.note, createdAt: p.createdAt, updatedAt: p.updatedAt, u: SV_TS });
-const remoteShortage = s => ({ name: s.name, barcode: s.barcode, qty: s.qty, note: s.note, productId: s.productId || '', createdAt: s.createdAt });
+const remoteProduct = p => ({ by: deviceName(), bi: DEVICE_ID, id: p.id, barcode: p.barcode, name: p.name, category: p.category, bulk: p.bulk, pack: p.pack, retail: p.retail, qty: p.qty, minQty: p.minQty, note: p.note, createdAt: p.createdAt, updatedAt: p.updatedAt, u: SV_TS });
+const remoteShortage = s => ({ by: deviceName(), bi: DEVICE_ID, name: s.name, barcode: s.barcode, qty: s.qty, note: s.note, productId: s.productId || '', createdAt: s.createdAt });
 const sJson = s => JSON.stringify([s.name, s.barcode || '', s.qty || '', s.note || '', s.productId || '', +s.createdAt || 0]);
 
 async function syncPush() {
@@ -2148,7 +2184,7 @@ async function syncPush() {
     if (!p) { Sync.pendingFull.delete(id); return; }
     ops.push({ k: 'p/' + id, v: remoteProduct(p), done: () => { if (Sync.pendingFull.get(id) === ver) Sync.pendingFull.delete(id); } });
   });
-  Sync.pendingDel.forEach(id => ops.push({ k: 'p/' + id, v: { d: 1, u: SV_TS }, done: () => Sync.pendingDel.delete(id) }));
+  Sync.pendingDel.forEach(id => ops.push({ k: 'p/' + id, v: { d: 1, u: SV_TS, by: deviceName(), bi: DEVICE_ID }, done: () => Sync.pendingDel.delete(id) }));
   Sync.pendingQty.forEach((d, id) => {
     const p = byId(id);
     if (!p || !d || Sync.pendingFull.has(id)) { Sync.pendingQty.delete(id); return; }
@@ -2191,6 +2227,7 @@ function syncConnect() {
   syncStreamsClose();
   if (!syncOn() || typeof EventSource === 'undefined') { syncSetState(); return; }
   const base = `${Sync.url}/smpro/${Sync.code}`;
+  Sync.quiet = Sync.lastU === 0; Sync.quietS = Sync.lastU === 0;   // أول مزامنة (انضمام): بدون تنبيهات
   syncOpen(Sync.noQuery ? `${base}/p.json` : `${base}/p.json?orderBy=%22u%22&startAt=${Sync.lastU + 1}`, onRemoteProducts);
   syncOpen(`${base}/s.json`, onRemoteShortages);
   syncOpen(`${base}/meta.json`, onRemoteMeta);
@@ -2205,8 +2242,9 @@ function syncOpen(url, handler) {
   let first = true;
   const onEv = ev => {
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    const wasFirst = first;
     if (first) { first = false; Sync.live++; Sync.retry = 0; if (Sync.state === 'denied') Sync.state = ''; }
-    try { handler(ev.type, m && m.path || '/', m ? m.data : null); } catch (e) { }
+    try { handler(ev.type, m && m.path || '/', m ? m.data : null, wasFirst); } catch (e) { }
     syncSetState();
   };
   es.addEventListener('put', onEv); es.addEventListener('patch', onEv);
@@ -2224,7 +2262,7 @@ function syncOpen(url, handler) {
 }
 function syncRender() { clearTimeout(Sync.renderT); Sync.renderT = setTimeout(() => { renderCurrent(); }, 250); }
 
-function onRemoteProducts(type, path, data) {
+function onRemoteProducts(type, path, data, initial) {
   const ch = [];
   const segs = path.split('/').filter(Boolean);
   if (!segs.length) {
@@ -2235,7 +2273,7 @@ function onRemoteProducts(type, path, data) {
   } else if (segs.length === 1) ch.push([segs[0], data, false]);
   else ch.push([segs[0], { [segs.slice(1).join('/')]: data }, true]);
   // نجمع التحديثات اللي توصل ورا بعض ونطبقها مرة وحدة (مهم لما تنزل آلاف المواد)
-  for (const c of ch) Sync.remoteQ.push(c);
+  for (const c of ch) { c[3] = !!initial; Sync.remoteQ.push(c); }
   if (!Sync.remoteQT) Sync.remoteQT = setTimeout(() => { Sync.remoteQT = null; const all = Sync.remoteQ; Sync.remoteQ = []; applyRemoteProducts(all); }, 60);
 }
 const NUM_FIELDS = { bulk: 1, pack: 1, retail: 1, qty: 1, minQty: 1, createdAt: 1, updatedAt: 1 };
@@ -2243,9 +2281,9 @@ const STR_FIELDS = { barcode: 1, name: 1, category: 1, note: 1 };
 function applyRemoteProducts(ch) {
   if (!ch.length) return;
   ensureIdx();
-  const map = new Map(idIdx), adds = [], dels = new Set(), missing = new Set();
+  const map = new Map(idIdx), adds = [], dels = new Set(), missing = new Set(), evs = [];
   let n = 0;
-  for (const [id, val, partial] of ch) {
+  for (const [id, val, partial, init] of ch) {
     if (!id) continue;
     if (partial) {
       const p = map.get(id);
@@ -2264,6 +2302,7 @@ function applyRemoteProducts(ch) {
     if (val === null || (val && val.d)) {
       if (local && !(Sync.pendingFull.has(id) && local.updatedAt > (+(val && val.updatedAt) || 0))) {
         dels.add(id); map.delete(id); Sync.remoteDel.add(id); Sync.pendingQty.delete(id); Sync.pendingFull.delete(id); n++;
+        if (!(val && val.bi === DEVICE_ID) && !(init && Sync.quiet)) evs.push({ type: 'del', name: local.name, by: val && val.by, away: !!init });
       }
       continue;
     }
@@ -2271,6 +2310,10 @@ function applyRemoteProducts(ch) {
     if (local && Sync.pendingFull.has(id) && local.updatedAt > (+val.updatedAt || 0)) continue;  // تعديلي أحدث ← راح ينرفع
     const np = normProduct(Object.assign({}, val, { id }));
     if (!np) continue;
+    if (val.bi !== DEVICE_ID && !(init && Sync.quiet)) {
+      if (!local) evs.push({ type: 'new', name: np.name, pid: id, by: val.by, r: np.retail, away: !!init });
+      else if (local.retail !== np.retail || local.bulk !== np.bulk) evs.push({ type: 'price', name: np.name, pid: id, by: val.by, o: local.retail, r: np.retail, ob: local.bulk, b: np.bulk, away: !!init });
+    }
     if (local) { Object.assign(local, np); Sync.remoteVer.set(id, local.updatedAt); }
     else { adds.push(np); map.set(id, np); Sync.remoteVer.set(id, np.updatedAt); }
     Sync.pendingFull.delete(id);
@@ -2280,9 +2323,11 @@ function applyRemoteProducts(ch) {
   if (adds.length) db.products = adds.concat(db.products);
   if (n) { save(); syncRender(); }
   else syncPersist();
+  if (ch.some(c => c[3])) Sync.quiet = false;
+  if (evs.length) noteEvents(evs);
   missing.forEach(id => fetch(`${Sync.url}/smpro/${Sync.code}/p/${id}.json`).then(r => r.ok ? r.json() : null).then(v => { if (v) applyRemoteProducts([[id, v, false]]); }).catch(() => { }));
 }
-function onRemoteShortages(type, path, data) {
+function onRemoteShortages(type, path, data, initial) {
   const segs = path.split('/').filter(Boolean);
   let changed;
   if (!segs.length) {
@@ -2299,6 +2344,7 @@ function onRemoteShortages(type, path, data) {
     else Sync.remoteS[id] = Object.assign({}, Sync.remoteS[id] || {}, { [segs[1]]: data });
   }
   let n = 0;
+  const evs = [], quiet = initial && Sync.quietS;
   changed.forEach(id => {
     const r = Sync.remoteS[id], idx = db.shortages.findIndex(s => s.id === id), local = idx >= 0 ? db.shortages[idx] : null;
     const localJ = local ? sJson(local) : undefined, dirty = localJ !== Sync.syncedS[id];
@@ -2307,14 +2353,17 @@ function onRemoteShortages(type, path, data) {
       if (!rs) return;
       const rJ = sJson(rs);
       if (local && dirty && localJ !== rJ && Sync.syncedS[id] !== undefined) return;   // تعديلي ما انرفع بعد
-      if (local) { if (localJ !== rJ) { Object.assign(local, rs); n++; } } else { db.shortages.unshift(rs); n++; }
+      if (local) { if (localJ !== rJ) { Object.assign(local, rs); n++; } }
+      else { db.shortages.unshift(rs); n++; if (r.bi !== DEVICE_ID && !quiet) evs.push({ type: 'short', name: rs.name, qty: rs.qty, pid: rs.productId, by: r.by, away: !!initial }); }
       Sync.syncedS[id] = rJ;
     } else if (Sync.syncedS[id] !== undefined) {
-      if (local && !dirty) { db.shortages.splice(idx, 1); n++; }
+      if (local && !dirty) { db.shortages.splice(idx, 1); n++; if (!quiet) evs.push({ type: 'done', name: local.name, pid: local.productId, away: !!initial }); }
       delete Sync.syncedS[id];
     }
   });
   if (n) { save(); syncRender(); } else syncPersist();
+  if (initial) Sync.quietS = false;
+  if (evs.length) noteEvents(evs);
 }
 function onRemoteMeta(type, path, data) {
   let name;
@@ -2420,6 +2469,95 @@ function renderSync() {
   }
 }
 
+/* ================= التنبيهات: تغيّر سعر، مادة جديدة/محذوفة، قائمة النقص ================= */
+const NOTE_GROUP = { price: 'price', new: 'items', del: 'items', short: 'short', done: 'short' };
+const NOTE_TITLE = { price: 'تغيّر سعر', new: 'مادة جديدة', del: 'انحذفت مادة', short: 'نقص جديد', done: 'انشالت من النقص' };
+const NOTE_ICON = { price: 'tag', new: 'plus', del: 'trash', short: 'list', done: 'check' };
+const Notes = (() => { let list = [], unread = 0; try { list = JSON.parse(kv.get('smpro.notes') || '[]'); unread = +kv.get('smpro.unread') || 0; } catch (e) { } return { list: Array.isArray(list) ? list : [], unread }; })();
+function notePrefs() {
+  let p = {}; try { p = JSON.parse(kv.get('smpro.notify') || '{}') || {}; } catch (e) { }
+  return Object.assign({ on: true, price: true, items: true, short: true, system: false }, p);
+}
+function setNotePref(k, v) { const p = notePrefs(); p[k] = v; kv.set('smpro.notify', JSON.stringify(p)); }
+function saveNotes() { kv.set('smpro.notes', JSON.stringify(Notes.list.slice(0, 150))); kv.set('smpro.unread', String(Notes.unread)); try { if (navigator.setAppBadge) Notes.unread ? navigator.setAppBadge(Notes.unread) : navigator.clearAppBadge(); } catch (e) { } }
+function noteText(e, noWho) {
+  const who = !noWho && e.by ? `${e.by}: ` : '';
+  if (e.type === 'price') return e.o !== e.r ? `${who}سعر «${e.name}» صار ${fmt(e.r)} د.ع (كان ${fmt(e.o)})` : `${who}سعر جملة «${e.name}» صار ${fmt(e.b)} د.ع (كان ${fmt(e.ob)})`;
+  if (e.type === 'new') return `${who}انضافت مادة جديدة «${e.name}»${e.r ? ' بسعر ' + money(e.r) : ''}`;
+  if (e.type === 'del') return `${who}انحذفت المادة «${e.name}»`;
+  if (e.type === 'short') return `${who}انضافت للنقص «${e.name}»${e.qty ? ` (${e.qty})` : ''}`;
+  return `انشالت «${e.name}» من قائمة النقص`;
+}
+const items = n => n === 1 ? 'مادة' : n === 2 ? 'مادتين' : n <= 10 ? `${n} مواد` : `${n} مادة`;
+const edits = n => n === 1 ? 'تعديل' : n === 2 ? 'تعديلين' : n <= 10 ? `${n} تعديلات` : `${n} تعديل`;
+function noteSummary(list) {
+  const c = {}; list.forEach(e => { c[e.type] = (c[e.type] || 0) + 1; });
+  const parts = [];
+  if (c.price) parts.push(`تغيّر سعر ${items(c.price)}`);
+  if (c.new) parts.push(c.new === 1 ? 'مادة جديدة' : c.new === 2 ? 'مادتين جداد' : `${items(c.new)} جديدة`);
+  if (c.del) parts.push(`انحذفت ${items(c.del)}`);
+  if (c.short) parts.push(`${c.short} للنقص`);
+  if (c.done) parts.push(`${c.done} انشالت من النقص`);
+  return parts.join(' · ');
+}
+const noteKey = e => [e.type, e.pid || e.name, e.r, e.b, e.qty].join('|');
+// التعديلات الي توصل ورا بعض (مثلاً استيراد ملف كامل من جهاز ثاني) تنجمع بتنبيه واحد
+let noteBuf = [], noteTimer = 0;
+function noteEvents(evs) {
+  noteBuf = noteBuf.length ? noteBuf.concat(evs) : evs;
+  if (!noteTimer) noteTimer = setTimeout(noteFlush, 600);
+}
+function noteFlush() {
+  const evs = noteBuf; noteBuf = []; noteTimer = 0;
+  const pref = notePrefs(), t = Date.now();
+  const recent = new Set(Notes.list.slice(0, 40).map(noteKey));
+  const list = evs.filter(e => !(e.away && recent.has(noteKey(e)))).map(e => Object.assign({ t }, e));
+  if (!list.length) return;
+  Notes.list = list.concat(Notes.list).slice(0, 150);
+  const alert = pref.on ? list.filter(e => pref[NOTE_GROUP[e.type]] !== false) : [];
+  Notes.unread += alert.length; saveNotes(); renderBell();
+  if (stack.includes('sheet-notes')) renderNotes();
+  if (!alert.length) return;
+  const live = alert.filter(e => !e.away), away = alert.filter(e => e.away);
+  if (away.length) toast(`🔔 من آخر مرة: ${noteSummary(away)}`, { action: { label: 'عرض', fn: openNotes }, ms: 7000 });
+  else if (live.length) {
+    const one = live.length === 1 ? live[0] : null;
+    toast('🔔 ' + (one ? noteText(one) : `${edits(live.length)}: ${noteSummary(live)}`), { action: { label: 'عرض', fn: () => { const p = one && one.pid && byId(one.pid); if (p && one.type !== 'done') showLookup(p); else openNotes(); } }, ms: 6000 });
+  }
+  if (pref.system && document.hidden) systemNotify(alert);
+}
+async function systemNotify(alerts) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  let reg = null; try { reg = navigator.serviceWorker ? await navigator.serviceWorker.getRegistration() : null; } catch (e) { }
+  const items = alerts.length > 3
+    ? [{ title: `${db.settings.shopName} · ${edits(alerts.length)}`, body: noteSummary(alerts) }]
+    : alerts.map(e => ({ title: `${db.settings.shopName} · ${NOTE_TITLE[e.type]}`, body: noteText(e) }));
+  for (const it of items) {
+    const opt = { body: it.body, icon: 'icon-192.png', badge: 'icon-192.png', lang: 'ar', dir: 'rtl', tag: 'smpro-' + Date.now() + Math.random(), data: { url: location.href.split('#')[0] } };
+    try { if (reg && reg.showNotification) await reg.showNotification(it.title, opt); else new Notification(it.title, opt); } catch (e) { }
+  }
+}
+function renderBell() {
+  const b = $('#bell'), bd = $('#bell-badge'); if (!b) return;
+  b.hidden = !(syncOn() || Notes.list.length);
+  bd.hidden = !Notes.unread; bd.textContent = Notes.unread > 99 ? '99+' : Notes.unread;
+}
+function renderNotes() {
+  const el = $('#notes-list'), now = Date.now();
+  el.innerHTML = Notes.list.length ? Notes.list.map((e, i) => `<button class="note-row" data-act="note-open" data-i="${i}">
+      <span class="note-ic ${e.type}">${ico(NOTE_ICON[e.type] || 'alert')}</span>
+      <span class="t"><span class="nt">${esc(noteText(e, true))}</span><small>${e.by ? esc(e.by) + ' · ' : ''}${agoText(now - e.t).replace('قبل دقيقة', 'هسه')}</small></span>
+    </button>`).join('') : emptyBlock('bell', 'ما في تنبيهات بعد', syncOn() ? 'لما أحد يغيّر سعر أو يضيف مادة أو نقص من جهاز ثاني، راح يطلع هنا.' : 'التنبيهات تشتغل لما تكون متصل بمحل مشترك (الإعدادات ← العمل من أكثر من جهاز).');
+}
+function openNotes() { renderNotes(); openSheet('sheet-notes'); Notes.unread = 0; saveNotes(); renderBell(); }
+function renderNotePrefs() {
+  const p = notePrefs();
+  const set = (id, v) => { const el = $(id); if (el) el.checked = !!v; };
+  set('#nt-on', p.on); set('#nt-price', p.price); set('#nt-items', p.items); set('#nt-short', p.short);
+  set('#nt-system', p.system && 'Notification' in window && Notification.permission === 'granted');
+  $$('.nt-sub').forEach(el => el.classList.toggle('off', !p.on));
+}
+
 /* ================= Actions ================= */
 const A = {
   go: el => go(el.dataset.view),
@@ -2448,6 +2586,9 @@ const A = {
   'sync-join-open': () => { $('#join-code').value = ''; openSheet('sheet-join'); setTimeout(() => $('#join-code').focus(), 200); },
   'sync-join-go': async () => { const ok = await syncJoin($('#join-code').value); if (ok) closeSheet('sheet-join'); },
   'sync-leave': () => syncLeave(),
+  notes: () => openNotes(),
+  'notes-clear': () => { Notes.list = []; Notes.unread = 0; saveNotes(); renderBell(); renderNotes(); },
+  'note-open': el => { const e = Notes.list[+el.dataset.i]; const p = e && e.pid && byId(e.pid); if (p) showLookup(p); },
   'go-sync': () => { go('settings'); setTimeout(() => { const g = $('#sync-group'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); },
   'dev-rename': () => { $('#dev-name').value = deviceName(); openSheet('sheet-devname'); setTimeout(() => $('#dev-name').select(), 200); },
   'dev-name-save': () => { const v = $('#dev-name').value.trim().slice(0, 30); kv.set('smpro.devname', v || null); closeSheet('sheet-devname'); syncHeartbeat(false); renderDevices(); toast('تم ✓'); },
@@ -2535,6 +2676,15 @@ $('#sf-name').addEventListener('input', () => {
 });
 ['#sf-code', '#sf-qty', '#sf-note'].forEach(s => $(s).addEventListener('focus', () => { $('#sf-sugg').hidden = true; }));
 $('#sf-name').addEventListener('focus', sfSuggest);
+['on', 'price', 'items', 'short'].forEach(k => $('#nt-' + k).addEventListener('change', e => { setNotePref(k, e.target.checked); renderNotePrefs(); }));
+$('#nt-system').addEventListener('change', async e => {
+  if (!e.target.checked) { setNotePref('system', false); return; }
+  if (!('Notification' in window)) { e.target.checked = false; toast(isIOS() ? 'على الآيفون: ثبّت التطبيق على الشاشة الرئيسية أول، وافتحه منها' : 'هذا المتصفح ما يدعم الإشعارات', { type: 'err', ms: 5000 }); return; }
+  let perm = Notification.permission;
+  if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch (err) { } }
+  if (perm !== 'granted') { e.target.checked = false; setNotePref('system', false); toast('الإشعارات مرفوضة — فعّلها من إعدادات الموبايل للتطبيق أو للمتصفح', { type: 'err', ms: 5000 }); return; }
+  setNotePref('system', true); toast('تمام ✓ — راح توصلك الإشعارات');
+});
 $('#dev-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['dev-name-save'](); } });
 $('#join-code').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['sync-join-go'](); } });
 $('#rs-qty').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); resolveAdd(); } });

@@ -1,5 +1,5 @@
 /* سوبرماركت برو — Service Worker: يخلي التطبيق يشتغل بدون إنترنت */
-const VERSION = 'smpro-v2.4.0';
+const VERSION = 'smpro-v2.5.0';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable.png', './apple-touch-icon.png'];
 const RUNTIME_HOSTS = /(^|\.)(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|unpkg\.com)$/;
 
@@ -13,6 +13,16 @@ self.addEventListener('activate', event => {
       .then(keys => Promise.all(keys.filter(k => k.startsWith('smpro-') && k !== VERSION).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// الضغط على إشعار يفتح التطبيق
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || './';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) { if ('focus' in c) return c.focus(); }
+    return self.clients.openWindow ? self.clients.openWindow(url) : null;
+  }));
 });
 
 self.addEventListener('fetch', event => {
