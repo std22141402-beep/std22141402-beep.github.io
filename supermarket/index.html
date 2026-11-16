@@ -1,0 +1,2807 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>سوبرماركت برو</title>
+<meta name="description" content="إدارة مواد المحل وأسعار الجملة والمفرد وقائمة النقص مع قارئ باركود بالكاميرا">
+<meta name="theme-color" content="#F4F2EC" id="meta-theme">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="سوبرماركت">
+<link rel="apple-touch-startup-image" href="splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1080x2340.png" media="(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F2EC;--surface:#FFFFFF;--surface-2:#EFECE4;--line:#E3DFD4;
+  --ink:#17201B;--ink-2:#56605A;--ink-3:#88908A;
+  --brand:#0E6B4F;--brand-2:#0A5640;--brand-ink:#FFFFFF;--brand-soft:#E0EFE8;
+  --accent:#E09A2E;--accent-soft:#FAEED8;
+  --danger:#C2413A;--danger-soft:#F7E2DF;
+  --warn:#9A620E;--warn-soft:#FAEFD9;
+  --ok:#1C7F4E;--ok-soft:#DFF1E6;
+  --wa:#1E8E50;
+  --shadow:0 1px 2px rgba(20,30,25,.05),0 6px 20px rgba(20,30,25,.06);
+  --radius:16px;--nav-h:68px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1412;--surface:#171D1A;--surface-2:#202825;--line:#2B3530;
+    --ink:#E8EEEA;--ink-2:#A6B1AB;--ink-3:#76827C;
+    --brand:#3DB487;--brand-2:#2C9B71;--brand-ink:#05140D;--brand-soft:#153328;
+    --accent:#E8AA4C;--accent-soft:#3A2C14;
+    --danger:#F0766E;--danger-soft:#3B1C1A;
+    --warn:#E3A84A;--warn-soft:#3A2B12;
+    --ok:#4CC488;--ok-soft:#15301F;--wa:#3FBF77;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1412;--surface:#171D1A;--surface-2:#202825;--line:#2B3530;
+  --ink:#E8EEEA;--ink-2:#A6B1AB;--ink-3:#76827C;
+  --brand:#3DB487;--brand-2:#2C9B71;--brand-ink:#05140D;--brand-soft:#153328;
+  --accent:#E8AA4C;--accent-soft:#3A2C14;
+  --danger:#F0766E;--danger-soft:#3B1C1A;
+  --warn:#E3A84A;--warn-soft:#3A2B12;
+  --ok:#4CC488;--ok-soft:#15301F;--wa:#3FBF77;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:'Tajawal',system-ui,-apple-system,'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;min-height:100dvh;line-height:1.5;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 20px);-webkit-font-smoothing:antialiased}
+body.locked{overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:inherit}
+button:disabled{cursor:default;opacity:.6}
+input,select,textarea{font:inherit;color:inherit}
+input[type=search]{-webkit-appearance:none;appearance:none}
+[hidden]{display:none!important}
+.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.muted{color:var(--ink-3);font-weight:500}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px}
+.mt{margin-top:12px}.mt-s{margin-top:8px}
+
+/* Top bar */
+.topbar{position:sticky;top:0;z-index:20;background:var(--bg);background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);padding-top:env(safe-area-inset-top)}
+.tb{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:12px;padding-bottom:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{width:38px;height:38px;border-radius:11px;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;flex-shrink:0}
+.logo .i{width:22px;height:22px}
+.brand h1{font-size:18px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand p{font-size:12.5px;color:var(--ink-3)}
+.offline{font-size:12px;font-weight:700;color:var(--warn);background:var(--warn-soft);padding:4px 10px;border-radius:999px;white-space:nowrap}
+
+/* Views */
+.view{display:none}
+.view.on{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.page-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 12px}
+.page-h h2{font-size:22px;font-weight:800}
+.row-btns{display:flex;gap:8px;align-items:center}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px}
+.sec-h h3{font-size:16px;font-weight:800}
+.link{color:var(--brand);font-weight:700;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+
+/* Hero */
+.hero{display:flex;align-items:center;gap:16px;width:100%;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:var(--brand-ink);border-radius:20px;padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;margin-top:4px}
+.hero::after{content:"";position:absolute;inset-block:0;inset-inline-end:0;width:42%;background:repeating-linear-gradient(90deg,rgba(255,255,255,.09) 0 3px,transparent 3px 6px,rgba(255,255,255,.06) 6px 11px,transparent 11px 15px);-webkit-mask-image:linear-gradient(to left,#000,transparent);mask-image:linear-gradient(to left,#000,transparent);pointer-events:none}
+.hero .ico{width:58px;height:58px;border-radius:16px;background:rgba(255,255,255,.16);display:grid;place-items:center;flex-shrink:0}
+.hero .ico .i{width:30px;height:30px}
+.hero h2{font-size:19px;font-weight:800;line-height:1.3}
+.hero p{opacity:.88;font-size:14px}
+.hero:active{transform:scale(.99)}
+
+/* Search */
+.field-search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:0 12px;height:50px;transition:border-color .15s}
+.field-search:focus-within{border-color:var(--brand)}
+.field-search .i{color:var(--ink-3)}
+.field-search input{flex:1;border:0;background:none;outline:none;font-size:16px;min-width:0;height:100%}
+.icon-plain{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:var(--ink-2);flex-shrink:0}
+.icon-plain:active{background:var(--surface-2)}
+.icon-btn{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);color:var(--ink);flex-shrink:0}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 18px;border-radius:12px;font-weight:700;font-size:15px;background:var(--surface-2);color:var(--ink);white-space:nowrap;transition:transform .1s,background .15s}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:var(--brand);color:var(--brand-ink)}
+.btn.soft{background:var(--brand-soft);color:var(--brand)}
+.btn.danger{background:var(--danger-soft);color:var(--danger)}
+.btn.danger-solid{background:var(--danger);color:#fff}
+.btn.ghost{background:transparent;border:1.5px solid var(--line)}
+.btn.wa{background:var(--wa);color:#fff}
+.btn.sm{height:38px;padding:0 13px;font-size:14px;border-radius:10px}
+.btn.sm .i{width:18px;height:18px}
+.btn.block{width:100%}
+.grow{flex:1}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:16px}
+@media (min-width:640px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:block;width:100%}
+.stat b{display:block;font-size:26px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat b.sm{font-size:19px;padding:3px 0}
+.stat span{font-size:13px;color:var(--ink-2)}
+.stat.warn b{color:var(--warn)}
+.stat.danger b{color:var(--danger)}
+
+/* Lists & cards */
+.list{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);display:flex;align-items:stretch;position:relative;overflow:hidden}
+.card::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:4px;background:var(--st,transparent)}
+.card.low{--st:var(--accent)}
+.card.out{--st:var(--danger)}
+.card .main{flex:1;min-width:0;padding:12px 14px;display:block}
+.name{display:block;font-weight:700;font-size:16px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.prices{display:flex;gap:8px 14px;margin-top:9px;flex-wrap:wrap;align-items:center}
+.rp{display:inline-flex;align-items:baseline;gap:6px;background:var(--brand);color:var(--brand-ink);padding:5px 12px 4px;border-radius:12px;box-shadow:0 2px 8px rgba(14,107,79,.22)}
+.rp small{font-size:12px;font-weight:700;opacity:.85}
+.rp b{font-size:20px;font-weight:800;line-height:1.25;font-variant-numeric:tabular-nums}
+.rp em{font-style:normal;font-size:12.5px;font-weight:700;opacity:.9}
+.price small{display:block;font-size:11.5px;color:var(--ink-3);line-height:1.3}
+.price b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.price b{font-size:14px}
+.price .mg{color:var(--ok);font-weight:700}
+.price.m b{color:var(--ok);font-size:14px}
+.stepper{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 10px;border-inline-start:1px solid var(--line);background:var(--surface-2);min-width:64px}
+.stepper button{width:38px;height:32px;border-radius:9px;background:var(--surface);display:grid;place-items:center;border:1px solid var(--line)}
+.stepper button:active{background:var(--brand-soft)}
+.stepper .q{font-weight:800;font-size:16px;line-height:1.1;text-align:center;font-variant-numeric:tabular-nums}
+.stepper .q small{display:block;font-size:10px;color:var(--ink-3);font-weight:600}
+.stepper.h{flex-direction:row;border:0;background:none;padding:0;min-width:0;gap:8px}
+.stepper.h button{width:46px;height:46px;border-radius:12px}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.danger{background:var(--danger-soft);color:var(--danger)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.more{margin:14px auto 0;display:flex}
+
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none;flex:1;min-width:0}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:7px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:14px;color:var(--ink-2);white-space:nowrap;font-weight:600}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip.warn-c.on{background:var(--accent);border-color:var(--accent);color:#1b1205}
+.toolbar2{display:flex;align-items:center;gap:8px;margin:12px 0}
+.sort{height:36px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:0 8px;font-size:14px;color:var(--ink-2);flex-shrink:0;max-width:130px}
+
+.row-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;gap:10px;padding:10px 12px;position:relative;overflow:hidden}
+.row-card::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:4px;background:var(--accent)}
+.row-card.out::before{background:var(--danger)}
+.rc-main{flex:1;min-width:0;display:block}
+.res{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;gap:10px;padding:12px 14px;width:100%}
+.res .name{flex:1}
+.res b{color:var(--brand);font-weight:800;white-space:nowrap}
+
+.allgood{display:flex;align-items:center;gap:10px;background:var(--ok-soft);color:var(--ok);border-radius:14px;padding:14px;margin-top:18px;font-weight:700;font-size:14.5px}
+.banner{display:flex;align-items:center;gap:10px;background:var(--accent-soft);border-radius:14px;padding:12px;margin-top:14px}
+.banner>.i{color:var(--warn);width:24px;height:24px}
+.banner.inst{background:var(--brand-soft)}
+.banner.inst>.i{color:var(--brand)}
+.banner .t{flex:1;min-width:0}
+.banner b{display:block;font-size:14.5px}
+.banner span{font-size:12.5px;color:var(--ink-2)}
+
+.empty{text-align:center;padding:36px 12px;color:var(--ink-2)}
+.art{width:72px;height:72px;border-radius:22px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;margin:0 auto 14px}
+.art .i{width:34px;height:34px}
+.art.warn{background:var(--warn-soft);color:var(--warn)}
+.empty h3{color:var(--ink);font-size:18px;font-weight:800;margin-bottom:6px}
+.empty p{font-size:14.5px;max-width:340px;margin:0 auto}
+.empty .acts{display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+
+.welcome{margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px}
+.welcome h3{font-size:19px;font-weight:800}
+.welcome p{color:var(--ink-2);font-size:14.5px;margin-top:2px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:14px;border-radius:14px;background:var(--surface-2);font-weight:700;font-size:14.5px}
+.tile .i{width:24px;height:24px;color:var(--brand)}
+
+/* Shortage */
+.suggest{background:var(--accent-soft);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.suggest h4{color:var(--warn);font-size:15px;font-weight:800;display:flex;gap:8px;align-items:center}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 12px}
+.tag{background:var(--surface);border-radius:999px;padding:6px 11px;font-size:13.5px;font-weight:600}
+.share-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px}
+.share-row::-webkit-scrollbar{display:none}
+.share-row .btn{flex-shrink:0}
+.sh-item{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;display:flex;align-items:center;gap:12px}
+.sh-check{width:44px;height:44px;border-radius:13px;border:2px solid var(--line);display:grid;place-items:center;color:var(--ok);flex-shrink:0;transition:.15s}
+.sh-check:active,.sh-check:hover{background:var(--ok-soft);border-color:var(--ok)}
+.sh-body{flex:1;min-width:0}
+.sh-main{display:block;width:100%}
+.sh-add{display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:5px 11px;border-radius:9px;background:var(--brand-soft);color:var(--brand);font-size:13px;font-weight:700}
+.sh-add .i{width:16px;height:16px}
+.pf-quick{margin:-4px 0 14px}
+.sugg{margin-top:6px;border:1.5px solid var(--brand);border-radius:12px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.sugg-h{font-size:12px;font-weight:700;color:var(--ink-3);padding:7px 12px 3px}
+.sugg button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-top:1px solid var(--line)}
+.sugg-h+button{border-top:0}
+.sugg button:active,.sugg button:hover{background:var(--brand-soft)}
+.sugg .sg{flex:1;min-width:0}
+.sugg .sg .name{font-size:15px}
+.sugg mark{background:none;color:var(--brand);font-weight:800}
+.pf-quick .btn{width:100%}
+.btn.warn-soft{background:var(--accent-soft);color:var(--warn)}
+.btn.ok-soft{background:var(--ok-soft);color:var(--ok)}
+.sh-qty{font-weight:800;font-size:15px;background:var(--accent-soft);color:var(--warn);padding:5px 11px;border-radius:10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hint-c{text-align:center;font-size:13px;color:var(--ink-3);margin-top:14px}
+
+/* Settings */
+.group{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:14px}
+.group-h{padding:12px 16px 2px;font-size:13px;color:var(--ink-3);font-weight:700}
+.item{display:flex;align-items:center;gap:12px;padding:13px 16px;width:100%;border-top:1px solid var(--line);min-height:56px}
+.group-h+.item{border-top:0}
+.item>.i{color:var(--ink-2)}
+.item .t{flex:1;min-width:0;font-weight:600;font-size:15px}
+.item .t small{display:block;color:var(--ink-3);font-size:12.5px;font-weight:500}
+.item.dz{color:var(--danger)}
+a.item{color:inherit;text-decoration:none}.item.dz>.i{color:var(--danger)}
+.sinp{width:52%;height:42px;border:1.5px solid var(--line);background:var(--surface-2);border-radius:10px;padding:0 12px;font-size:16px;outline:none}
+.sinp:focus{border-color:var(--brand)}
+.seg{display:flex;background:var(--surface-2);border-radius:11px;padding:3px}
+.seg button{padding:6px 12px;border-radius:9px;font-size:13.5px;font-weight:700;color:var(--ink-2)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.switch{-webkit-appearance:none;appearance:none;width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.switch::after{content:"";position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:right .2s}
+.switch:checked{background:var(--brand)}
+.switch:checked::after{right:23px}
+.foot{text-align:center;font-size:12.5px;color:var(--ink-3);padding:6px 0 10px}
+
+/* Bottom nav */
+.nav{position:fixed;inset-inline:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.nav .in{max-width:860px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);height:var(--nav-h);align-items:stretch}
+.nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;color:var(--ink-3);font-weight:700;position:relative;text-align:center}
+.nav button .i{width:23px;height:23px}
+.nav button.on{color:var(--brand)}
+.nav .fab-w{justify-content:flex-start}
+.nav .fab{width:60px;height:60px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;margin-top:-22px;box-shadow:0 8px 20px rgba(14,107,79,.35);border:4px solid var(--bg)}
+.nav .fab .i{width:27px;height:27px}
+.badge{position:absolute;top:7px;inset-inline-start:calc(50% + 4px);min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--danger);color:#fff;font-size:11px;display:grid;place-items:center;font-weight:800;line-height:1}
+
+/* Sheets */
+.sheet-wrap{position:fixed;left:0;right:0;top:var(--vvt,0px);height:var(--vvh,100%);z-index:100;display:flex;align-items:flex-end;justify-content:center;background:rgba(8,12,10,.5);opacity:0;pointer-events:none;transition:opacity .2s}
+.sheet-wrap.open{opacity:1;pointer-events:auto}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92vh;max-height:calc(var(--vvh,100vh) * .94);overflow-y:auto;overscroll-behavior:contain;border-radius:22px 22px 0 0;padding:6px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .26s cubic-bezier(.2,.8,.2,1)}
+.sheet-wrap.open .sheet{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:6px auto 10px}
+.sheet-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
+.sheet-h h3{font-size:19px;font-weight:800}
+@media (min-width:700px){
+  .sheet-wrap{align-items:center}
+  .sheet{border-radius:22px;padding-bottom:22px;transform:translateY(24px);opacity:.6;transition:transform .22s,opacity .22s}
+  .sheet-wrap.open .sheet{opacity:1}
+}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:13.5px;font-weight:700;color:var(--ink-2);margin-bottom:6px}
+.inp{width:100%;height:50px;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:0 14px;font-size:16px;outline:none;transition:border-color .15s}
+.inp:focus{border-color:var(--brand)}
+.inp::placeholder{color:var(--ink-3)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inp-group{display:flex;gap:8px}
+.inp-group .inp{flex:1;min-width:0}
+.inp-group .btn{width:52px;padding:0;flex-shrink:0}
+.hint{display:block;font-size:12px;color:var(--ink-3);margin-top:-8px;margin-bottom:12px}
+.note{font-size:13.5px;padding:10px 12px;border-radius:10px;margin-top:8px;line-height:1.5}
+.note.ok{background:var(--ok-soft);color:var(--ok)}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.info{background:var(--brand-soft);color:var(--brand);margin:-4px 0 14px}
+.note .link{font-size:13.5px}
+.sheet-actions{display:flex;gap:10px;margin-top:18px}
+.sheet-actions .btn{flex:1}
+.sheet-actions .btn.danger{flex:0 0 52px;padding:0}
+.cf-msg{color:var(--ink-2);font-size:15px;margin:-6px 0 4px;white-space:pre-line}
+
+/* Lookup */
+.lk-name{font-size:22px;font-weight:800;line-height:1.3}
+.lk-prices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 10px}
+.lk-price{border-radius:16px;padding:14px;background:var(--surface-2)}
+.lk-price.r{background:var(--brand);color:var(--brand-ink)}
+.lk-price small{font-size:12.5px;opacity:.85;display:block;font-weight:600}
+.lk-price b{display:block;font-size:30px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;margin:2px 0}
+.lk-stock{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:16px}
+.lk-stock small{display:block;font-size:12.5px;color:var(--ink-3);font-weight:600}
+.lk-stock b{font-size:24px;font-weight:800;margin-inline-end:6px;font-variant-numeric:tabular-nums}
+.lk-note{font-size:13.5px;color:var(--ink-2);margin-top:10px;background:var(--surface-2);padding:10px 12px;border-radius:10px}
+.lk-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.lk-actions .btn{padding:0 8px;font-size:14px}
+.lk-actions.col{grid-template-columns:1fr}
+.lk-miss{text-align:center;padding:8px 0 4px}
+.lk-miss h4{font-size:18px;font-weight:800}
+.big{font-size:22px;font-weight:800;margin-top:4px}
+
+/* Scanner */
+.sheet.scan{background:#0B0F0D;color:#fff;padding:0 0 calc(14px + env(safe-area-inset-bottom));overflow-x:hidden}
+.cam{position:relative;background:#000;width:100%;aspect-ratio:1/1;max-height:60vh;max-height:calc(var(--vvh,100vh) * .6);min-height:min(260px, calc(var(--vvh,100vh) * .34));overflow:hidden;border-radius:22px 22px 0 0}
+@media (min-width:700px){.cam{border-radius:22px 22px 0 0}}
+.cam video{width:100%;height:100%;object-fit:cover;display:block}
+#scan-lib{width:100%;position:relative;z-index:1}
+#scan-lib video{display:block}
+.cam.lib{aspect-ratio:auto;max-height:none}
+.cam.lib .cam-frame{display:none}
+.cam-frame{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:2}
+.box{width:86%;height:30%;border-radius:6px;position:relative;box-shadow:0 0 0 100vmax rgba(0,0,0,.42);--c:var(--accent);background:linear-gradient(var(--c),var(--c)) top left/28px 3px,linear-gradient(var(--c),var(--c)) top left/3px 28px,linear-gradient(var(--c),var(--c)) top right/28px 3px,linear-gradient(var(--c),var(--c)) top right/3px 28px,linear-gradient(var(--c),var(--c)) bottom left/28px 3px,linear-gradient(var(--c),var(--c)) bottom left/3px 28px,linear-gradient(var(--c),var(--c)) bottom right/28px 3px,linear-gradient(var(--c),var(--c)) bottom right/3px 28px;background-repeat:no-repeat}
+.laser{position:absolute;left:5%;right:5%;top:50%;height:2px;background:var(--accent);box-shadow:0 0 12px var(--accent);animation:laser 1.6s ease-in-out infinite}
+.cam:not(.live) .laser{display:none}
+@keyframes laser{0%,100%{transform:translateY(-36px)}50%{transform:translateY(36px)}}
+.focus-ring{position:absolute;width:70px;height:70px;margin:-35px 0 0 -35px;border:2px solid #fff;border-radius:50%;z-index:3;pointer-events:none;opacity:0}
+.focus-ring.go{animation:fring .9s ease-out}
+@keyframes fring{0%{opacity:1;transform:scale(1.4)}40%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+.cam-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;z-index:4;pointer-events:none}
+.cam-btn{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center;pointer-events:auto}
+.cam-btn.on{background:var(--accent);color:#1b1205}
+.cam-tools{display:flex;gap:8px}
+.cam-btn.zoom{width:auto;min-width:44px;padding:0 12px;border-radius:22px;font-weight:800;font-size:14.5px;direction:ltr}
+.cam-msg{position:absolute;left:12px;right:12px;bottom:12px;text-align:center;font-size:14px;background:rgba(0,0,0,.62);padding:10px 12px;border-radius:12px;z-index:4;line-height:1.6}
+.cam-msg.err{background:rgba(176,52,46,.94);font-weight:600}
+.scan-under{padding:14px 16px 2px}
+.scan-manual{display:flex;gap:8px}
+.scan-manual .inp{background:#1A201D;border-color:#2C3530;color:#fff}
+.scan-manual .inp::placeholder{color:#8E9993}
+.scan-hint{font-size:12.5px;color:#9AA49F;padding-top:10px;text-align:center}
+.retry{width:100%;margin-bottom:10px;background:#222a26;color:#fff}
+
+/* Toast */
+.toast{position:fixed;left:16px;right:16px;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px);z-index:300;margin:0 auto;max-width:440px;background:var(--ink);color:var(--bg);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);transform:translateY(20px);opacity:0;pointer-events:none;transition:transform .22s,opacity .22s}
+.toast.top{bottom:auto;top:calc(env(safe-area-inset-top) + 12px);transform:translateY(-20px)}
+.toast.show{transform:none;opacity:1;pointer-events:auto}
+.toast.err{background:var(--danger);color:#fff}
+.toast .msg{flex:1;font-size:14.5px;font-weight:600}
+.toast button{color:var(--accent);font-weight:800;padding:4px 8px;font-size:14.5px}
+.toast.err button{color:#fff}
+
+.sync-chip{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;background:var(--ok-soft);color:var(--ok)}
+.sync-chip.pushing,.sync-chip.connecting,.sync-chip.pending{background:var(--brand-soft);color:var(--brand)}
+.sync-chip.denied{background:var(--danger-soft);color:var(--danger)}
+.code-big{font-size:17px!important;font-weight:800!important;color:var(--ink)!important;letter-spacing:.03em;margin-top:2px;white-space:nowrap}
+.item.col{flex-direction:column;align-items:stretch;gap:8px}
+.sinp.wide{width:100%}
+.item.btns{gap:10px;flex-wrap:wrap}
+.item.dev{padding-inline-start:28px;min-height:52px}
+.item.nt-sub{padding-inline-start:48px;min-height:50px}
+.item.nt-sub .t{font-size:14.5px}
+.item.nt-sub.off{opacity:.45;pointer-events:none}
+.bell{position:relative;width:38px;height:38px;border-radius:11px}
+.bell .badge{top:-5px;inset-inline-start:auto;inset-inline-end:-5px}
+.notes{display:flex;flex-direction:column;gap:2px;margin:0 -6px}
+.note-row{display:flex;align-items:flex-start;gap:12px;padding:11px 8px;border-radius:12px;width:100%}
+.note-row:active{background:var(--surface-2)}
+.note-ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex-shrink:0;background:var(--surface-2);color:var(--ink-2)}
+.note-ic.price{background:var(--accent-soft);color:var(--warn)}
+.note-ic.new{background:var(--ok-soft);color:var(--ok)}
+.note-ic.del{background:var(--danger-soft);color:var(--danger)}
+.note-ic.short{background:var(--brand-soft);color:var(--brand)}
+.note-row .t{flex:1;min-width:0}
+.note-row .nt{display:block;font-size:14.5px;font-weight:600;line-height:1.5}
+.note-row small{display:block;font-size:12.5px;color:var(--ink-3)}
+.item.dev .t{font-size:14.5px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--line);flex-shrink:0}
+.dot.on{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+button.sync-chip{cursor:pointer}
+.item.btns .btn{flex:1}
+/* keyboard open */
+body.kb-open .nav{display:none}
+body.kb-open .sheet{padding-bottom:14px}
+body.kb-open .toast{bottom:auto;top:calc(var(--vvt,0px) + 10px);transform:translateY(-20px)}
+body.kb-open .toast.show{transform:none}
+#print-area{display:none}
+@media print{
+  @page{margin:14mm}
+  body{padding:0;background:#fff;color:#000}
+  body>*:not(#print-area){display:none!important}
+  #print-area{display:block;font-family:'Tajawal',Tahoma,sans-serif}
+  #print-area h1{font-size:20pt;margin-bottom:4pt}
+  #print-area p{font-size:11pt;color:#444;margin-bottom:12pt}
+  #print-area table{width:100%;border-collapse:collapse;font-size:12pt}
+  #print-area th,#print-area td{border:1px solid #999;padding:7pt;text-align:right}
+  #print-area th{background:#eee}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10.5 8v8M14 8v8M17 8v8"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5.5 9v11.5h13V9M9.5 20.5v-6h5v6"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 7.5 12 3 3 7.5v9L12 21l9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20.5 12a8.5 8.5 0 0 1-12.4 7.5L3.5 21l1.6-4.4A8.5 8.5 0 1 1 20.5 12z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-flash" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5M8.5 13h7M8.5 17h7"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/></symbol>
+  <symbol id="i-store" viewBox="0 0 24 24"><path d="M4 9.5 5.5 4h13L20 9.5M4 9.5h16M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M5.5 12.5V20h13v-7.5M10 20v-4.5h4V20"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h4l5-4v13l-5-4H4z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></symbol>
+  <symbol id="i-camswitch" viewBox="0 0 24 24"><path d="M3.5 8h3l1.5-2.5h8L17.5 8h3v11.5h-17z"/><path d="M9 13.2a3 3 0 0 1 5.3-1.7M15 13.8a3 3 0 0 1-5.3 1.7M14.6 9.6v2h-2M9.4 17.4v-2h2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M15.5 4.8a3.3 3.3 0 0 1 0 6.4M17.5 14.8c2.2.6 3.6 2.3 4 5.2"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4"/><path d="m10.5 12.5 9-9M16 7l2.5 2.5M18.5 4.5 21 7"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="wrap tb">
+    <div class="brand">
+      <div class="logo"><svg class="i"><use href="#i-scan"/></svg></div>
+      <div style="min-width:0"><h1 id="shop-name">سوبرماركت</h1><p id="today"></p></div>
+    </div>
+    <span class="row-btns"><button class="sync-chip" id="sync-chip" data-act="go-sync" hidden></button><button class="icon-btn bell" id="bell" data-act="notes" aria-label="التنبيهات" hidden><svg class="i"><use href="#i-bell"/></svg><span class="badge" id="bell-badge" hidden></span></button><span class="offline" id="offline" hidden>بدون إنترنت · يشتغل عادي</span></span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- HOME -->
+  <section class="view on" id="view-home">
+    <button class="hero" data-act="scan" data-target="lookup">
+      <span class="ico"><svg class="i"><use href="#i-scan"/></svg></span>
+      <span><h2>افحص سعر أي مادة</h2><p>وجّه الكاميرا على الباركود</p></span>
+    </button>
+    <div class="field-search mt">
+      <svg class="i"><use href="#i-search"/></svg>
+      <input id="home-q" type="search" placeholder="أو اكتب اسم المادة / الباركود" enterkeyhint="search" autocomplete="off">
+    </div>
+    <div id="home-results" class="list mt-s"></div>
+    <div id="home-body"></div>
+  </section>
+
+  <!-- PRODUCTS -->
+  <section class="view" id="view-products">
+    <div class="page-h">
+      <h2>المواد <span class="muted" id="p-count"></span></h2>
+      <button class="btn pri sm" data-act="new-product"><svg class="i"><use href="#i-plus"/></svg>مادة</button>
+    </div>
+    <div class="field-search">
+      <svg class="i"><use href="#i-search"/></svg>
+      <input id="p-q" type="search" placeholder="بحث بالاسم أو الباركود" autocomplete="off" enterkeyhint="search">
+      <button class="icon-plain" data-act="scan" data-target="lookup" aria-label="مسح باركود"><svg class="i"><use href="#i-scan"/></svg></button>
+    </div>
+    <div class="toolbar2">
+      <div class="chips" id="p-chips"></div>
+      <select id="p-sort" class="sort" aria-label="ترتيب">
+        <option value="recent">الأحدث</option>
+        <option value="name">أبجدياً</option>
+        <option value="qty">الأقل كمية</option>
+        <option value="price">الأعلى سعراً</option>
+      </select>
+    </div>
+    <div class="list" id="p-list"></div>
+  </section>
+
+  <!-- SHORTAGE -->
+  <section class="view" id="view-shortage">
+    <div class="page-h">
+      <h2>قائمة النقص <span class="muted" id="s-count"></span></h2>
+      <div class="row-btns">
+        <button class="icon-btn" data-act="scan" data-target="shortage" aria-label="مسح باركود"><svg class="i"><use href="#i-scan"/></svg></button>
+        <button class="btn pri sm" data-act="new-shortage"><svg class="i"><use href="#i-plus"/></svg>نقص</button>
+      </div>
+    </div>
+    <div id="s-body"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings">
+    <div class="page-h"><h2>الإعدادات</h2></div>
+    <div class="group">
+      <div class="group-h">المحل</div>
+      <label class="item"><svg class="i"><use href="#i-store"/></svg><span class="t">اسم المحل</span><input id="set-name" class="sinp" maxlength="40" autocomplete="off"></label>
+      <div class="item"><svg class="i"><use href="#i-contrast"/></svg><span class="t">المظهر</span>
+        <div class="seg" id="set-theme"><button data-act="theme" data-v="auto">تلقائي</button><button data-act="theme" data-v="light">فاتح</button><button data-act="theme" data-v="dark">داكن</button></div>
+      </div>
+      <label class="item"><svg class="i"><use href="#i-sound"/></svg><span class="t">صوت عند المسح</span><input type="checkbox" id="set-sound" class="switch"></label>
+    </div>
+    <div class="group" id="sync-group"></div>
+    <div class="group">
+      <div class="group-h">التنبيهات</div>
+      <label class="item"><svg class="i"><use href="#i-bell"/></svg><span class="t">تنبيهات التعديلات المهمة<small>لما جهاز ثاني يغيّر سعر أو يضيف مادة أو نقص</small></span><input type="checkbox" id="nt-on" class="switch"></label>
+      <label class="item nt-sub"><span class="t">تغيير الأسعار</span><input type="checkbox" id="nt-price" class="switch"></label>
+      <label class="item nt-sub"><span class="t">مواد جديدة أو محذوفة</span><input type="checkbox" id="nt-items" class="switch"></label>
+      <label class="item nt-sub"><span class="t">قائمة النقص</span><input type="checkbox" id="nt-short" class="switch"></label>
+      <label class="item nt-sub"><span class="t">إشعارات الموبايل<small>تطلع حتى لو التطبيق بالخلفية. إذا التطبيق مسدود، تشوف كل التعديلات بالجرس 🔔 أول ما تفتحه</small></span><input type="checkbox" id="nt-system" class="switch"></label>
+    </div>
+    <div class="group">
+      <div class="group-h">النسخ الاحتياطي</div>
+      <button class="item" data-act="export-json"><svg class="i"><use href="#i-down"/></svg><span class="t">حفظ نسخة احتياطية<small id="last-backup"></small></span></button>
+      <button class="item" data-act="import-json"><svg class="i"><use href="#i-up"/></svg><span class="t">استرجاع نسخة احتياطية<small>من ملف ‎.json‎ حفظته سابقاً</small></span></button>
+    </div>
+    <div class="group">
+      <div class="group-h">Excel</div>
+      <button class="item" data-act="export-csv"><svg class="i"><use href="#i-file"/></svg><span class="t">تصدير المواد إلى Excel<small>ملف CSV يفتح بالإكسل وGoogle Sheets</small></span></button>
+      <button class="item" data-act="import-csv"><svg class="i"><use href="#i-up"/></svg><span class="t">استيراد مواد من Excel<small>احفظ الجدول بصيغة CSV ثم اختاره</small></span></button>
+      <button class="item" data-act="csv-template"><svg class="i"><use href="#i-down"/></svg><span class="t">تنزيل نموذج جاهز للتعبئة</span></button>
+    </div>
+    <div class="group">
+      <div class="group-h">التطبيق</div>
+      <button class="item" data-act="install"><svg class="i"><use href="#i-phone"/></svg><span class="t">تثبيت على الشاشة الرئيسية<small id="install-state"></small></span></button>
+      <a class="item" id="apk-link" href="app/supermarket-pro.apk" download="supermarket-pro.apk" hidden><svg class="i"><use href="#i-down"/></svg><span class="t">تنزيل تطبيق أندرويد (APK)<small>ملف تطبيق تنصبه وتشاركه ويا غيرك</small></span></a>
+      <button class="item" data-act="demo"><svg class="i"><use href="#i-box"/></svg><span class="t">إضافة بيانات تجريبية<small>12 مادة للتجربة</small></span></button>
+      <div class="item"><svg class="i"><use href="#i-db"/></svg><span class="t">التخزين<small id="storage-info"></small></span></div>
+    </div>
+    <div class="group">
+      <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
+    </div>
+    <p class="foot">سوبرماركت برو · الإصدار 2.5<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+  </section>
+</main>
+
+<nav class="nav" aria-label="التنقل">
+  <div class="in">
+    <button data-act="go" data-view="home" class="on"><svg class="i"><use href="#i-home"/></svg>الرئيسية</button>
+    <button data-act="go" data-view="products"><svg class="i"><use href="#i-box"/></svg>المواد</button>
+    <button class="fab-w" data-act="scan" data-target="lookup" aria-label="مسح باركود"><span class="fab"><svg class="i"><use href="#i-scan"/></svg></span></button>
+    <button data-act="go" data-view="shortage"><svg class="i"><use href="#i-list"/></svg>النقص<span class="badge" id="nav-badge" hidden></span></button>
+    <button data-act="go" data-view="settings"><svg class="i"><use href="#i-sliders"/></svg>الإعدادات</button>
+  </div>
+</nav>
+
+<!-- Scanner -->
+<div class="sheet-wrap" id="sheet-scan" data-backdrop="1" role="dialog" aria-modal="true" aria-label="ماسح الباركود">
+  <div class="sheet scan">
+    <div class="cam" id="cam">
+      <video id="scan-video" playsinline muted autoplay></video>
+      <div id="scan-lib"></div>
+      <div class="cam-frame"><div class="box"><span class="laser"></span></div></div>
+      <div class="cam-top">
+        <button class="cam-btn" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button>
+        <div class="cam-tools">
+          <button class="cam-btn" id="torch" data-act="torch" aria-label="الفلاش" hidden><svg class="i"><use href="#i-flash"/></svg></button>
+          <button class="cam-btn zoom" id="zoom" data-act="zoom" aria-label="تقريب" hidden>1.5×</button>
+          <button class="cam-btn" id="cam-switch" data-act="cam-switch" aria-label="تبديل الكاميرا" hidden><svg class="i"><use href="#i-camswitch"/></svg></button>
+        </div>
+      </div>
+      <span class="focus-ring" id="focus-ring"></span>
+      <div class="cam-msg" id="cam-msg">جاري تشغيل الكاميرا…</div>
+    </div>
+    <div class="scan-under">
+      <button class="btn retry" id="cam-retry" data-act="cam-retry" hidden><svg class="i"><use href="#i-refresh"/></svg>إعادة المحاولة</button>
+      <div class="scan-manual">
+        <input id="scan-manual" class="inp" inputmode="numeric" placeholder="أو اكتب الباركود هنا" enterkeyhint="go" autocomplete="off">
+        <button class="btn pri" data-act="scan-confirm">تم</button>
+      </div>
+      <p class="scan-hint">خلي الباركود بالعرض داخل المربع وبعّد الموبايل بحدود شبر. إذا الصورة مضببة اضغط عليها حتى تركّز</p>
+    </div>
+  </div>
+</div>
+
+<!-- Lookup result -->
+<div class="sheet-wrap" id="sheet-lookup" data-backdrop="1" role="dialog" aria-modal="true" aria-labelledby="lk-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="lk-title">نتيجة الفحص</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div id="lk-body"></div>
+  </div>
+</div>
+
+<!-- Product form -->
+<div class="sheet-wrap" id="sheet-product" role="dialog" aria-modal="true" aria-labelledby="pf-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="pf-title">مادة جديدة</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="pf-quick" id="pf-quick" hidden></div>
+    <form id="pf" novalidate autocomplete="off">
+      <div class="fg">
+        <label for="pf-code">الباركود</label>
+        <div class="inp-group">
+          <input id="pf-code" class="inp" inputmode="numeric" placeholder="امسح أو اكتب الباركود" enterkeyhint="next">
+          <button type="button" class="btn soft" data-act="scan" data-target="product-form" aria-label="مسح بالكاميرا"><svg class="i"><use href="#i-scan"/></svg></button>
+        </div>
+        <div id="pf-dup" class="note warn" hidden></div>
+      </div>
+      <div class="fg"><label for="pf-name">اسم المادة *</label><input id="pf-name" class="inp" placeholder="مثال: رز بسمتي 5 كغم" enterkeyhint="next"></div>
+      <div class="fg"><label for="pf-cat">الفئة</label><input id="pf-cat" class="inp" list="cat-list" placeholder="اختر أو اكتب فئة" enterkeyhint="next"></div>
+      <div class="row2">
+        <div class="fg"><label for="pf-bulk">سعر الجملة</label><input id="pf-bulk" class="inp" inputmode="decimal" placeholder="0" enterkeyhint="next"></div>
+        <div class="fg"><label for="pf-pack">عدد القطع بالجملة</label><input id="pf-pack" class="inp" inputmode="numeric" placeholder="1" enterkeyhint="next"></div>
+      </div>
+      <span class="hint">إذا سعر الجملة للكارتونة/الشدة اكتب كم قطعة بيها، وإذا للقطعة اتركه 1</span>
+      <div class="fg"><label for="pf-retail">سعر المفرد (للقطعة)</label><input id="pf-retail" class="inp" inputmode="decimal" placeholder="0" enterkeyhint="next"></div>
+      <div id="pf-margin" class="note info" hidden></div>
+      <div class="row2">
+        <div class="fg"><label for="pf-qty">الكمية الموجودة</label><input id="pf-qty" class="inp" inputmode="decimal" placeholder="0" enterkeyhint="next"></div>
+        <div class="fg"><label for="pf-min">نبّهني لما تقل عن</label><input id="pf-min" class="inp" inputmode="decimal" placeholder="5" enterkeyhint="next"></div>
+      </div>
+      <span class="hint">اكتب 0 إذا ما تريد تنبيه نقص لهذي المادة</span>
+      <div class="fg"><label for="pf-note">المورد / ملاحظات</label><input id="pf-note" class="inp" placeholder="اختياري" enterkeyhint="done"></div>
+      <div class="sheet-actions">
+        <button type="button" class="btn danger" id="pf-del" data-act="delete-product" aria-label="حذف" hidden><svg class="i"><use href="#i-trash"/></svg></button>
+        <button type="button" class="btn" data-act="close">إلغاء</button>
+        <button type="submit" class="btn pri">حفظ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Shortage form -->
+<div class="sheet-wrap" id="sheet-shortage" role="dialog" aria-modal="true" aria-labelledby="sf-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="sf-title">إضافة نقص</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <form id="sf" novalidate autocomplete="off">
+      <div class="fg"><label for="sf-name">اسم المادة *</label><input id="sf-name" class="inp" data-scroll="start" placeholder="اكتب الاسم — تطلعلك موادك المشابهة" enterkeyhint="next" autocomplete="off"><div id="sf-sugg" class="sugg" hidden></div></div>
+      <button type="button" class="btn sm soft" id="sf-to-product" data-act="sf-to-product" style="width:100%;margin:-4px 0 14px" hidden><svg class="i"><use href="#i-plus"/></svg>هذي المادة مو بالمواد — أضفها للمواد</button>
+      <div class="fg">
+        <label for="sf-code">الباركود (اختياري)</label>
+        <div class="inp-group">
+          <input id="sf-code" class="inp" inputmode="numeric" placeholder="امسح حتى ينكتب الاسم تلقائياً" enterkeyhint="next">
+          <button type="button" class="btn soft" data-act="scan" data-target="shortage-form" aria-label="مسح بالكاميرا"><svg class="i"><use href="#i-scan"/></svg></button>
+        </div>
+        <div id="sf-info" class="note" hidden></div>
+      </div>
+      <div class="fg"><label for="sf-qty">الكمية المطلوبة</label><input id="sf-qty" class="inp" inputmode="numeric" placeholder="مثال: 24" enterkeyhint="next"></div>
+      <div class="fg"><label for="sf-note">ملاحظة</label><input id="sf-note" class="inp" placeholder="مثال: كارتونتين، من المورد الفلاني" enterkeyhint="done"></div>
+      <div class="sheet-actions">
+        <button type="button" class="btn danger" id="sf-del" data-act="delete-shortage" aria-label="حذف" hidden><svg class="i"><use href="#i-trash"/></svg></button>
+        <button type="button" class="btn" data-act="close">إلغاء</button>
+        <button type="submit" class="btn pri">حفظ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Resolve shortage -->
+<div class="sheet-wrap" id="sheet-resolve" data-backdrop="1" role="dialog" aria-modal="true" aria-labelledby="rs-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="rs-title">وصلت البضاعة؟</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <p class="lk-name" id="rs-name" style="font-size:19px"></p>
+    <p class="muted" id="rs-stock" style="margin-bottom:14px"></p>
+    <div class="fg"><label for="rs-qty">كم قطعة وصلت؟ (تنضاف للمخزون)</label><input id="rs-qty" class="inp" inputmode="decimal" placeholder="0" enterkeyhint="done"></div>
+    <div class="lk-actions col">
+      <button class="btn pri block" data-act="resolve-add"><svg class="i"><use href="#i-check"/></svg>أضف للمخزون وشيلها من النقص</button>
+      <button class="btn block" data-act="resolve-remove">شيلها من القائمة بدون إضافة</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div class="sheet-wrap" id="sheet-confirm" data-backdrop="1" role="alertdialog" aria-modal="true" aria-labelledby="cf-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="cf-title"></h3></div>
+    <p class="cf-msg" id="cf-msg"></p>
+    <div class="sheet-actions">
+      <button class="btn" data-act="close" id="cf-cancel">إلغاء</button>
+      <button class="btn pri" data-act="cf-ok" id="cf-ok">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<!-- Join shared shop -->
+<div class="sheet-wrap" id="sheet-join" role="dialog" aria-modal="true" aria-labelledby="jn-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="jn-title">الانضمام لمحل مشترك</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <p class="cf-msg" style="margin-bottom:12px">اكتب كود المحل اللي يطلع بموبايل صاحب المحل (الإعدادات ← كود المحل).</p>
+    <div class="fg"><input id="join-code" class="inp num" dir="ltr" placeholder="XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" enterkeyhint="go" style="text-align:center;font-size:20px;letter-spacing:.08em"></div>
+    <div class="sheet-actions"><button class="btn" data-act="close">إلغاء</button><button class="btn pri" data-act="sync-join-go">انضمام</button></div>
+  </div>
+</div>
+
+<!-- Device name -->
+<div class="sheet-wrap" id="sheet-devname" role="dialog" aria-modal="true" aria-labelledby="dn-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="dn-title">اسم هذا الجهاز</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <p class="cf-msg" style="margin-bottom:12px">حتى تعرف كل جهاز بالقائمة، مثلاً: كاشير 1، موبايل أحمد</p>
+    <div class="fg"><input id="dev-name" class="inp" maxlength="30" autocomplete="off" enterkeyhint="done"></div>
+    <div class="sheet-actions"><button class="btn" data-act="close">إلغاء</button><button class="btn pri" data-act="dev-name-save">حفظ</button></div>
+  </div>
+</div>
+
+<!-- Notifications -->
+<div class="sheet-wrap" id="sheet-notes" data-backdrop="1" role="dialog" aria-modal="true" aria-labelledby="nn-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="nn-title">التنبيهات</h3><div class="row-btns"><button class="btn sm ghost" data-act="notes-clear">مسح</button><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div></div>
+    <div id="notes-list" class="notes"></div>
+  </div>
+</div>
+
+<!-- Info -->
+<div class="sheet-wrap" id="sheet-info" data-backdrop="1" role="dialog" aria-modal="true" aria-labelledby="if-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="if-title"></h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="cf-msg" id="if-body"></div>
+    <div class="sheet-actions"><button class="btn pri" data-act="close">تمام</button></div>
+  </div>
+</div>
+
+<datalist id="cat-list"></datalist>
+<datalist id="name-list"></datalist>
+<input type="file" id="file-json" accept=".json,application/json" hidden>
+<input type="file" id="file-csv" accept=".csv,text/csv,text/plain,application/vnd.ms-excel" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite"><span class="msg"></span><button type="button" hidden></button></div>
+<div id="print-area"></div>
+
+<script>
+'use strict';
+/* ================= Helpers ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const normDigits = s => String(s == null ? '' : s)
+  .replace(/[٠-٩]/g, d => d.charCodeAt(0) - 0x660)
+  .replace(/[۰-۹]/g, d => d.charCodeAt(0) - 0x6F0);
+const toNum = s => { const v = parseFloat(normDigits(s).replace(/[,\s٬]/g, '').replace('٫', '.')); return isFinite(v) ? v : 0; };
+const cleanCode = s => normDigits(s).replace(/\s+/g, '').trim();
+const norm = s => normDigits(s).toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي').replace(/\s+/g, ' ').trim();
+const round2 = n => Math.round((+n || 0) * 100) / 100;
+const fmt = n => round2(n).toLocaleString('en-US');
+const money = n => fmt(n) + ' د.ع';
+const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+const ico = (n, cls = 'i') => `<svg class="${cls}"><use href="#i-${n}"/></svg>`;
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const DAY = 864e5;
+
+/* ================= Data ================= */
+const KEY = 'supermarket-pro:v1';
+const DEFAULT_CATS = ['مواد غذائية', 'مشروبات', 'ألبان وأجبان', 'معلبات', 'منظفات', 'عناية شخصية', 'حلويات ومكسرات', 'خضار وفواكه', 'مجمدات', 'أخرى'];
+
+function normProduct(p) {
+  if (!p || !String(p.name || '').trim()) return null;
+  return {
+    id: String(p.id || uid()),
+    barcode: cleanCode(p.barcode || ''),
+    name: String(p.name).trim(),
+    category: String(p.category || '').trim(),
+    bulk: Math.max(0, +p.bulk || 0),
+    pack: Math.max(1, Math.round(+p.pack || 1)),
+    retail: Math.max(0, +p.retail || 0),
+    qty: Math.max(0, +p.qty || 0),
+    minQty: (p.minQty === undefined || p.minQty === null || p.minQty === '') ? 5 : Math.max(0, +p.minQty || 0),
+    note: String(p.note || ''),
+    createdAt: +p.createdAt || Date.now(),
+    updatedAt: +p.updatedAt || Date.now()
+  };
+}
+function normShortage(s) {
+  if (!s || !String(s.name || '').trim()) return null;
+  return { id: String(s.id || uid()), name: String(s.name).trim(), barcode: cleanCode(s.barcode || ''), qty: normDigits(s.qty == null ? '' : s.qty).trim(), note: String(s.note || ''), productId: s.productId || null, createdAt: +s.createdAt || Date.now() };
+}
+function normalizeDB(d) {
+  d = d || {};
+  return {
+    v: 1,
+    settings: Object.assign({ shopName: 'سوبرماركت', theme: 'auto', sound: true, lastBackup: null }, d.settings || {}),
+    products: Array.isArray(d.products) ? d.products.map(normProduct).filter(Boolean) : [],
+    shortages: Array.isArray(d.shortages) ? d.shortages.map(normShortage).filter(Boolean) : []
+  };
+}
+/* ---------- التخزين: IndexedDB (يتحمل عشرات الآلاف من المواد)، وlocalStorage احتياطي ---------- */
+const IDB_NAME = 'supermarket-pro';
+let db = normalizeDB({});
+let dbVer = 0, structVer = 0, idxVer = -1, lastStamp = 0;
+const stamp = () => (lastStamp = Math.max(Date.now(), lastStamp + 1));
+const Store = { mode: 'ls', idb: null, timer: null, full: false, savedIds: new Set(), savedStamp: new WeakMap(), bc: null, failShown: false };
+const reqP = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+function idbOpen() {
+  return new Promise((res, rej) => {
+    let r;
+    try { r = indexedDB.open(IDB_NAME, 1); } catch (e) { return rej(e); }
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains('products')) d.createObjectStore('products', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta');
+    };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('blocked'));
+  });
+}
+function lsRead() { try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+function markSaved() {
+  Store.savedIds = new Set(); Store.savedStamp = new WeakMap();
+  for (const p of db.products) { Store.savedIds.add(p.id); Store.savedStamp.set(p, p.updatedAt); }
+}
+async function idbReadAll() {
+  const tx = Store.idb.transaction(['products', 'meta'], 'readonly');
+  const [products, settings, shortages, sync] = await Promise.all([
+    reqP(tx.objectStore('products').getAll()), reqP(tx.objectStore('meta').get('settings')), reqP(tx.objectStore('meta').get('shortages')), reqP(tx.objectStore('meta').get('sync'))
+  ]);
+  return { products, settings, shortages, sync };
+}
+async function storeBoot() {
+  try {
+    if (!window.indexedDB) throw new Error('no idb');
+    Store.idb = await idbOpen();
+    Store.mode = 'idb';
+    const data = await idbReadAll(), legacy = lsRead();
+    if (!data.settings && !data.products.length && legacy) {
+      // أول تشغيل بعد التحديث: ننقل البيانات القديمة من localStorage
+      db = normalizeDB(legacy); dbVer++; structVer++;
+      if (await flushNow(true)) { try { localStorage.removeItem(KEY); } catch (e) { } }
+    } else {
+      db = normalizeDB(data); dbVer++; structVer++; markSaved(); syncLoad(data.sync);
+    }
+    Store.idb.onversionchange = () => { try { Store.idb.close(); } catch (e) { } };
+    try { Store.bc = new BroadcastChannel('smpro'); Store.bc.onmessage = onOtherTab; } catch (e) { }
+  } catch (e) {
+    Store.mode = 'ls'; db = normalizeDB(lsRead() || {}); dbVer++; structVer++; markSaved();
+    try { syncLoad(JSON.parse(localStorage.getItem('smpro.sync') || 'null')); } catch (e2) { }
+  }
+}
+let persistAsked = false;
+function save(opts) {
+  if (opts && opts.full) Store.full = true;
+  dbVer++;
+  if (!(opts && opts.qtyOnly)) structVer++;   // تغيير الكمية بس ما يحتاج نعيد بناء فهرس الباركود
+  clearTimeout(Store.timer);
+  Store.timer = setTimeout(() => { Store.timer = null; flushNow(); }, 150);
+  if (!persistAsked) { persistAsked = true; try { navigator.storage && navigator.storage.persist && navigator.storage.persist().catch(() => { }); } catch (e) { } }
+}
+function saveFailed() {
+  if (Store.failShown) return; Store.failShown = true; setTimeout(() => { Store.failShown = false; }, 8000);
+  toast('ما قدرت أحفظ آخر تعديل — احفظ نسخة احتياطية من الإعدادات', { type: 'err', ms: 6000 });
+}
+/* نكتب بس المواد اللي تغيّرت (أو انحذفت)، مو كل القائمة */
+function flushNow(forceFull) {
+  const full = forceFull || Store.full; Store.full = false;
+  const ids = new Set(), changed = [], removed = [];
+  for (const p of db.products) {
+    ids.add(p.id);
+    if (full || !Store.savedIds.has(p.id) || Store.savedStamp.get(p) !== p.updatedAt) { changed.push(p); Store.savedStamp.set(p, p.updatedAt); }
+  }
+  Store.savedIds.forEach(id => { if (!ids.has(id)) removed.push(id); });
+  Store.savedIds = ids;
+  syncNoteFlush(changed, removed);
+  const syncState = syncSnapshot();
+  if (Store.mode !== 'idb') {
+    try { localStorage.setItem(KEY, JSON.stringify(db)); localStorage.setItem('smpro.sync', JSON.stringify(syncState)); }
+    catch (e) { saveFailed(); return Promise.resolve(false); }
+    syncSchedule();
+    return Promise.resolve(true);
+  }
+  return new Promise(resolve => {
+    let done = false;
+    const fail = err => { if (done) return; done = true; Store.full = true; saveFailed(err); resolve(false); };
+    try {
+      const tx = Store.idb.transaction(['products', 'meta'], 'readwrite'), ps = tx.objectStore('products'), ms = tx.objectStore('meta');
+      if (full) ps.clear();
+      for (const p of changed) ps.put(p);
+      if (!full) for (const id of removed) ps.delete(id);
+      ms.put(db.settings, 'settings'); ms.put(db.shortages, 'shortages'); ms.put(syncState, 'sync');
+      tx.oncomplete = () => { if (done) return; done = true; try { Store.bc && Store.bc.postMessage('changed'); } catch (e) { } syncSchedule(); resolve(true); };
+      tx.onerror = () => fail(tx.error); tx.onabort = () => fail(tx.error);
+    } catch (e) { fail(e); }
+  });
+}
+function flushPending() { if (Store.timer) { clearTimeout(Store.timer); Store.timer = null; flushNow(); } }
+async function onOtherTab() {
+  if (Store.timer || stack.length || Store.mode !== 'idb' || syncOn()) return;
+  try { db = normalizeDB(await idbReadAll()); dbVer++; structVer++; markSaved(); applyTheme(); renderCurrent(); } catch (e) { }
+}
+
+/* ---------- فهارس سريعة ---------- */
+const idIdx = new Map(), codeIdx = new Map(), keyCache = new WeakMap();
+function ensureIdx() {
+  if (idxVer === structVer) return;
+  idIdx.clear(); codeIdx.clear();
+  for (const p of db.products) { idIdx.set(p.id, p); if (p.barcode && !codeIdx.has(p.barcode)) codeIdx.set(p.barcode, p); }
+  idxVer = structVer;
+}
+const byId = id => { if (!id) return null; ensureIdx(); return idIdx.get(id) || null; };
+const byCode = code => { if (!code) return null; ensureIdx(); return codeIdx.get(code) || null; };
+function pkey(p) {
+  let k = keyCache.get(p);
+  if (!k || k.n !== p.name || k.c !== p.category) { const nn = norm(p.name); k = { n: p.name, c: p.category, nn, k: nn + ' ' + norm(p.category) }; keyCache.set(p, k); }
+  return k;
+}
+const collator = (() => { try { return new Intl.Collator('ar'); } catch (e) { return { compare: (a, b) => (a < b ? -1 : a > b ? 1 : 0) }; } })();
+const getS = id => db.shortages.find(s => s.id === id) || null;
+const isOut = p => p.minQty > 0 && p.qty <= 0;
+const isLow = p => p.minQty > 0 && p.qty <= p.minQty;
+const unitCost = p => p.pack > 1 ? p.bulk / p.pack : p.bulk;
+const marginPct = p => { const c = unitCost(p); return (c > 0 && p.retail > 0) ? Math.round((p.retail - c) / c * 100) : null; };
+const linkedProduct = s => (s.productId && byId(s.productId)) || (s.barcode && byCode(s.barcode)) || null;
+const inShortage = p => db.shortages.some(s => s.productId === p.id || (p.barcode && s.barcode === p.barcode));
+const suggestQty = p => { const need = Math.ceil(Math.max(p.minQty * 2 - p.qty, 0)); return need > 0 ? String(need) : ''; };
+
+/* ================= UI state ================= */
+const ui = { view: 'home', q: '', filter: 'all', sort: 'recent', limit: 150, backupDismissed: false };
+let editingProductId = null, editingShortageId = null, resolvingId = null, sfAuto = false;
+let lookupRef = { id: null, code: '' };
+let deferredPrompt = null;
+
+/* ================= Toast ================= */
+let toastTimer;
+function toast(msg, o = {}) {
+  const t = $('#toast'), b = t.querySelector('button');
+  t.querySelector('.msg').textContent = msg;
+  if (o.action) { b.hidden = false; b.textContent = o.action.label; b.onclick = () => { hideToast(); o.action.fn(); }; }
+  else { b.hidden = true; b.onclick = null; }
+  t.className = 'toast show' + (o.type ? ' ' + o.type : '') + (stack.length ? ' top' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, o.ms || (o.action ? 5500 : 2600));
+}
+function hideToast() { $('#toast').classList.remove('show'); }
+
+/* ================= Sheets ================= */
+const stack = [];
+let ignorePop = false;
+function openSheet(id) {
+  if (stack.includes(id)) return;
+  const el = document.getElementById(id);
+  stack.push(id);
+  el.style.zIndex = 100 + stack.length;
+  el.classList.add('open');
+  document.body.classList.add('locked');
+  $('#toast').classList.add('top');
+  if (stack.length === 1) { try { history.pushState({ sheet: 1 }, ''); } catch (e) { } }
+}
+function closeSheet(id, fromPop) {
+  const i = stack.indexOf(id);
+  if (i < 0) return;
+  stack.splice(i, 1);
+  document.getElementById(id).classList.remove('open');
+  onSheetClosed(id);
+  if (!stack.length) {
+    document.body.classList.remove('locked');
+    $('#toast').classList.remove('top');
+    if (!fromPop && history.state && history.state.sheet) { ignorePop = true; history.back(); }
+  }
+}
+function topSheet() { return stack[stack.length - 1]; }
+window.addEventListener('popstate', () => {
+  if (ignorePop) { ignorePop = false; return; }
+  if (stack.length) {
+    closeSheet(topSheet(), true);
+    if (stack.length) { try { history.pushState({ sheet: 1 }, ''); } catch (e) { } }
+  }
+});
+function onSheetClosed(id) {
+  if (id === 'sheet-scan') stopCamera();
+  if (id === 'sheet-confirm' && confirmResolve) { const r = confirmResolve; confirmResolve = null; r(false); }
+  if (id === 'sheet-product') editingProductId = null;
+  if (id === 'sheet-shortage') editingShortageId = null;
+}
+let confirmResolve = null;
+function ask({ title, msg = '', ok = 'تأكيد', cancel = 'إلغاء', danger = false }) {
+  $('#cf-title').textContent = title;
+  $('#cf-msg').textContent = msg;
+  const b = $('#cf-ok'); b.textContent = ok; b.className = 'btn ' + (danger ? 'danger-solid' : 'pri');
+  $('#cf-cancel').textContent = cancel;
+  if (confirmResolve) { const r = confirmResolve; confirmResolve = null; r(false); }
+  openSheet('sheet-confirm');
+  return new Promise(r => { confirmResolve = r; });
+}
+function info(title, html) { $('#if-title').textContent = title; $('#if-body').innerHTML = html; openSheet('sheet-info'); }
+
+/* ================= Navigation & render ================= */
+function go(view) {
+  ui.view = view;
+  $$('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + view));
+  $$('.nav [data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === view));
+  renderCurrent();
+  window.scrollTo(0, 0);
+  try { history.replaceState(history.state, '', '#' + view); } catch (e) { }
+}
+function renderCurrent() {
+  ({ home: renderHome, products: renderProducts, shortage: renderShortage, settings: renderSettings })[ui.view]();
+  renderTop();
+  if (stack.includes('sheet-lookup')) renderLookup();
+  if (stack.includes('sheet-product')) pfQuick();
+}
+function renderTop() {
+  renderBell();
+  $('#shop-name').textContent = db.settings.shopName || 'سوبرماركت';
+  document.title = (db.settings.shopName || 'سوبرماركت') + ' · إدارة المحل';
+  try { $('#today').textContent = new Date().toLocaleDateString('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { }
+  const n = db.shortages.length, b = $('#nav-badge');
+  b.hidden = !n; b.textContent = n > 99 ? '99+' : n;
+}
+function emptyBlock(icon, title, text, acts = '', warn = false) {
+  return `<div class="empty"><div class="art${warn ? ' warn' : ''}">${ico(icon)}</div><h3>${title}</h3><p>${text}</p>${acts ? `<div class="acts">${acts}</div>` : ''}</div>`;
+}
+function fmtShort(v) {
+  if (v >= 1e6) return (v / 1e6).toLocaleString('en-US', { maximumFractionDigits: v >= 1e7 ? 0 : 1 }) + ' مليون د.ع';
+  return money(Math.round(v));
+}
+function daysAgoText(ts) {
+  if (!ts) return 'ما محفوظة بعد';
+  const d = Math.floor((Date.now() - ts) / DAY);
+  return d <= 0 ? 'آخر نسخة: اليوم' : d === 1 ? 'آخر نسخة: أمس' : `آخر نسخة: قبل ${d} يوم`;
+}
+
+/* ---------- Home ---------- */
+function installBanner() {
+  if (isStandalone() || kv.get('smpro.installHide') || !(deferredPrompt || isIOS())) return '';
+  return `<div class="banner inst">${ico('phone')}<div class="t"><b>ثبّت التطبيق على موبايلك</b><span>تطلع أيقونة على الشاشة، يفتح مثل التطبيقات ويشتغل بدون نت</span></div><button class="btn sm pri" data-act="install">تثبيت</button><button class="icon-plain" data-act="install-hide" aria-label="إخفاء">${ico('x')}</button></div>`;
+}
+function renderHome() {
+  const P = db.products, S = db.shortages, body = $('#home-body');
+  renderHomeResults();
+  if (!P.length) {
+    body.innerHTML = installBanner() + `<div class="welcome"><h3>أهلاً بيك 👋</h3><p>ابدأ بإضافة مواد محلك، أو جرّب التطبيق ببيانات تجريبية.</p>
+      <div class="tiles">
+        <button class="tile" data-act="new-product">${ico('plus')}أضف مادة</button>
+        <button class="tile" data-act="scan" data-target="lookup">${ico('scan')}امسح باركود</button>
+        <button class="tile" data-act="import-csv">${ico('file')}استيراد من Excel</button>
+        <button class="tile" data-act="demo">${ico('box')}بيانات تجريبية</button>
+      </div></div>`;
+    return;
+  }
+  const low = P.filter(isLow);
+  const value = P.reduce((a, p) => a + p.qty * unitCost(p), 0);
+  let h = installBanner();
+  const lb = db.settings.lastBackup;
+  const since = lb || P.reduce((m, p) => Math.min(m, p.createdAt), Date.now());
+  if (P.length >= 5 && !ui.backupDismissed && Date.now() - since > (lb ? 7 : 2) * DAY) {
+    h += `<div class="banner">${ico('db')}<div class="t"><b>احفظ نسخة احتياطية</b><span>${lb ? daysAgoText(lb) : 'بياناتك محفوظة على هذا الجهاز فقط'}</span></div><button class="btn sm pri" data-act="export-json">حفظ</button><button class="icon-plain" data-act="backup-dismiss" aria-label="إخفاء">${ico('x')}</button></div>`;
+  }
+  h += `<div class="stats">
+    <button class="stat" data-act="go" data-view="products"><b>${fmt(P.length)}</b><span>مادة مسجلة</span></button>
+    <button class="stat ${low.length ? 'warn' : ''}" data-act="filter-low"><b>${fmt(low.length)}</b><span>قليلة أو نافدة</span></button>
+    <button class="stat ${S.length ? 'danger' : ''}" data-act="go" data-view="shortage"><b>${fmt(S.length)}</b><span>بقائمة النقص</span></button>
+    <div class="stat"><b class="sm">${fmtShort(value)}</b><span>قيمة المخزون (جملة)</span></div>
+  </div>`;
+  if (low.length) {
+    const top = low.slice().sort((a, b) => (a.qty - a.minQty) - (b.qty - b.minQty)).slice(0, 6);
+    h += `<div class="sec-h"><h3>قاربت تخلص</h3>${low.length > 6 ? `<button class="link" data-act="filter-low">عرض الكل (${low.length})</button>` : ''}</div><div class="list">${top.map(lowRow).join('')}</div>`;
+  } else {
+    h += `<div class="allgood">${ico('check')}كل المواد متوفرة بكميات كافية</div>`;
+  }
+  body.innerHTML = h;
+}
+function lowRow(p) {
+  const inS = inShortage(p);
+  return `<div class="row-card ${isOut(p) ? 'out' : ''}">
+    <button class="rc-main" data-act="lookup-id" data-id="${esc(p.id)}"><span class="name">${esc(p.name)}</span><span class="meta">${isOut(p) ? '<span class="pill danger">نافدة</span>' : `باقي ${fmt(p.qty)}`} · التنبيه عند ${fmt(p.minQty)}</span></button>
+    ${inS ? `<span class="pill ok">${ico('check', 'i')}بالنقص</span>` : `<button class="btn sm soft" data-act="add-low" data-id="${esc(p.id)}">${ico('plus')}للنقص</button>`}
+  </div>`;
+}
+function searchProducts(q, limit) {
+  const nq = norm(q), code = cleanCode(q);
+  if (!nq) return [];
+  const out = [];
+  const byBarcode = code && /\d{3,}/.test(code);
+  for (const p of db.products) {
+    if (pkey(p).k.includes(nq) || (byBarcode && p.barcode.includes(code))) { out.push(p); if (limit && out.length >= limit) break; }
+  }
+  return out;
+}
+function renderHomeResults() {
+  const q = $('#home-q').value.trim(), el = $('#home-results');
+  if (!q) { el.innerHTML = ''; return; }
+  const r = searchProducts(q, 6);
+  el.innerHTML = r.length
+    ? r.map(p => `<button class="res" data-act="lookup-id" data-id="${esc(p.id)}"><span class="name">${esc(p.name)}</span><b>${money(p.retail)}</b></button>`).join('')
+    : `<p class="muted" style="padding:6px 4px;font-size:14px">ما لقيت مادة بهذا الاسم${/^\d{4,}$/.test(cleanCode(q)) ? ' — اضغط بحث لفحص الباركود' : ''}</p>`;
+}
+function homeSubmit() {
+  const q = $('#home-q').value.trim(); if (!q) return;
+  const code = cleanCode(q);
+  $('#home-q').blur();
+  if (/^[0-9A-Za-z-]{4,}$/.test(code) && /\d{4,}/.test(code)) { showLookup(code); return; }
+  const r = searchProducts(q);
+  if (r.length === 1) { showLookup(r[0]); return; }
+  ui.q = q; ui.filter = 'all'; $('#p-q').value = q; go('products');
+}
+
+/* ---------- Products ---------- */
+let catMemo = { ver: -1, cats: [], lowN: 0 }, plMemo = { key: '', list: [] };
+function catInfo() {
+  if (catMemo.ver !== dbVer) {
+    const set = new Set(); let lowN = 0;
+    for (const p of db.products) { if (p.category) set.add(p.category); if (isLow(p)) lowN++; }
+    catMemo = { ver: dbVer, cats: Array.from(set).sort(collator.compare), lowN };
+  }
+  return catMemo;
+}
+function productList() {
+  const key = [dbVer, ui.q, ui.filter, ui.sort].join('\u0001');
+  if (plMemo.key === key) return plMemo.list;
+  let list = ui.q ? searchProducts(ui.q) : db.products.slice();
+  if (ui.filter === 'low') list = list.filter(isLow);
+  else if (ui.filter !== 'all') list = list.filter(p => p.category === ui.filter);
+  const sorters = {
+    recent: (a, b) => b.updatedAt - a.updatedAt,
+    name: (a, b) => collator.compare(a.name, b.name),
+    qty: (a, b) => (a.qty - a.minQty) - (b.qty - b.minQty),
+    price: (a, b) => b.retail - a.retail
+  };
+  list.sort(sorters[ui.sort] || sorters.recent);
+  plMemo = { key, list };
+  return list;
+}
+function renderProducts() {
+  const P = db.products;
+  const { cats, lowN } = catInfo();
+  if (ui.filter !== 'all' && ui.filter !== 'low' && !cats.includes(ui.filter)) ui.filter = 'all';
+  let chips = `<button class="chip ${ui.filter === 'all' ? 'on' : ''}" data-act="filter" data-f="all">الكل</button>`;
+  if (lowN) chips += `<button class="chip warn-c ${ui.filter === 'low' ? 'on' : ''}" data-act="filter" data-f="low">قليلة (${lowN})</button>`;
+  chips += cats.map(c => `<button class="chip ${ui.filter === c ? 'on' : ''}" data-act="filter" data-f="${esc(c)}">${esc(c)}</button>`).join('');
+  $('#p-chips').innerHTML = chips;
+  $('#p-sort').value = ui.sort;
+
+  const list = productList();
+  $('#p-count').textContent = P.length ? `(${fmt(list.length)})` : '';
+
+  const el = $('#p-list');
+  if (!P.length) {
+    el.innerHTML = emptyBlock('box', 'ما في مواد بعد', 'أضف موادك وحدة وحدة بالباركود، أو استوردها مرة وحدة من ملف Excel.',
+      `<button class="btn pri" data-act="new-product">${ico('plus')}أضف مادة</button><button class="btn" data-act="import-csv">${ico('file')}استيراد من Excel</button>`);
+    return;
+  }
+  if (!list.length) {
+    const code = cleanCode(ui.q);
+    el.innerHTML = emptyBlock('search', 'ما لقيت شي', ui.q ? `ما في نتائج لـ «${esc(ui.q)}»` : 'ما في مواد بهذا التصنيف',
+      /^\d{6,}$/.test(code) ? `<button class="btn pri" data-act="new-product-code" data-code="${esc(code)}">${ico('plus')}أضف مادة بهذا الباركود</button>` : '');
+    return;
+  }
+  const shown = list.slice(0, ui.limit);
+  el.innerHTML = shown.map(productCard).join('') + (list.length > shown.length ? `<button class="btn ghost more" data-act="more">عرض المزيد (${fmt(list.length - shown.length)})</button>` : '');
+}
+function productCard(p) {
+  const st = isOut(p) ? 'out' : isLow(p) ? 'low' : '';
+  const m = marginPct(p);
+  return `<div class="card ${st}" data-id="${esc(p.id)}">
+    <button class="main" data-act="edit-product" data-id="${esc(p.id)}">
+      <span class="name">${esc(p.name)}</span>
+      <span class="meta">${p.barcode ? `<span class="num">${esc(p.barcode)}</span>` : ''}${p.category ? `<span>${p.barcode ? '· ' : ''}${esc(p.category)}</span>` : ''}${st === 'out' ? '<span class="pill danger">نافدة</span>' : st === 'low' ? '<span class="pill warn">قليلة</span>' : ''}</span>
+      <span class="prices">
+        <span class="rp"><small>مفرد</small><b>${fmt(p.retail)}</b><em>د.ع</em></span>
+        <span class="price"><small>جملة${p.pack > 1 ? ` (${p.pack} قطعة)` : ''}${m !== null ? ` · <span class="mg">ربح ${m}%</span>` : ''}</small><b>${money(p.bulk)}</b></span>
+      </span>
+    </button>
+    <div class="stepper">
+      <button data-act="qty" data-id="${esc(p.id)}" data-d="1" aria-label="زيادة الكمية">${ico('plus')}</button>
+      <div class="q">${fmt(p.qty)}<small>الكمية</small></div>
+      <button data-act="qty" data-id="${esc(p.id)}" data-d="-1" aria-label="تقليل الكمية">${ico('minus')}</button>
+    </div>
+  </div>`;
+}
+function changeQty(id, d) {
+  const p = byId(id); if (!p) return;
+  const before = p.qty;
+  p.qty = Math.max(0, round2(p.qty + d)); p.updatedAt = stamp();
+  syncQty(p, p.qty - before);
+  save({ qtyOnly: true });
+  if (ui.view === 'products') {
+    const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+    if (card) card.outerHTML = productCard(p);
+    renderTop();
+    if (stack.includes('sheet-lookup')) renderLookup();
+  } else renderCurrent();
+}
+
+/* ---------- Product form ---------- */
+function fillDatalists() {
+  const cats = Array.from(new Set(DEFAULT_CATS.concat(catInfo().cats)));
+  $('#cat-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+
+}
+function openProductForm(id, preset = {}) {
+  const p = id ? byId(id) : null;
+  editingProductId = p ? p.id : null;
+  $('#pf-title').textContent = p ? 'تعديل مادة' : 'مادة جديدة';
+  $('#pf-code').value = p ? p.barcode : (preset.barcode || '');
+  $('#pf-name').value = p ? p.name : (preset.name || '');
+  $('#pf-cat').value = p ? p.category : (preset.category || '');
+  $('#pf-bulk').value = p && p.bulk ? p.bulk : '';
+  $('#pf-pack').value = p && p.pack > 1 ? p.pack : '';
+  $('#pf-retail').value = p && p.retail ? p.retail : '';
+  $('#pf-qty').value = p ? p.qty : '';
+  $('#pf-min').value = p ? p.minQty : '';
+  $('#pf-note').value = p ? p.note : '';
+  $('#pf-del').hidden = !p;
+  pfQuick();
+  fillDatalists(); pfDupCheck(); pfMargin();
+  openSheet('sheet-product');
+  $('#sheet-product .sheet').scrollTop = 0;
+}
+function pfQuick() {
+  const el = $('#pf-quick'), p = editingProductId && byId(editingProductId);
+  el.hidden = !p;
+  if (!p) { el.innerHTML = ''; return; }
+  const s = db.shortages.find(x => x.productId === p.id || (p.barcode && x.barcode === p.barcode));
+  el.innerHTML = s
+    ? `<button type="button" class="btn sm ok-soft" data-act="pf-edit-short" data-id="${esc(s.id)}">${ico('check')}بقائمة النقص${s.qty ? ` (${esc(s.qty)})` : ''} — تعديل</button>`
+    : `<button type="button" class="btn sm warn-soft" data-act="pf-add-short">${ico('list')}أضفها لقائمة النقص</button>`;
+}
+function linkShortagesTo(p) {
+  let n = 0;
+  db.shortages.forEach(s => {
+    if (s.productId === p.id) return;
+    if ((p.barcode && s.barcode === p.barcode) || (!s.productId && norm(s.name) === norm(p.name))) { s.productId = p.id; if (!s.barcode && p.barcode) s.barcode = p.barcode; n++; }
+  });
+  return n;
+}
+function pfDupCheck() {
+  const code = cleanCode($('#pf-code').value), d = code && byCode(code), el = $('#pf-dup');
+  if (d && d.id !== editingProductId) { el.hidden = false; el.innerHTML = `هذا الباركود مسجل لـ «${esc(d.name)}» — <button type="button" class="link" data-act="open-dup" data-id="${esc(d.id)}">افتحها</button>`; }
+  else el.hidden = true;
+}
+function pfMargin() {
+  const bulk = toNum($('#pf-bulk').value), pack = Math.max(1, Math.round(toNum($('#pf-pack').value)) || 1), retail = toNum($('#pf-retail').value), el = $('#pf-margin');
+  if (bulk > 0 && retail > 0) {
+    const c = bulk / pack, prof = retail - c, pct = Math.round(prof / c * 100);
+    el.hidden = false; el.className = 'note ' + (prof < 0 ? 'warn' : 'info');
+    el.innerHTML = prof < 0 ? `⚠️ سعر المفرد أقل من كلفة القطعة (${money(c)})` : `كلفة القطعة ${money(c)} · ربح القطعة <b>${money(prof)}</b> (${pct}%)`;
+    if (prof < 0) el.style.margin = '-4px 0 14px'; else el.style.margin = '';
+  } else el.hidden = true;
+}
+function saveProduct() {
+  const name = $('#pf-name').value.trim();
+  if (!name) { toast('اكتب اسم المادة', { type: 'err' }); $('#pf-name').focus(); return; }
+  const barcode = cleanCode($('#pf-code').value);
+  if (barcode) { const d = byCode(barcode); if (d && d.id !== editingProductId) { toast(`الباركود مسجل لـ «${d.name}»`, { type: 'err' }); return; } }
+  const minRaw = $('#pf-min').value.trim();
+  const data = {
+    barcode, name, category: $('#pf-cat').value.trim(),
+    bulk: Math.max(0, toNum($('#pf-bulk').value)), pack: Math.max(1, Math.round(toNum($('#pf-pack').value)) || 1),
+    retail: Math.max(0, toNum($('#pf-retail').value)), qty: Math.max(0, toNum($('#pf-qty').value)),
+    minQty: minRaw === '' ? 5 : Math.max(0, toNum(minRaw)), note: $('#pf-note').value.trim(), updatedAt: stamp()
+  };
+  const editing = !!editingProductId;
+  let prod;
+  if (editing) prod = Object.assign(byId(editingProductId), data);
+  else { prod = Object.assign({ id: uid(), createdAt: Date.now() }, data); db.products.unshift(prod); }
+  const linked = linkShortagesTo(prod);
+  save(); closeSheet('sheet-product'); renderCurrent();
+  toast((editing ? 'تم حفظ التعديلات ✓' : 'تمت إضافة المادة ✓') + (linked && !editing ? ' — وانربطت بقائمة النقص' : ''));
+}
+async function deleteProduct() {
+  const p = byId(editingProductId); if (!p) return;
+  const ok = await ask({ title: 'حذف المادة؟', msg: `راح تنحذف «${p.name}» من قائمة المواد.`, ok: 'حذف', danger: true });
+  if (!ok) return;
+  const idx = db.products.indexOf(p);
+  db.products.splice(idx, 1); save();
+  closeSheet('sheet-product'); renderCurrent();
+  toast('تم حذف المادة', { action: { label: 'تراجع', fn: () => { db.products.splice(idx, 0, p); save(); renderCurrent(); } } });
+}
+
+/* ---------- Shortage ---------- */
+function renderShortage() {
+  const S = db.shortages, sug = db.products.filter(p => isLow(p) && !inShortage(p));
+  $('#s-count').textContent = S.length ? `(${S.length})` : '';
+  let h = '';
+  if (sug.length) {
+    h += `<div class="suggest"><h4>${ico('alert')}${sug.length === 1 ? 'مادة وحدة قاربت تخلص' : `${sug.length} مواد قاربت تخلص`} وما بالقائمة</h4>
+      <div class="tags">${sug.slice(0, 8).map(p => `<button class="tag" data-act="add-low" data-id="${esc(p.id)}">+ ${esc(p.name)}</button>`).join('')}${sug.length > 8 ? `<span class="tag muted">+${sug.length - 8} غيرها</span>` : ''}</div>
+      <button class="btn sm pri" data-act="add-all-low">${ico('plus')}أضف الكل للقائمة</button></div>`;
+  }
+  if (S.length) {
+    h += `<div class="share-row">
+      <button class="btn sm wa" data-act="share-wa">${ico('chat')}واتساب</button>
+      <button class="btn sm" data-act="share">${ico('share')}مشاركة</button>
+      <button class="btn sm" data-act="copy">${ico('copy')}نسخ</button>
+      <button class="btn sm" data-act="print">${ico('print')}طباعة</button>
+    </div>
+    <div class="list">${S.map(shortRow).join('')}</div>
+    <p class="hint-c">اضغط ✓ لما توصل البضاعة — الكمية تنضاف للمخزون تلقائياً</p>`;
+  } else {
+    h += emptyBlock('list', 'قائمة النقص فارغة', 'لما تخلص مادة أو تقل، أضفها هنا وابعث القائمة للمورد بالواتساب بضغطة وحدة.',
+      `<button class="btn pri" data-act="new-shortage">${ico('plus')}إضافة نقص</button><button class="btn" data-act="scan" data-target="shortage">${ico('scan')}بالباركود</button>`);
+  }
+  $('#s-body').innerHTML = h;
+}
+function shortRow(s) {
+  const p = linkedProduct(s);
+  const meta = [s.barcode ? `<span class="num">${esc(s.barcode)}</span>` : '', p ? `الموجود ${fmt(p.qty)}` : '', s.note ? esc(s.note) : ''].filter(Boolean).join(' · ');
+  return `<div class="sh-item">
+    <button class="sh-check" data-act="resolve" data-id="${esc(s.id)}" aria-label="وصلت">${ico('check')}</button>
+    <div class="sh-body">
+      <button class="sh-main" data-act="edit-shortage" data-id="${esc(s.id)}"><span class="name">${esc(s.name)}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</button>
+      ${p ? '' : `<button class="sh-add" data-act="short-to-product" data-id="${esc(s.id)}">${ico('plus')}أضفها للمواد</button>`}
+    </div>
+    ${s.qty ? `<span class="sh-qty">${esc(s.qty)}</span>` : ''}
+  </div>`;
+}
+function quickShortage(p) {
+  if (inShortage(p)) return false;
+  db.shortages.unshift({ id: uid(), name: p.name, barcode: p.barcode, productId: p.id, qty: suggestQty(p), note: '', createdAt: Date.now() });
+  return true;
+}
+function openShortageForm(id, preset = {}) {
+  const s = id ? getS(id) : null;
+  editingShortageId = s ? s.id : null;
+  $('#sf-title').textContent = s ? 'تعديل نقص' : 'إضافة نقص';
+  $('#sf-code').value = s ? s.barcode : (preset.barcode || '');
+  $('#sf-name').value = s ? s.name : (preset.name || '');
+  $('#sf-qty').value = s ? s.qty : (preset.qty || '');
+  $('#sf-note').value = s ? s.note : '';
+  $('#sf-del').hidden = !s;
+  $('#sf-to-product').hidden = !(s && !linkedProduct(s));
+  $('#sf-sugg').hidden = true; $('#sf-sugg').innerHTML = '';
+  sfAuto = false; fillDatalists(); shortageLookup();
+  openSheet('sheet-shortage');
+}
+function shortageLookup() {
+  const code = cleanCode($('#sf-code').value), el = $('#sf-info'), p = code && byCode(code);
+  if (p) {
+    el.hidden = false; el.className = 'note ok'; el.textContent = `✓ ${p.name} — الموجود حالياً ${fmt(p.qty)}`;
+    const n = $('#sf-name');
+    if (!n.value.trim() || sfAuto) { n.value = p.name; sfAuto = true; }
+    if (!$('#sf-qty').value && !editingShortageId) $('#sf-qty').value = suggestQty(p);
+  } else if (code.length >= 6) {
+    el.hidden = false; el.className = 'note warn'; el.textContent = 'هذا الباركود غير مسجل بالمواد — اكتب اسم المادة يدوياً';
+  } else el.hidden = true;
+}
+function sfSuggest() {
+  const el = $('#sf-sugg'), q = $('#sf-name').value.trim();
+  const hide = () => { el.hidden = true; el.innerHTML = ''; };
+  if (!q) return hide();
+  const r = searchProducts(q, 6);
+  if (!r.length || (r.length === 1 && r[0].name === q)) return hide();
+  el.innerHTML = '<div class="sugg-h">من موادك — اضغط وحدة حتى تختارها</div>' + r.map(p => {
+    const inS = inShortage(p);
+    const tag = inS ? '<span class="pill ok">بالنقص</span>' : isOut(p) ? '<span class="pill danger">نافدة</span>' : isLow(p) ? '<span class="pill warn">قليلة</span>' : '';
+    return `<button type="button" data-act="sf-pick" data-id="${esc(p.id)}"><span class="sg"><span class="name">${esc(p.name)}</span><span class="meta">${p.barcode ? `<span class="num">${esc(p.barcode)}</span> · ` : ''}الموجود ${fmt(p.qty)}</span></span>${tag}</button>`;
+  }).join('');
+  el.hidden = false;
+}
+function sfPick(id) {
+  const p = byId(id); if (!p) return;
+  const ex = db.shortages.find(s => s.id !== editingShortageId && (s.productId === p.id || (p.barcode && s.barcode === p.barcode)));
+  if (ex) { openShortageForm(ex.id); toast('هذي المادة موجودة بالقائمة — تقدر تعدّل الكمية'); return; }
+  $('#sf-name').value = p.name; $('#sf-code').value = p.barcode || ''; sfAuto = true;
+  if (!$('#sf-qty').value) $('#sf-qty').value = suggestQty(p);
+  $('#sf-sugg').hidden = true;
+  shortageLookup();
+  if (!p.barcode) { const el = $('#sf-info'); el.hidden = false; el.className = 'note ok'; el.textContent = `✓ ${p.name} — الموجود حالياً ${fmt(p.qty)}`; }
+  $('#sf-qty').focus(); $('#sf-qty').select();
+}
+function saveShortage() {
+  const name = $('#sf-name').value.trim();
+  if (!name) { toast('اكتب اسم المادة', { type: 'err' }); $('#sf-name').focus(); return; }
+  const code = cleanCode($('#sf-code').value);
+  const nn = norm(name), p = (code && byCode(code)) || db.products.find(x => pkey(x).nn === nn) || null;
+  const data = { name, barcode: code || (p ? p.barcode : ''), qty: normDigits($('#sf-qty').value).trim(), note: $('#sf-note').value.trim(), productId: p ? p.id : null };
+  let msg;
+  if (editingShortageId) { Object.assign(getS(editingShortageId), data); msg = 'تم الحفظ ✓'; }
+  else {
+    const ex = db.shortages.find(s => (p && s.productId === p.id) || (data.barcode && s.barcode === data.barcode) || norm(s.name) === norm(name));
+    if (ex) { Object.assign(ex, data); msg = 'المادة موجودة بالقائمة — حدّثنا الكمية'; }
+    else { db.shortages.unshift(Object.assign({ id: uid(), createdAt: Date.now() }, data)); msg = 'أضيفت لقائمة النقص ✓'; }
+  }
+  save(); closeSheet('sheet-shortage'); renderCurrent(); toast(msg);
+}
+function removeShortage(id, msg) {
+  const idx = db.shortages.findIndex(s => s.id === id); if (idx < 0) return;
+  const s = db.shortages.splice(idx, 1)[0];
+  save(); renderCurrent();
+  toast(msg || 'تم الحذف', { action: { label: 'تراجع', fn: () => { db.shortages.splice(idx, 0, s); save(); renderCurrent(); } } });
+}
+function resolveShortage(id) {
+  const s = getS(id); if (!s) return;
+  const p = linkedProduct(s);
+  if (!p) { removeShortage(id, `✓ وصلت «${s.name}» وانشالت من القائمة`); return; }
+  resolvingId = id;
+  $('#rs-name').textContent = s.name;
+  $('#rs-stock').textContent = `الموجود حالياً: ${fmt(p.qty)}`;
+  $('#rs-qty').value = /^\s*\d+(\.\d+)?\s*$/.test(s.qty || '') ? s.qty.trim() : '';
+  openSheet('sheet-resolve');
+}
+function resolveAdd() {
+  const s = getS(resolvingId); if (!s) return closeSheet('sheet-resolve');
+  const p = linkedProduct(s), n = toNum($('#rs-qty').value);
+  if (!(n > 0)) { toast('اكتب الكمية اللي وصلت', { type: 'err' }); $('#rs-qty').focus(); return; }
+  const idx = db.shortages.indexOf(s), before = p.qty;
+  p.qty = round2(p.qty + n); p.updatedAt = stamp(); syncQty(p, n);
+  db.shortages.splice(idx, 1); save();
+  closeSheet('sheet-resolve'); renderCurrent();
+  toast(`انضافت ${fmt(n)} لـ «${p.name}» ✓`, { action: { label: 'تراجع', fn: () => { const back = before - p.qty; p.qty = before; p.updatedAt = stamp(); syncQty(p, back); db.shortages.splice(idx, 0, s); save(); renderCurrent(); } } });
+}
+function shortageText() {
+  let d = '';
+  try { d = new Date().toLocaleDateString('ar-IQ-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { d = new Date().toLocaleDateString(); }
+  const lines = db.shortages.map((s, i) => `${i + 1}. ${s.name}${s.qty ? ` — ${s.qty}` : ''}${s.note ? ` (${s.note})` : ''}`);
+  return `🛒 قائمة النقص — ${db.settings.shopName}\n📅 ${d}\n\n${lines.join('\n')}\n\nالمجموع: ${db.shortages.length} مادة`;
+}
+function copyText(text) {
+  const done = () => toast('انتسخت القائمة ✓');
+  const fallback = () => { const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('ما قدرت أنسخ', { type: 'err' }); } t.remove(); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+}
+function printShortage() {
+  let d = ''; try { d = new Date().toLocaleDateString('ar-IQ-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { }
+  $('#print-area').innerHTML = `<h1>قائمة النقص — ${esc(db.settings.shopName)}</h1><p>${esc(d)} · ${db.shortages.length} مادة</p>
+    <table><thead><tr><th>#</th><th>المادة</th><th>الكمية</th><th>الباركود</th><th>ملاحظة</th><th>✓</th></tr></thead><tbody>
+    ${db.shortages.map((s, i) => `<tr><td>${i + 1}</td><td>${esc(s.name)}</td><td>${esc(s.qty)}</td><td class="num">${esc(s.barcode)}</td><td>${esc(s.note)}</td><td></td></tr>`).join('')}
+    </tbody></table>`;
+  window.print();
+}
+
+/* ---------- Lookup ---------- */
+function showLookup(arg) {
+  if (arg && typeof arg === 'object') lookupRef = { id: arg.id, code: arg.barcode };
+  else lookupRef = { id: null, code: String(arg) };
+  renderLookup();
+  openSheet('sheet-lookup');
+}
+function renderLookup() {
+  const el = $('#lk-body');
+  const p = (lookupRef.id && byId(lookupRef.id)) || byCode(lookupRef.code);
+  if (p) {
+    lookupRef.id = p.id;
+    const st = isOut(p) ? 'out' : isLow(p) ? 'low' : 'ok', m = marginPct(p), inS = inShortage(p);
+    el.innerHTML = `
+      <div class="lk-name">${esc(p.name)}</div>
+      <div class="meta">${p.barcode ? `<span class="num">${esc(p.barcode)}</span>` : ''}${p.category ? `<span>${p.barcode ? '· ' : ''}${esc(p.category)}</span>` : ''}</div>
+      <div class="lk-prices">
+        <div class="lk-price r"><small>سعر المفرد</small><b>${fmt(p.retail)}</b><small>دينار</small></div>
+        <div class="lk-price"><small>سعر الجملة${p.pack > 1 ? ` · ${p.pack} قطعة` : ''}</small><b>${fmt(p.bulk)}</b><small>${p.pack > 1 ? `القطعة ${fmt(unitCost(p))}` : 'دينار'}${m !== null ? ` · ربح ${m}%` : ''}</small></div>
+      </div>
+      <div class="lk-stock">
+        <div><small>الكمية الموجودة</small><b>${fmt(p.qty)}</b><span class="pill ${st === 'ok' ? 'ok' : st === 'low' ? 'warn' : 'danger'}">${st === 'ok' ? 'متوفرة' : st === 'low' ? 'قليلة' : 'نافدة'}</span></div>
+        <div class="stepper h">
+          <button data-act="qty" data-id="${esc(p.id)}" data-d="-1" aria-label="تقليل">${ico('minus')}</button>
+          <button data-act="qty" data-id="${esc(p.id)}" data-d="1" aria-label="زيادة">${ico('plus')}</button>
+        </div>
+      </div>
+      ${p.note ? `<div class="lk-note">${esc(p.note)}</div>` : ''}
+      <div class="lk-actions">
+        <button class="btn" data-act="lk-edit">${ico('edit')}تعديل</button>
+        <button class="btn ${inS ? '' : 'soft'}" data-act="lk-short" ${inS ? 'disabled' : ''}>${ico(inS ? 'check' : 'list')}${inS ? 'بالنقص' : 'للنقص'}</button>
+        <button class="btn pri" data-act="lk-rescan">${ico('scan')}مسح</button>
+      </div>`;
+  } else {
+    lookupRef.id = null;
+    el.innerHTML = `<div class="lk-miss"><div class="art warn">${ico('alert')}</div><h4>هذا الباركود غير مسجل</h4><p class="num big">${esc(lookupRef.code)}</p></div>
+      <div class="lk-actions col">
+        <button class="btn pri block" data-act="lk-add">${ico('plus')}أضفه كمادة جديدة</button>
+        <button class="btn block" data-act="lk-short-new">${ico('list')}أضفه لقائمة النقص</button>
+        <button class="btn block ghost" data-act="lk-rescan">${ico('scan')}مسح باركود ثاني</button>
+      </div>`;
+  }
+}
+
+/* ---------- Settings ---------- */
+function renderSettings() {
+  renderSync(); renderDevices(); renderNotePrefs();
+  const n = $('#set-name'); if (document.activeElement !== n) n.value = db.settings.shopName || '';
+  $$('#set-theme button').forEach(b => b.classList.toggle('on', b.dataset.v === db.settings.theme));
+  $('#set-sound').checked = !!db.settings.sound;
+  $('#last-backup').textContent = daysAgoText(db.settings.lastBackup);
+  $('#apk-link').hidden = !/Android/i.test(navigator.userAgent) || isStandalone();
+  $('#install-state').textContent = isStandalone() ? 'التطبيق مثبت ✓' : deferredPrompt ? 'اضغط هنا للتثبيت' : isIOS() ? 'من سفاري: زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»' : 'من قائمة المتصفح ⋮ ثم «تثبيت التطبيق»';
+  $('#storage-info').textContent = `${fmt(db.products.length)} مادة · ${fmt(db.shortages.length)} نقص · ${Store.mode === 'idb' ? 'قاعدة بيانات الجهاز (تتحمل عشرات الآلاف)' : 'ذاكرة المتصفح'}`;
+}
+function applyTheme() {
+  const t = db.settings.theme, r = document.documentElement;
+  if (t === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t);
+  const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  $('#meta-theme').setAttribute('content', dark ? '#0F1412' : '#F4F2EC');
+}
+
+/* ---------- Files: backup / CSV ---------- */
+function download(name, content, type) {
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
+  if (isIOS() && navigator.canShare && navigator.share) {
+    try {
+      const file = new File([blob], name, { type: blob.type || type });
+      if (navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: name }).catch(() => { }); return; }
+    } catch (e) { }
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; a.rel = 'noopener'; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 3000);
+}
+const dateTag = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+function exportJSON() {
+  db.settings.lastBackup = Date.now();
+  const data = Object.assign({ app: 'supermarket-pro', exportedAt: new Date().toISOString() }, db);
+  download(`supermarket-backup-${dateTag()}.json`, JSON.stringify(data, null, 1), 'application/json');
+  save(); renderCurrent(); toast('تم حفظ النسخة الاحتياطية ✓ — احتفظ بالملف بمكان آمن', { ms: 4000 });
+}
+async function importJSONFile(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (e) { toast('الملف مو نسخة احتياطية صالحة', { type: 'err' }); return; }
+  if (!data || !Array.isArray(data.products)) { toast('الملف مو نسخة احتياطية من هذا التطبيق', { type: 'err' }); return; }
+  const next = normalizeDB(data);
+  const ok = await ask({ title: 'استرجاع النسخة؟', msg: `راح تتبدل البيانات الحالية (${db.products.length} مادة) بالنسخة (${next.products.length} مادة، ${next.shortages.length} نقص).` + (syncOn() ? '\nوبما إن الجهاز متصل بالمحل المشترك، النسخة تنطبق على كل الأجهزة.' : ''), ok: 'استرجاع' });
+  if (!ok) return;
+  next.settings.lastBackup = Date.now();
+  db = next; save({ full: true }); applyTheme(); renderCurrent(); toast('تم استرجاع البيانات ✓');
+}
+const CSV_HEAD = ['الباركود', 'اسم المادة', 'الفئة', 'سعر الجملة', 'عدد القطع بالجملة', 'سعر المفرد', 'الكمية', 'حد التنبيه', 'ملاحظات'];
+const csvCell = v => { const s = String(v == null ? '' : v); return /[",\n\r;\t]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+function exportCSV() {
+  if (!db.products.length) { toast('ما في مواد للتصدير'); return; }
+  const rows = [CSV_HEAD].concat(db.products.map(p => [p.barcode ? `="${p.barcode}"` : '', p.name, p.category, p.bulk, p.pack, p.retail, p.qty, p.minQty, p.note]));
+  download(`supermarket-products-${dateTag()}.csv`, '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n'), 'text/csv;charset=utf-8');
+  toast('تم تصدير المواد ✓');
+}
+function csvTemplate() {
+  const rows = [CSV_HEAD, ['="6260000000017"', 'رز بسمتي 5 كغم', 'مواد غذائية', 66000, 4, 18500, 20, 6, 'المورد: ...']];
+  download('supermarket-template.csv', '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n'), 'text/csv;charset=utf-8');
+}
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const first = text.split(/\r?\n/, 1)[0] || '';
+  const delim = [',', ';', '\t'].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(c => String(c).trim() !== ''));
+}
+const CSV_KEYS = [
+  ['barcode', ['الباركود', 'باركود', 'barcode', 'code', 'الكود', 'رمز']],
+  ['name', ['اسم المادة', 'الاسم', 'المادة', 'اسم', 'name', 'product', 'المنتج', 'اسم المنتج']],
+  ['pack', ['عدد القطع بالجملة', 'عدد القطع', 'القطع', 'pack', 'قطع']],
+  ['bulk', ['سعر الجملة', 'الجملة', 'جملة', 'wholesale', 'bulk', 'سعر الشراء']],
+  ['retail', ['سعر المفرد', 'المفرد', 'مفرد', 'retail', 'price', 'السعر', 'سعر البيع']],
+  ['qty', ['الكمية', 'كمية', 'qty', 'quantity', 'العدد', 'المخزون']],
+  ['minQty', ['حد التنبيه', 'الحد الادنى', 'حد', 'min', 'تنبيه']],
+  ['category', ['الفئة', 'الصنف', 'القسم', 'category', 'فئة']],
+  ['note', ['ملاحظات', 'ملاحظة', 'المورد', 'note', 'notes']]
+];
+const DEFAULT_ORDER = ['barcode', 'name', 'category', 'bulk', 'pack', 'retail', 'qty', 'minQty', 'note'];
+function mapHeader(row) {
+  const map = {}, used = new Set();
+  const cells = row.map(c => norm(c));
+  for (const pass of ['exact', 'incl']) {
+    cells.forEach((c, idx) => {
+      if (!c || Object.values(map).includes(idx)) return;
+      for (const [key, aliases] of CSV_KEYS) {
+        if (used.has(key)) continue;
+        const hit = aliases.some(a => { const na = norm(a); return pass === 'exact' ? c === na : (c.includes(na) || (na.length > 3 && na.includes(c))); });
+        if (hit) { map[key] = idx; used.add(key); break; }
+      }
+    });
+  }
+  return map;
+}
+async function readTextSmart(file) {
+  const buf = await file.arrayBuffer();
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch (e) { try { return new TextDecoder('windows-1256').decode(buf); } catch (e2) { return new TextDecoder().decode(buf); } }
+}
+async function importCSVFile(file) {
+  const rows = parseCSV(await readTextSmart(file));
+  if (!rows.length) { toast('الملف فارغ', { type: 'err' }); return; }
+  let map = mapHeader(rows[0]), data = rows.slice(1);
+  if (map.name === undefined) { map = {}; DEFAULT_ORDER.forEach((k, i) => map[k] = i); data = rows; }
+  const get = (r, k) => map[k] === undefined ? '' : String(r[map[k]] == null ? '' : r[map[k]]).trim();
+  if (data.length > 300) { toast(`جاري استيراد ${fmt(data.length)} سطر…`, { ms: 8000 }); await new Promise(r => setTimeout(r, 60)); }
+  ensureIdx();
+  const codeMap = new Map(codeIdx), nameMap = new Map();
+  for (const p of db.products) { const nn = pkey(p).nn; if (!nameMap.has(nn)) nameMap.set(nn, p); }
+  const newOnes = [];
+  let added = 0, updated = 0, broken = 0;
+  for (const r of data) {
+    const name = get(r, 'name'); if (!name) continue;
+    let code = get(r, 'barcode').replace(/^="?/, '').replace(/"$/, '');
+    if (/^\d+(\.\d+)?e\+?\d+$/i.test(code)) { broken++; code = ''; }
+    code = cleanCode(code);
+    const fields = { name };
+    if (map.category !== undefined && get(r, 'category')) fields.category = get(r, 'category');
+    ['bulk', 'pack', 'retail', 'qty', 'minQty'].forEach(k => { const v = get(r, k); if (v !== '') fields[k] = toNum(v); });
+    if (map.note !== undefined && get(r, 'note')) fields.note = get(r, 'note');
+    if (code) fields.barcode = code;
+    const nn = norm(name);
+    const ex = code ? codeMap.get(code) : nameMap.get(nn);
+    if (ex) { Object.assign(ex, normProduct(Object.assign({}, ex, fields)), { id: ex.id, updatedAt: stamp() }); updated++; }
+    else {
+      // بدون عمود كمية/تنبيه = المادة بدون تنبيه نقص (مفيد لما تستورد قائمة أسعار بس)
+      if (fields.minQty === undefined) fields.minQty = map.qty !== undefined ? 5 : 0;
+      const np = normProduct(Object.assign({ barcode: code, updatedAt: stamp() }, fields));
+      if (np) { newOnes.push(np); if (code) codeMap.set(code, np); if (!nameMap.has(nn)) nameMap.set(nn, np); added++; }
+    }
+  }
+  if (newOnes.length) db.products = newOnes.concat(db.products);
+  save(); renderCurrent();
+  if (!added && !updated) { toast('ما لقيت مواد بالملف — تأكد إن عمود «اسم المادة» موجود', { type: 'err', ms: 5000 }); return; }
+  let msg = `تمت إضافة ${added} وتحديث ${updated} مادة ✓`;
+  if (broken) msg += ` · ${broken} باركود تالف من Excel`;
+  toast(msg, { ms: 5000 });
+}
+
+/* ---------- Demo data ---------- */
+function ean13(base12) { let s = 0; for (let i = 0; i < 12; i++) s += (+base12[i]) * (i % 2 ? 3 : 1); return base12 + ((10 - s % 10) % 10); }
+function loadDemo() {
+  const rows = [
+    ['رز بسمتي 5 كغم', 'مواد غذائية', 66000, 4, 18500, 20, 6],
+    ['زيت دوار الشمس 1.8 لتر', 'مواد غذائية', 45000, 6, 8500, 4, 6],
+    ['سكر أبيض 1 كغم', 'مواد غذائية', 18000, 10, 2250, 35, 10],
+    ['شاي أسود 500 غم', 'مشروبات', 60000, 12, 6000, 15, 5],
+    ['ماء معدني 500 مل', 'مشروبات', 3000, 12, 500, 96, 24],
+    ['حليب طويل الأمد 1 لتر', 'ألبان وأجبان', 24000, 12, 2500, 0, 12],
+    ['لبن 1 كغم', 'ألبان وأجبان', 9000, 6, 2000, 9, 6],
+    ['معجون طماطم 400 غم', 'معلبات', 28800, 24, 1500, 30, 12],
+    ['مسحوق غسيل 3 كغم', 'منظفات', 40000, 4, 12000, 3, 4],
+    ['صابون يد 120 غم', 'عناية شخصية', 14400, 24, 1000, 40, 12],
+    ['بسكويت بالشوكولاتة', 'حلويات ومكسرات', 9000, 24, 500, 50, 24],
+    ['معكرونة 500 غم', 'مواد غذائية', 16000, 20, 1000, 18, 20]
+  ];
+  let n = 0;
+  rows.forEach((r, i) => {
+    const code = ean13('20000000' + String(1001 + i).padStart(4, '0'));
+    if (byCode(code)) return;
+    db.products.push(normProduct({ barcode: code, name: r[0], category: r[1], bulk: r[2], pack: r[3], retail: r[4], qty: r[5], minQty: r[6], createdAt: Date.now() - i * 6e4, updatedAt: Date.now() - i * 6e4 }));
+    n++;
+  });
+  const oil = db.products.find(p => p.name.startsWith('زيت'));
+  if (oil && !inShortage(oil)) db.shortages.push(normShortage({ name: oil.name, barcode: oil.barcode, productId: oil.id, qty: '12', note: 'كارتونتين' }));
+  save(); renderCurrent();
+  toast(n ? `تمت إضافة ${n} مادة تجريبية ✓` : 'البيانات التجريبية موجودة من قبل');
+}
+
+/* ================= Barcode scanner =================
+   المحرك 1: قارئ الباركود المدمج بالمتصفح (أندرويد/كروم)
+   المحرك 2: ZXing (آيفون وباقي الأجهزة)
+   احتياطي: html5-qrcode
+   نقرأ فقط المنطقة داخل المربع وبدقة الكاميرا الكاملة، كل فريم، حتى تكون القراءة سريعة */
+const SHOP_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'];
+const ZX_URLS = ['https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js', 'https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js'];
+const LIB_URLS = ['https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js', 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'];
+const MAX_W = 960;
+const VIDEO_BASE = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+const Scan = { target: 'lookup', session: 0, stream: null, track: null, lib: null, torch: false, zoom: 1, zoomCaps: null, lastCode: '', lastAt: 0, forceLib: false, engine: '' };
+let nativeCache = null, libPromise = null, zxPromise = null;
+const kv = {
+  get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } }
+};
+
+async function nativeOK() {
+  if (nativeCache !== null) return nativeCache;
+  nativeCache = false;
+  if ('BarcodeDetector' in window) {
+    try { const f = await window.BarcodeDetector.getSupportedFormats(); nativeCache = f.some(x => ['ean_13', 'ean_8', 'upc_a', 'code_128'].includes(x)); } catch (e) { }
+  }
+  return nativeCache;
+}
+const libGlobals = () => { const L = window.__Html5QrcodeLibrary__ || {}; return { H: window.Html5Qrcode || L.Html5Qrcode, F: window.Html5QrcodeSupportedFormats || L.Html5QrcodeSupportedFormats }; };
+const zxReady = () => { const Z = window.ZXing; return !!(Z && Z.MultiFormatReader && Z.BinaryBitmap && Z.HybridBinarizer && Z.HTMLCanvasElementLuminanceSource && Z.DecodeHintType && Z.BarcodeFormat); };
+function loadScript(src, ok) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src; s.async = true;
+    const t = setTimeout(() => { s.remove(); rej(new Error('timeout')); }, 15000);
+    s.onload = () => { clearTimeout(t); ok() ? res() : rej(new Error('noglobal')); };
+    s.onerror = () => { clearTimeout(t); s.remove(); rej(new Error('load')); };
+    document.head.appendChild(s);
+  });
+}
+const loadFrom = (urls, ok) => urls.reduce((p, u) => p.catch(() => loadScript(u, ok)), Promise.reject(new Error('start')));
+function loadLib() {
+  if (libGlobals().H) return Promise.resolve();
+  if (!libPromise) libPromise = loadFrom(LIB_URLS, () => !!libGlobals().H).catch(() => { libPromise = null; const e = new Error('lib'); e.name = 'LibError'; throw e; });
+  return libPromise;
+}
+function loadZX() {
+  if (zxReady()) return Promise.resolve();
+  if (!zxPromise) zxPromise = loadFrom(ZX_URLS, zxReady).catch(e => { zxPromise = null; throw e; });
+  return zxPromise;
+}
+function camMsg(text, kind) { const el = $('#cam-msg'); el.textContent = text || ''; el.className = 'cam-msg' + (kind ? ' ' + kind : ''); el.hidden = !text; }
+
+/* ---- decoding engines ---- */
+async function makeNativeEngine() {
+  const sup = await window.BarcodeDetector.getSupportedFormats();
+  const det = new window.BarcodeDetector({ formats: sup.filter(f => SHOP_FORMATS.includes(f)) });
+  return {
+    name: 'native',
+    async decode(src) {
+      const r = await det.detect(src);
+      return r && r.length && r[0].rawValue ? r[0].rawValue : null;
+    }
+  };
+}
+function makeZXEngine() {
+  const Z = window.ZXing;
+  const formats = ['EAN_13', 'EAN_8', 'UPC_A', 'UPC_E', 'CODE_128', 'CODE_39'].map(k => Z.BarcodeFormat[k]).filter(x => x !== undefined);
+  const mk = hard => { const h = new Map(); h.set(Z.DecodeHintType.POSSIBLE_FORMATS, formats); if (hard) h.set(Z.DecodeHintType.TRY_HARDER, true); const r = new Z.MultiFormatReader(); r.setHints(h); return r; };
+  const fast = mk(false), hard = mk(true);
+  let n = 0, bad = 0;
+  return {
+    name: 'zxing',
+    decode(canvas) {
+      n++;
+      try {
+        const bmp = new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(canvas)));
+        const res = (n % 6 === 0 ? hard : fast).decodeWithState(bmp);
+        bad = 0;
+        return res && res.getText ? res.getText() : null;
+      } catch (e) {
+        // NotFound/Checksum = ما لقى باركود بهذا الفريم (طبيعي). أخطاء البرمجة = نرجع للمكتبة الاحتياطية
+        if (e instanceof TypeError || e instanceof ReferenceError) { if (++bad >= 3) { const f = new Error('zxing'); f.fatal = true; throw f; } }
+        return null;
+      }
+    }
+  };
+}
+
+/* ---- camera ---- */
+const gum = video => navigator.mediaDevices.getUserMedia({ audio: false, video });
+const stopStream = s => { if (s) s.getTracks().forEach(t => t.stop()); };
+const trackCaps = t => { try { return (t && t.getCapabilities && t.getCapabilities()) || {}; } catch (e) { return {}; } };
+const trackDev = t => { try { return (t && t.getSettings && t.getSettings().deviceId) || ''; } catch (e) { return ''; } };
+const hasAF = t => { const f = trackCaps(t).focusMode; return !f || !f.length || f.includes('continuous'); };
+const camIdx = l => { const m = /camera2 (\d+)/i.exec(l || ''); return m ? +m[1] : 50; };
+const isBack = l => /back|rear|environment|خلف/i.test(l || '');
+async function videoInputs() { try { return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput' && d.deviceId); } catch (e) { return []; } }
+
+async function openStream(token) {
+  const saved = kv.get('smpro.cam');
+  let stream = null;
+  if (saved) {
+    try { stream = await gum(Object.assign({ deviceId: { exact: saved } }, VIDEO_BASE)); }
+    catch (e) { if (/NotAllowed|Security/i.test(e && e.name)) throw e; kv.set('smpro.cam', null); }
+  }
+  if (!stream) stream = await gum(Object.assign({ facingMode: { ideal: 'environment' } }, VIDEO_BASE));
+  if (token !== Scan.session) { stopStream(stream); return null; }
+
+  // بعض موبايلات أندرويد تفتح العدسة العريضة اللي ما بيها تركيز تلقائي → الباركود يطلع مضبب.
+  // ندور على العدسة الرئيسية مرة وحدة ونحفظها للمرات الجاية
+  const first = stream.getVideoTracks()[0];
+  if (!saved && !hasAF(first)) {
+    const cur = trackDev(first);
+    const cands = (await videoInputs()).filter(d => d.deviceId !== cur && isBack(d.label)).sort((a, b) => camIdx(a.label) - camIdx(b.label)).slice(0, 4);
+    let found = false;
+    for (const d of cands) {
+      stopStream(stream); stream = null;
+      try { stream = await gum(Object.assign({ deviceId: { exact: d.deviceId } }, VIDEO_BASE)); } catch (e) { continue; }
+      if (token !== Scan.session) { stopStream(stream); return null; }
+      if (hasAF(stream.getVideoTracks()[0])) { found = true; kv.set('smpro.cam', d.deviceId); break; }
+    }
+    if (!found) {
+      stopStream(stream);
+      try { stream = await gum(Object.assign({ deviceId: { exact: cur } }, VIDEO_BASE)); }
+      catch (e) { stream = await gum(Object.assign({ facingMode: { ideal: 'environment' } }, VIDEO_BASE)); }
+      if (token !== Scan.session) { stopStream(stream); return null; }
+    }
+  }
+  return stream;
+}
+const clampZoom = z => Math.min(Scan.zoomCaps.max, Math.max(Scan.zoomCaps.min || 1, z));
+async function tuneTrack(track) {
+  const caps = trackCaps(track), adv = [];
+  if (caps.focusMode && caps.focusMode.includes('continuous')) adv.push({ focusMode: 'continuous' });
+  Scan.zoomCaps = (caps.zoom && caps.zoom.max >= 1.5) ? caps.zoom : null;
+  if (Scan.zoomCaps) { Scan.zoom = clampZoom(+kv.get('smpro.zoom') || 1.5); adv.push({ zoom: Scan.zoom }); }
+  for (const c of adv) { try { await track.applyConstraints({ advanced: [c] }); } catch (e) { } }
+  updateCamTools();
+}
+function updateCamTools() {
+  const zb = $('#zoom');
+  zb.hidden = !Scan.zoomCaps;
+  if (Scan.zoomCaps) zb.textContent = (Math.round(Scan.zoom * 10) / 10) + '×';
+  $('#torch').hidden = !trackCaps(Scan.track).torch;
+}
+async function cycleZoom() {
+  if (!Scan.zoomCaps || !Scan.track) return;
+  const steps = [1, 1.5, 2, 3].filter(z => z >= (Scan.zoomCaps.min || 1) - 0.01 && z <= Scan.zoomCaps.max + 0.01);
+  const i = steps.findIndex(z => Math.abs(z - Scan.zoom) < 0.05);
+  Scan.zoom = steps[(i + 1) % steps.length];
+  try { await Scan.track.applyConstraints({ advanced: [{ zoom: Scan.zoom }] }); } catch (e) { }
+  kv.set('smpro.zoom', String(Scan.zoom));
+  updateCamTools();
+}
+async function switchCamera() {
+  const devs = await videoInputs();
+  if (devs.length < 2) return;
+  devs.sort((a, b) => (isBack(b.label) - isBack(a.label)) || (camIdx(a.label) - camIdx(b.label)));
+  const i = devs.findIndex(d => d.deviceId === trackDev(Scan.track));
+  const next = devs[(i + 1) % devs.length];
+  kv.set('smpro.cam', next.deviceId);
+  toast('تم تبديل الكاميرا');
+  startCamera();
+}
+
+/* المنطقة داخل المربع بإحداثيات الكاميرا الحقيقية (مع هامش) */
+function cropRect(v) {
+  const vw = v.videoWidth, vh = v.videoHeight, vr = v.getBoundingClientRect(), br = $('#cam .box').getBoundingClientRect();
+  if (!vr.width || !vr.height || !br.width) return { x: 0, y: 0, w: vw, h: vh };
+  const s = Math.max(vr.width / vw, vr.height / vh), ox = (vw * s - vr.width) / 2, oy = (vh * s - vr.height) / 2;
+  const px = br.width * 0.08, py = br.height * 0.35;
+  let x = (br.left - vr.left - px + ox) / s, y = (br.top - vr.top - py + oy) / s, w = (br.width + 2 * px) / s, h = (br.height + 2 * py) / s;
+  x = Math.max(0, x); y = Math.max(0, y); w = Math.max(16, Math.min(vw - x, w)); h = Math.max(16, Math.min(vh - y, h));
+  return { x, y, w, h };
+}
+/* تحسين الصورة للباركود المضبب أو الباهت: تنعيم على طول الخطوط + تحديد الحواف بالعرض + رفع التباين */
+function enhanceGray(cx, w, h) {
+  const img = cx.getImageData(0, 0, w, h), d = img.data, n = w * h;
+  const g = new Float32Array(n), hist = new Uint32Array(256), sm = new Float32Array(w);
+  for (let i = 0, j = 0; i < n; i++, j += 4) { const v = (d[j] * 77 + d[j + 1] * 150 + d[j + 2] * 29) >> 8; g[i] = v; hist[v]++; }
+  const cut = n * 0.02; let lo = 0, hi = 255;
+  for (let v = 0, a = 0; v < 256; v++) { a += hist[v]; if (a > cut) { lo = v; break; } }
+  for (let v = 255, a = 0; v >= 0; v--) { a += hist[v]; if (a > cut) { hi = v; break; } }
+  const span = Math.max(24, hi - lo), r = Math.max(1, Math.round(w / 300)), win = 2 * r + 1, amt = 1.6;
+  for (let y = 0; y < h; y++) {
+    const row = y * w, up = y > 0 ? row - w : row, dn = y < h - 1 ? row + w : row;
+    for (let x = 0; x < w; x++) sm[x] = (g[up + x] + 2 * g[row + x] + g[dn + x]) * 0.25;
+    let s = 0;
+    for (let k = -r; k <= r; k++) s += sm[k < 0 ? 0 : (k >= w ? w - 1 : k)];
+    for (let x = 0, j = row * 4; x < w; x++, j += 4) {
+      const o = sm[x] + amt * (sm[x] - s / win);
+      let v = (o - lo) * 255 / span; v = v < 0 ? 0 : (v > 255 ? 255 : v);
+      d[j] = d[j + 1] = d[j + 2] = v;
+      s += sm[Math.min(w - 1, x + r + 1)] - sm[Math.max(0, x - r)];
+    }
+  }
+  cx.putImageData(img, 0, 0);
+}
+/* كل فريم نجرب طريقة مختلفة: عادي، محسّن، وبحجم أصغر (يفيد للمضبب) */
+const VARIANTS = [{ w: 960, fx: false }, { w: 960, fx: true, up: true }, { w: 560, fx: false, full: true }, { w: 560, fx: true }];
+function runLoop(token, engine) {
+  const v = $('#scan-video'), canv = {};
+  const getCanvas = w => canv[w] || (canv[w] = (() => { const c = document.createElement('canvas'); return { c, x: c.getContext('2d', { willReadFrequently: true }) }; })());
+  const next = f => (v.requestVideoFrameCallback ? v.requestVideoFrameCallback(() => f()) : requestAnimationFrame(() => f()));
+  let n = 0;
+  const step = async () => {
+    if (token !== Scan.session) return;
+    if (v.readyState >= 2 && v.videoWidth) {
+      try {
+        const vt = VARIANTS[n++ % VARIANTS.length];
+        let src = v;
+        if (!(vt.full && engine.name === 'native')) {
+          const r = cropRect(v), k = Math.min(vt.up ? 2 : 1, vt.w / r.w), C = getCanvas(vt.w);
+          const w = Math.max(1, Math.round(r.w * k)), h = Math.max(1, Math.round(r.h * k));
+          if (C.c.width !== w || C.c.height !== h) { C.c.width = w; C.c.height = h; }
+          C.x.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, w, h);
+          if (vt.fx) enhanceGray(C.x, w, h);
+          src = C.c;
+        }
+        const code = await engine.decode(src);
+        if (token !== Scan.session) return;
+        if (code && onScanned(code)) return;
+      } catch (e) {
+        if (e && e.fatal) { if (token === Scan.session) { Scan.forceLib = true; startCamera(); } return; }
+      }
+    }
+    next(step);
+  };
+  next(step);
+}
+/* اضغط على الصورة حتى تركّز الكاميرا على هذي النقطة */
+async function tapFocus(e) {
+  const cam = $('#cam'), cr = cam.getBoundingClientRect(), ring = $('#focus-ring');
+  ring.style.left = (e.clientX - cr.left) + 'px'; ring.style.top = (e.clientY - cr.top) + 'px';
+  ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go');
+  const t = Scan.track, v = $('#scan-video'); if (!t || !v.videoWidth) return;
+  const caps = trackCaps(t), fm = caps.focusMode || [];
+  if (!fm.length) return;
+  const vr = v.getBoundingClientRect(), s = Math.max(vr.width / v.videoWidth, vr.height / v.videoHeight);
+  const px = ((e.clientX - vr.left) + (v.videoWidth * s - vr.width) / 2) / s / v.videoWidth;
+  const py = ((e.clientY - vr.top) + (v.videoHeight * s - vr.height) / 2) / s / v.videoHeight;
+  const adv = {};
+  const sc = (navigator.mediaDevices.getSupportedConstraints && navigator.mediaDevices.getSupportedConstraints()) || {};
+  if (sc.pointsOfInterest) adv.pointsOfInterest = [{ x: Math.min(1, Math.max(0, px)), y: Math.min(1, Math.max(0, py)) }];
+  if (fm.includes('single-shot')) adv.focusMode = 'single-shot';
+  if (!Object.keys(adv).length) return;
+  try { await t.applyConstraints({ advanced: [adv] }); } catch (err) { }
+  clearTimeout(Scan.afTimer);
+  if (fm.includes('continuous') && adv.focusMode) Scan.afTimer = setTimeout(() => { if (Scan.track === t) t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => { }); }, 1800);
+}
+
+async function openScanner(target) {
+  Scan.target = target || 'lookup';
+  $('#scan-manual').value = '';
+  unlockAudio();
+  openSheet('sheet-scan');
+  await startCamera();
+}
+async function startCamera() {
+  await stopCamera();
+  const token = Scan.session, cam = $('#cam');
+  cam.classList.remove('lib', 'live');
+  ['#cam-retry', '#torch', '#zoom', '#cam-switch'].forEach(s => { $(s).hidden = true; });
+  $('#scan-video').hidden = false;
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camErr({ name: 'insecure' }); return; }
+  camMsg('جاري تشغيل الكاميرا…');
+  try {
+    const enginePromise = Scan.forceLib ? Promise.resolve(null)
+      : nativeOK().then(ok => ok ? makeNativeEngine() : loadZX().then(makeZXEngine)).catch(() => null);
+    // نفتح الكاميرا ونحمّل القارئ بنفس الوقت
+    const [engine, stream] = await Promise.all([enginePromise, Scan.forceLib ? null : openStream(token)]);
+    if (token !== Scan.session) { stopStream(stream); return; }
+    if (!engine) { stopStream(stream); await startLib(token); return; }
+    Scan.stream = stream; Scan.track = stream.getVideoTracks()[0]; Scan.engine = engine.name;
+    const v = $('#scan-video'); v.srcObject = stream;
+    try { await v.play(); } catch (e) { }
+    if (token !== Scan.session) return;
+    cam.classList.add('live'); camMsg('وجّه الكاميرا على الباركود');
+    await tuneTrack(Scan.track);
+    videoInputs().then(d => { if (token === Scan.session) $('#cam-switch').hidden = d.length < 2; });
+    runLoop(token, engine);
+  } catch (e) {
+    if (token === Scan.session) camErr(e);
+  }
+}
+async function startLib(token) {
+  await loadLib();
+  if (token !== Scan.session) return;
+  const { H, F } = libGlobals();
+  const cfg = { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } };
+  if (F) cfg.formatsToSupport = ['EAN_13', 'EAN_8', 'UPC_A', 'UPC_E', 'CODE_128', 'CODE_39'].map(k => F[k]).filter(x => x !== undefined);
+  $('#scan-video').hidden = true; $('#cam').classList.add('lib');
+  $('#scan-lib').innerHTML = '';
+  const lib = new H('scan-lib', cfg);
+  Scan.lib = lib; Scan.engine = 'html5-qrcode';
+  await lib.start({ facingMode: 'environment' }, {
+    fps: 20, disableFlip: true,
+    videoConstraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' }] },
+    qrbox: (w, h) => ({ width: Math.max(80, Math.floor(w * 0.9)), height: Math.max(60, Math.floor(Math.min(h * 0.4, w * 0.4))) })
+  }, txt => { if (token === Scan.session) onScanned(txt); }, () => { });
+  if (token !== Scan.session) { try { await lib.stop(); lib.clear(); } catch (e) { } return; }
+  $('#cam').classList.add('live'); camMsg('وجّه الكاميرا على الباركود');
+  setTimeout(() => { if (token !== Scan.session || !Scan.lib) return; let c = null; try { c = Scan.lib.getRunningTrackCapabilities(); } catch (e) { } $('#torch').hidden = !(c && c.torch); }, 600);
+}
+async function stopCamera() {
+  Scan.session++;
+  if (Scan.stream) { stopStream(Scan.stream); Scan.stream = null; }
+  const v = $('#scan-video'); if (v) { try { v.pause(); } catch (e) { } v.srcObject = null; }
+  if (Scan.lib) { const l = Scan.lib; Scan.lib = null; try { await l.stop(); } catch (e) { } try { l.clear(); } catch (e) { } }
+  Scan.track = null; Scan.torch = false; Scan.zoomCaps = null;
+  const t = $('#torch'); if (t) t.classList.remove('on');
+  const cam = $('#cam'); if (cam) cam.classList.remove('live');
+}
+async function toggleTorch() {
+  Scan.torch = !Scan.torch;
+  const c = { advanced: [{ torch: Scan.torch }] };
+  try {
+    if (Scan.track) await Scan.track.applyConstraints(c); else if (Scan.lib) await Scan.lib.applyVideoConstraints(c);
+    $('#torch').classList.toggle('on', Scan.torch);
+  } catch (e) { Scan.torch = false; toast('الفلاش غير مدعوم بهذا الجهاز'); }
+}
+function camErr(e) {
+  const n = (e && e.name) || '', s = String((e && e.message) || e || ''), all = n + ' ' + s;
+  let m;
+  if (n === 'insecure') m = 'الكاميرا تحتاج رابط آمن (https). افتح الموقع من رابط GitHub Pages مو من ملف على الجهاز.';
+  else if (/NotAllowed|Permission|denied|SecurityError/i.test(all)) m = window.self !== window.top ? 'المتصفح منع الكاميرا داخل هذه الصفحة. افتح الموقع برابطه المباشر.' : isIOS() ? 'اسمح بالكاميرا: الإعدادات ← Safari ← الكاميرا ← سماح. بعدها ارجع واضغط «إعادة المحاولة».' : 'اسمح بالكاميرا: اضغط على 🔒 جنب الرابط ← الأذونات ← الكاميرا ← سماح. بعدها اضغط «إعادة المحاولة».';
+  else if (/NotFound|DevicesNotFound|Overconstrained/i.test(all)) m = 'ما لقيت كاميرا بهذا الجهاز. اكتب الباركود يدوياً تحت.';
+  else if (/NotReadable|TrackStart|in use|Could not start/i.test(all)) m = 'الكاميرا مشغولة بتطبيق ثاني. سكّره وجرب مرة ثانية.';
+  else if (n === 'LibError') m = 'ما قدرت أحمّل قارئ الباركود. أول مرة يحتاج إنترنت، وبعدها يشتغل بدون نت.';
+  else m = 'ما قدرت أشغّل الكاميرا. جرب مرة ثانية أو اكتب الباركود يدوياً.';
+  camMsg(m, 'err');
+  $('#cam-retry').hidden = false;
+}
+let actx = null;
+function unlockAudio() { try { const C = window.AudioContext || window.webkitAudioContext; if (!C) return; if (!actx) actx = new C(); if (actx.state === 'suspended') actx.resume(); } catch (e) { } }
+function beep() {
+  if (db.settings.sound) {
+    try {
+      if (!actx) unlockAudio();
+      if (actx) { const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain(); o.type = 'square'; o.frequency.setValueAtTime(1800, t); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12); o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + 0.13); }
+    } catch (e) { }
+  }
+  try { navigator.vibrate && navigator.vibrate(60); } catch (e) { }
+}
+function onScanned(raw) {
+  const code = cleanCode(raw); if (!code) return false;
+  const now = Date.now();
+  if (code === Scan.lastCode && now - Scan.lastAt < 1500) return false;
+  Scan.lastCode = code; Scan.lastAt = now;
+  beep();
+  handleCode(code, Scan.target);
+  return true;
+}
+function handleCode(code, target) {
+  const p = byCode(code);
+  switch (target) {
+    case 'product-form':
+      $('#pf-code').value = code; pfDupCheck(); closeSheet('sheet-scan');
+      if (!(p && p.id !== editingProductId) && !$('#pf-name').value) setTimeout(() => $('#pf-name').focus(), 250);
+      break;
+    case 'shortage-form':
+      $('#sf-code').value = code; shortageLookup(); closeSheet('sheet-scan');
+      break;
+    case 'shortage': {
+      const ex = db.shortages.find(s => (p && s.productId === p.id) || s.barcode === code);
+      if (ex) { openShortageForm(ex.id); toast('موجودة بالقائمة — تقدر تعدّل الكمية'); }
+      else openShortageForm(null, { barcode: code });
+      closeSheet('sheet-scan');
+      break;
+    }
+    default:
+      showLookup(code); closeSheet('sheet-scan');
+  }
+}
+
+/* ================= المزامنة بين أكثر من جهاز (Firebase Realtime Database عبر REST) =================
+   كل محل له كود سري (مثل ABCD-EFGH-JKLM). البيانات: smpro/{code}/p (المواد) · s (النقص) · meta (اسم المحل)
+   - التعديلات تنرفع كدفعات، والكمية تنرفع كزيادة/نقصان ذرّي حتى ما تضيع إذا جهازين باعوا بنفس الوقت
+   - التغييرات توصل للأجهزة الثانية مباشرة (بث مباشر)، والمواد تنزل بس اللي تغيّرت من آخر مرة
+   - بدون نت: التعديلات تنتظر وتنرفع لما يرجع النت */
+const SYNC_DEFAULT_URL = 'https://supermarket-d5ccb-default-rtdb.europe-west1.firebasedatabase.app';
+const SV_TS = { '.sv': 'timestamp' };
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const Sync = {
+  url: '', code: '', lastU: 0, syncedS: {}, syncedName: null,
+  pendingFull: new Map(), pendingDel: new Set(), pendingQty: new Map(),
+  remoteVer: new Map(), remoteDel: new Set(), qtyVer: new Map(), remoteS: {},
+  es: [], timer: null, reconnT: null, renderT: null, retry: 0, pushing: false, live: 0, state: 'off', lastOk: 0, remoteQ: [], remoteQT: null, noQuery: false,
+  devices: {}, devT: null, srvOffset: 0
+};
+const syncOn = () => !!(Sync.url && Sync.code);
+/* ---- الأجهزة المفتوحة على نفس الكود ---- */
+const DEVICE_ID = (() => { let id = kv.get('smpro.device'); if (!id) { id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); kv.set('smpro.device', id); } return id; })();
+const KIND_NAME = { iphone: 'آيفون', ipad: 'آيباد', android: 'أندرويد', pc: 'كمبيوتر' };
+function deviceKind() {
+  const ua = navigator.userAgent;
+  if (/iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ipad';
+  if (/iPhone|iPod/.test(ua)) return 'iphone';
+  if (/Android/.test(ua)) return 'android';
+  return 'pc';
+}
+const deviceName = () => kv.get('smpro.devname') || KIND_NAME[deviceKind()];
+function syncHeartbeat(bg) {
+  if (!syncOn() || navigator.onLine === false) return;
+  const body = { name: deviceName(), kind: deviceKind(), last: SV_TS, bg: bg ? 1 : null };
+  fetch(`${Sync.url}/smpro/${Sync.code}/devices/${DEVICE_ID}.json`, { method: 'PATCH', body: JSON.stringify(body) }).catch(() => { });
+}
+function syncHeartbeatStart() {
+  clearInterval(Sync.devT);
+  if (!syncOn()) return;
+  syncHeartbeat(document.hidden);
+  Sync.devT = setInterval(() => { if (!document.hidden) syncHeartbeat(false); renderDevices(); }, 60000);
+}
+function onRemoteDevices(type, path, data) {
+  const segs = path.split('/').filter(Boolean), D = Sync.devices;
+  const setDev = (id, v) => { if (v == null) delete D[id]; else D[id] = v; };
+  if (!segs.length) {
+    if (type === 'put') Sync.devices = (data && typeof data === 'object') ? Object.assign({}, data) : {};
+    else for (const k in (data || {})) { const ks = k.split('/'); if (ks.length === 1) setDev(ks[0], data[k]); else { D[ks[0]] = Object.assign({}, D[ks[0]] || {}); if (data[k] == null) delete D[ks[0]][ks[1]]; else D[ks[0]][ks[1]] = data[k]; } }
+  } else if (segs.length === 1) setDev(segs[0], data);
+  else { D[segs[0]] = Object.assign({}, D[segs[0]] || {}); if (data == null) delete D[segs[0]][segs[1]]; else D[segs[0]][segs[1]] = data; }
+  const me = Sync.devices[DEVICE_ID];
+  if (me && +me.last) { const off = +me.last - Date.now(); if (!Sync.offSeen || +me.last > Sync.offSeen) { Sync.offSeen = +me.last; Sync.srvOffset = off; } }
+  renderDevices();
+}
+function deviceStats() {
+  const now = Date.now() + Sync.srvOffset;
+  const list = Object.keys(Sync.devices).map(id => {
+    const d = Sync.devices[id] || {}, last = +d.last || 0, me = id === DEVICE_ID;
+    return { id, me, name: me ? deviceName() : String(d.name || KIND_NAME[d.kind] || 'جهاز'), kind: d.kind, last, bg: !!d.bg, on: me || (now - last < 150000 && !d.bg) };
+  }).filter(x => x.me || now - x.last < 60 * DAY);
+  if (syncOn() && !list.some(x => x.me)) list.push({ id: DEVICE_ID, me: true, name: deviceName(), kind: deviceKind(), last: now, bg: false, on: true });
+  list.sort((a, b) => (b.me - a.me) || (b.on - a.on) || (b.last - a.last));
+  return { list, online: list.filter(x => x.on).length, total: list.length, now };
+}
+function devicesWord(n) { return n === 1 ? 'جهاز واحد' : n === 2 ? 'جهازين' : n <= 10 ? `${n} أجهزة` : `${n} جهاز`; }
+function agoText(ms) {
+  const m = Math.max(0, Math.round(ms / 60000));
+  if (m < 2) return 'قبل دقيقة'; if (m < 60) return `قبل ${m} دقيقة`;
+  const hr = Math.round(m / 60); if (hr < 24) return hr === 1 ? 'قبل ساعة' : `قبل ${hr} ساعات`;
+  const dd = Math.round(hr / 24); return dd === 1 ? 'أمس' : `قبل ${dd} أيام`;
+}
+function renderDevices() {
+  syncSetState();
+  const cnt = $('#dev-count'), box = $('#dev-list');
+  if (!cnt || !box || !syncOn()) return;
+  const st = deviceStats();
+  cnt.textContent = `${devicesWord(st.online)} ${st.online === 1 ? 'مفتوح' : st.online === 2 ? 'مفتوحين' : 'مفتوحة'} الآن · ${devicesWord(st.total)} بالمجموع`;
+  box.innerHTML = st.list.map(d => `<div class="item dev">
+      <span class="dot ${d.on ? 'on' : ''}"></span>
+      <span class="t">${esc(d.name)}${d.me ? ' <span class="pill ok">هذا الجهاز</span>' : ''}<small>${esc(KIND_NAME[d.kind] || 'جهاز')} · ${d.on ? 'مفتوح الآن' : d.bg && st.now - d.last < 3600000 ? 'بالخلفية' : 'آخر مرة ' + agoText(st.now - d.last)}</small></span>
+      ${d.me ? '<button class="btn sm" data-act="dev-rename">تسمية</button>' : (!d.on ? `<button class="icon-plain" data-act="dev-remove" data-id="${esc(d.id)}" aria-label="شيل من القائمة">${ico('x')}</button>` : '')}
+    </div>`).join('');
+}
+const syncUrlOk = u => /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(firebaseio\.com|firebasedatabase\.app)$/i.test(u) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(u);
+const cleanUrl = u => String(u || '').trim().replace(/\/+$/, '').replace(/\/\.json$/, '');
+function normCode(c) {
+  const raw = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return raw.length === 12 ? raw.match(/.{4}/g).join('-') : '';
+}
+function genCode() {
+  const a = new Uint32Array(12); crypto.getRandomValues(a);
+  return normCode(Array.from(a, n => CODE_CHARS[n % CODE_CHARS.length]).join(''));
+}
+function syncLoad(s) {
+  if (!s || typeof s !== 'object') return;
+  Sync.url = cleanUrl(s.url); Sync.code = normCode(s.code); Sync.lastU = +s.lastU || 0;
+  Sync.syncedS = s.syncedS && typeof s.syncedS === 'object' ? s.syncedS : {};
+  Sync.syncedName = s.syncedName == null ? null : String(s.syncedName);
+  Sync.pendingFull = new Map(Array.isArray(s.pendingFull) ? s.pendingFull : []);
+  Sync.pendingDel = new Set(Array.isArray(s.pendingDel) ? s.pendingDel : []);
+  Sync.pendingQty = new Map(Array.isArray(s.pendingQty) ? s.pendingQty : []);
+}
+function syncSnapshot() {
+  return {
+    url: Sync.url, code: Sync.code, lastU: Sync.lastU, syncedS: Sync.syncedS, syncedName: Sync.syncedName,
+    pendingFull: Array.from(Sync.pendingFull), pendingDel: Array.from(Sync.pendingDel), pendingQty: Array.from(Sync.pendingQty)
+  };
+}
+function syncPersist() {
+  if (Store.timer) return;   // الحفظ القادم يكتب كلشي سوا (المواد + آخر تحديث) حتى ما يضيع شي إذا انسد التطبيق
+  const snap = syncSnapshot();
+  if (Store.mode === 'idb' && Store.idb) { try { Store.idb.transaction('meta', 'readwrite').objectStore('meta').put(snap, 'sync'); } catch (e) { } }
+  else { try { localStorage.setItem('smpro.sync', JSON.stringify(snap)); } catch (e) { } }
+}
+const syncPendingCount = () => Sync.pendingFull.size + Sync.pendingDel.size + Sync.pendingQty.size;
+
+/* --- local edits → queue --- */
+function syncNoteFlush(changed, removed) {
+  if (!syncOn()) { Sync.remoteVer.clear(); Sync.remoteDel.clear(); return; }
+  for (const p of changed) {
+    if (Sync.remoteVer.get(p.id) === p.updatedAt) continue;   // جاية من جهاز ثاني
+    if (Sync.qtyVer.get(p.id) === p.updatedAt) continue;      // بس الكمية تغيّرت ← تنرفع كزيادة/نقصان
+    Sync.pendingFull.set(p.id, p.updatedAt); Sync.pendingQty.delete(p.id); Sync.pendingDel.delete(p.id);
+  }
+  for (const id of removed) {
+    Sync.pendingFull.delete(id); Sync.pendingQty.delete(id);
+    if (!Sync.remoteDel.has(id)) Sync.pendingDel.add(id);
+  }
+  Sync.remoteVer.clear(); Sync.remoteDel.clear();
+}
+function syncQty(p, d) {
+  if (!syncOn() || !d) return;
+  if (Sync.pendingFull.has(p.id)) { Sync.pendingFull.set(p.id, p.updatedAt); return; }
+  Sync.pendingQty.set(p.id, round2((Sync.pendingQty.get(p.id) || 0) + d));
+  Sync.qtyVer.set(p.id, p.updatedAt);
+}
+function syncSchedule(ms) {
+  if (!syncOn()) return;
+  clearTimeout(Sync.timer);
+  Sync.timer = setTimeout(syncPush, ms == null ? 350 : ms);
+}
+const remoteProduct = p => ({ by: deviceName(), bi: DEVICE_ID, id: p.id, barcode: p.barcode, name: p.name, category: p.category, bulk: p.bulk, pack: p.pack, retail: p.retail, qty: p.qty, minQty: p.minQty, note: p.note, createdAt: p.createdAt, updatedAt: p.updatedAt, u: SV_TS });
+const remoteShortage = s => ({ by: deviceName(), bi: DEVICE_ID, name: s.name, barcode: s.barcode, qty: s.qty, note: s.note, productId: s.productId || '', createdAt: s.createdAt });
+const sJson = s => JSON.stringify([s.name, s.barcode || '', s.qty || '', s.note || '', s.productId || '', +s.createdAt || 0]);
+
+async function syncPush() {
+  clearTimeout(Sync.timer); Sync.timer = null;
+  if (!syncOn() || Sync.pushing) return;
+  if (navigator.onLine === false) { syncSetState(); return; }
+  const ops = [];
+  Sync.pendingFull.forEach((ver, id) => {
+    const p = byId(id);
+    if (!p) { Sync.pendingFull.delete(id); return; }
+    ops.push({ k: 'p/' + id, v: remoteProduct(p), done: () => { if (Sync.pendingFull.get(id) === ver) Sync.pendingFull.delete(id); } });
+  });
+  Sync.pendingDel.forEach(id => ops.push({ k: 'p/' + id, v: { d: 1, u: SV_TS, by: deviceName(), bi: DEVICE_ID }, done: () => Sync.pendingDel.delete(id) }));
+  Sync.pendingQty.forEach((d, id) => {
+    const p = byId(id);
+    if (!p || !d || Sync.pendingFull.has(id)) { Sync.pendingQty.delete(id); return; }
+    ops.push({
+      k: `p/${id}/qty`, v: { '.sv': { increment: d } }, extra: { [`p/${id}/u`]: SV_TS, [`p/${id}/updatedAt`]: p.updatedAt },
+      done: () => { const left = round2((Sync.pendingQty.get(id) || 0) - d); if (Math.abs(left) < 1e-9) Sync.pendingQty.delete(id); else Sync.pendingQty.set(id, left); }
+    });
+  });
+  const cur = {};
+  for (const s of db.shortages) cur[s.id] = sJson(s);
+  for (const id in cur) if (Sync.syncedS[id] !== cur[id]) { const j = cur[id], s = getS(id); ops.push({ k: 's/' + id, v: remoteShortage(s), done: () => { Sync.syncedS[id] = j; } }); }
+  for (const id in Sync.syncedS) if (!(id in cur)) ops.push({ k: 's/' + id, v: null, done: () => { delete Sync.syncedS[id]; } });
+  const name = db.settings.shopName;
+  if (name !== Sync.syncedName) ops.push({ k: 'meta/name', v: name, done: () => { Sync.syncedName = name; } });
+  if (!ops.length) { syncSetState(); return; }
+  Sync.pushing = true; syncSetState('pushing');
+  try {
+    for (let i = 0; i < ops.length; i += 1000) {
+      const chunk = ops.slice(i, i + 1000), body = {};
+      for (const o of chunk) { body[o.k] = o.v; if (o.extra) Object.assign(body, o.extra); }
+      const r = await fetch(`${Sync.url}/smpro/${Sync.code}.json`, { method: 'PATCH', body: JSON.stringify(body) });
+      if (!r.ok) { const err = new Error('http ' + r.status); err.status = r.status; throw err; }
+      chunk.forEach(o => o.done());
+    }
+    Sync.retry = 0; Sync.lastOk = Date.now();
+  } catch (e) {
+    Sync.retry = Math.min(6, Sync.retry + 1);
+    Sync.state = (e && (e.status === 401 || e.status === 403)) ? 'denied' : 'error';
+    clearTimeout(Sync.timer); Sync.timer = setTimeout(syncPush, 1500 * 2 ** Sync.retry);
+  } finally {
+    Sync.pushing = false;
+    syncPersist(); syncSetState();
+  }
+  if (syncPendingCount() && !Sync.timer) syncSchedule(300);
+}
+
+/* --- live updates from other devices --- */
+function syncStreamsClose() { Sync.es.forEach(es => { try { es.close(); } catch (e) { } }); Sync.es = []; Sync.live = 0; clearTimeout(Sync.reconnT); }
+function syncConnect() {
+  syncStreamsClose();
+  if (!syncOn() || typeof EventSource === 'undefined') { syncSetState(); return; }
+  const base = `${Sync.url}/smpro/${Sync.code}`;
+  Sync.quiet = Sync.lastU === 0; Sync.quietS = Sync.lastU === 0;   // أول مزامنة (انضمام): بدون تنبيهات
+  syncOpen(Sync.noQuery ? `${base}/p.json` : `${base}/p.json?orderBy=%22u%22&startAt=${Sync.lastU + 1}`, onRemoteProducts);
+  syncOpen(`${base}/s.json`, onRemoteShortages);
+  syncOpen(`${base}/meta.json`, onRemoteMeta);
+  syncOpen(`${base}/devices.json`, onRemoteDevices);
+  syncHeartbeatStart();
+  syncSetState();
+}
+function syncOpen(url, handler) {
+  let es;
+  try { es = new EventSource(url); } catch (e) { return; }
+  Sync.es.push(es);
+  let first = true;
+  const onEv = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    const wasFirst = first;
+    if (first) { first = false; Sync.live++; Sync.retry = 0; if (Sync.state === 'denied') Sync.state = ''; }
+    try { handler(ev.type, m && m.path || '/', m ? m.data : null, wasFirst); } catch (e) { }
+    syncSetState();
+  };
+  es.addEventListener('put', onEv); es.addEventListener('patch', onEv);
+  es.addEventListener('cancel', () => { Sync.state = 'denied'; syncStreamsClose(); syncSetState(); });
+  es.onerror = () => {
+    if (!Sync.es.includes(es)) return;
+    syncStreamsClose(); syncSetState();
+    if (first && /orderBy/.test(url) && navigator.onLine !== false) {
+      // نتأكد إذا قاعدة البيانات تدعم الطلب المختصر (يحتاج .indexOn بالقواعد)
+      fetch(url.replace(/startAt=\d+/, 'startAt=1') + '&limitToFirst=1').then(r => { if (r.status === 400) Sync.noQuery = true; }).catch(() => { });
+    }
+    Sync.retry = Math.min(6, Sync.retry + 1);
+    Sync.reconnT = setTimeout(syncConnect, 1500 * 2 ** Math.min(Sync.retry, 4));
+  };
+}
+function syncRender() { clearTimeout(Sync.renderT); Sync.renderT = setTimeout(() => { renderCurrent(); }, 250); }
+
+function onRemoteProducts(type, path, data, initial) {
+  const ch = [];
+  const segs = path.split('/').filter(Boolean);
+  if (!segs.length) {
+    if (data && typeof data === 'object') for (const k in data) {
+      const ks = k.split('/');
+      if (ks.length === 1) ch.push([k, data[k], false]); else ch.push([ks[0], { [ks.slice(1).join('/')]: data[k] }, true]);
+    }
+  } else if (segs.length === 1) ch.push([segs[0], data, false]);
+  else ch.push([segs[0], { [segs.slice(1).join('/')]: data }, true]);
+  // نجمع التحديثات اللي توصل ورا بعض ونطبقها مرة وحدة (مهم لما تنزل آلاف المواد)
+  for (const c of ch) { c[3] = !!initial; Sync.remoteQ.push(c); }
+  if (!Sync.remoteQT) Sync.remoteQT = setTimeout(() => { Sync.remoteQT = null; const all = Sync.remoteQ; Sync.remoteQ = []; applyRemoteProducts(all); }, 60);
+}
+const NUM_FIELDS = { bulk: 1, pack: 1, retail: 1, qty: 1, minQty: 1, createdAt: 1, updatedAt: 1 };
+const STR_FIELDS = { barcode: 1, name: 1, category: 1, note: 1 };
+function applyRemoteProducts(ch) {
+  if (!ch.length) return;
+  ensureIdx();
+  const map = new Map(idIdx), adds = [], dels = new Set(), missing = new Set(), evs = [];
+  let n = 0;
+  for (const [id, val, partial, init] of ch) {
+    if (!id) continue;
+    if (partial) {
+      const p = map.get(id);
+      for (const f in val) {
+        const key = f.split('/')[0], v = val[f];
+        if (key === 'u') { Sync.lastU = Math.max(Sync.lastU, +v || 0); continue; }
+        if (!p) { missing.add(id); continue; }
+        if (key === 'd' && v) { dels.add(id); map.delete(id); Sync.remoteDel.add(id); continue; }
+        if (NUM_FIELDS[key]) p[key] = Math.max(0, +v || 0); else if (STR_FIELDS[key]) p[key] = String(v == null ? '' : v);
+      }
+      if (p && !dels.has(id)) { if (p.pack < 1) p.pack = 1; Sync.remoteVer.set(id, p.updatedAt); n++; }
+      continue;
+    }
+    if (val && typeof val === 'object' && val.u) Sync.lastU = Math.max(Sync.lastU, +val.u || 0);
+    const local = map.get(id);
+    if (val === null || (val && val.d)) {
+      if (local && !(Sync.pendingFull.has(id) && local.updatedAt > (+(val && val.updatedAt) || 0))) {
+        dels.add(id); map.delete(id); Sync.remoteDel.add(id); Sync.pendingQty.delete(id); Sync.pendingFull.delete(id); n++;
+        if (!(val && val.bi === DEVICE_ID) && !(init && Sync.quiet)) evs.push({ type: 'del', name: local.name, by: val && val.by, away: !!init });
+      }
+      continue;
+    }
+    if (typeof val !== 'object') continue;
+    if (local && Sync.pendingFull.has(id) && local.updatedAt > (+val.updatedAt || 0)) continue;  // تعديلي أحدث ← راح ينرفع
+    const np = normProduct(Object.assign({}, val, { id }));
+    if (!np) continue;
+    if (val.bi !== DEVICE_ID && !(init && Sync.quiet)) {
+      if (!local) evs.push({ type: 'new', name: np.name, pid: id, by: val.by, r: np.retail, away: !!init });
+      else if (local.retail !== np.retail || local.bulk !== np.bulk) evs.push({ type: 'price', name: np.name, pid: id, by: val.by, o: local.retail, r: np.retail, ob: local.bulk, b: np.bulk, away: !!init });
+    }
+    if (local) { Object.assign(local, np); Sync.remoteVer.set(id, local.updatedAt); }
+    else { adds.push(np); map.set(id, np); Sync.remoteVer.set(id, np.updatedAt); }
+    Sync.pendingFull.delete(id);
+    n++;
+  }
+  if (dels.size) db.products = db.products.filter(p => !dels.has(p.id));
+  if (adds.length) db.products = adds.concat(db.products);
+  if (n) { save(); syncRender(); }
+  else syncPersist();
+  if (ch.some(c => c[3])) Sync.quiet = false;
+  if (evs.length) noteEvents(evs);
+  missing.forEach(id => fetch(`${Sync.url}/smpro/${Sync.code}/p/${id}.json`).then(r => r.ok ? r.json() : null).then(v => { if (v) applyRemoteProducts([[id, v, false]]); }).catch(() => { }));
+}
+function onRemoteShortages(type, path, data, initial) {
+  const segs = path.split('/').filter(Boolean);
+  let changed;
+  if (!segs.length) {
+    if (type === 'put') {
+      const prev = Sync.remoteS; Sync.remoteS = (data && typeof data === 'object') ? Object.assign({}, data) : {};
+      changed = new Set(Object.keys(prev).concat(Object.keys(Sync.remoteS), Object.keys(Sync.syncedS), db.shortages.map(s => s.id)));
+    } else {
+      changed = new Set();
+      for (const k in (data || {})) { const ks = k.split('/'); const id = ks[0]; changed.add(id); if (ks.length === 1) { if (data[k] == null) delete Sync.remoteS[id]; else Sync.remoteS[id] = data[k]; } else { Sync.remoteS[id] = Object.assign({}, Sync.remoteS[id] || {}, { [ks[1]]: data[k] }); } }
+    }
+  } else {
+    const id = segs[0]; changed = new Set([id]);
+    if (segs.length === 1) { if (data == null) delete Sync.remoteS[id]; else Sync.remoteS[id] = data; }
+    else Sync.remoteS[id] = Object.assign({}, Sync.remoteS[id] || {}, { [segs[1]]: data });
+  }
+  let n = 0;
+  const evs = [], quiet = initial && Sync.quietS;
+  changed.forEach(id => {
+    const r = Sync.remoteS[id], idx = db.shortages.findIndex(s => s.id === id), local = idx >= 0 ? db.shortages[idx] : null;
+    const localJ = local ? sJson(local) : undefined, dirty = localJ !== Sync.syncedS[id];
+    if (r) {
+      const rs = normShortage(Object.assign({}, r, { id, productId: r.productId || null }));
+      if (!rs) return;
+      const rJ = sJson(rs);
+      if (local && dirty && localJ !== rJ && Sync.syncedS[id] !== undefined) return;   // تعديلي ما انرفع بعد
+      if (local) { if (localJ !== rJ) { Object.assign(local, rs); n++; } }
+      else { db.shortages.unshift(rs); n++; if (r.bi !== DEVICE_ID && !quiet) evs.push({ type: 'short', name: rs.name, qty: rs.qty, pid: rs.productId, by: r.by, away: !!initial }); }
+      Sync.syncedS[id] = rJ;
+    } else if (Sync.syncedS[id] !== undefined) {
+      if (local && !dirty) { db.shortages.splice(idx, 1); n++; if (!quiet) evs.push({ type: 'done', name: local.name, pid: local.productId, away: !!initial }); }
+      delete Sync.syncedS[id];
+    }
+  });
+  if (n) { save(); syncRender(); } else syncPersist();
+  if (initial) Sync.quietS = false;
+  if (evs.length) noteEvents(evs);
+}
+function onRemoteMeta(type, path, data) {
+  let name;
+  if (path === '/' || path === '') name = data && typeof data === 'object' ? data.name : undefined;
+  else if (path.replace(/^\//, '') === 'name') name = data;
+  if (typeof name !== 'string' || !name.trim()) return;
+  if (db.settings.shopName === Sync.syncedName || Sync.syncedName == null) {
+    Sync.syncedName = name;
+    if (db.settings.shopName !== name) { db.settings.shopName = name; save(); renderTop(); if (ui.view === 'settings') renderSettings(); }
+    else syncPersist();
+  }
+}
+
+/* --- create / join / leave --- */
+async function syncCreate() {
+  const url = cleanUrl(SYNC_DEFAULT_URL || ($('#sync-url') && $('#sync-url').value) || Sync.url);
+  if (!syncUrlOk(url)) { toast('رابط قاعدة البيانات غير صحيح', { type: 'err' }); return; }
+  const code = genCode();
+  try {
+    const r = await fetch(`${url}/smpro/${code}/meta.json`, { method: 'PUT', body: JSON.stringify({ name: db.settings.shopName, created: SV_TS }) });
+    if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'denied' : 'http');
+  } catch (e) { toast(e.message === 'denied' ? 'قاعدة البيانات رفضت — تأكد من القواعد (Rules) بـ Firebase' : 'ما قدرت أتصل بقاعدة البيانات — تأكد من النت والرابط', { type: 'err', ms: 5000 }); return; }
+  Object.assign(Sync, { url, code, lastU: 0, syncedS: {}, syncedName: db.settings.shopName, retry: 0 });
+  Sync.pendingFull = new Map(db.products.map(p => [p.id, p.updatedAt])); Sync.pendingDel = new Set(); Sync.pendingQty = new Map();
+  syncPersist(); syncConnect(); syncPush();
+  renderSettings();
+  info('تم إنشاء المحل المشترك ✓', `كود المحل:\n<b class="num" style="font-size:22px">${esc(code)}</b>\n\nبالموبايلات الثانية: الإعدادات ← «الانضمام بكود» واكتب هذا الكود، أو ابعثلهم الرابط من زر «مشاركة».`);
+}
+async function syncJoin(raw) {
+  const code = normCode(raw), url = cleanUrl(SYNC_DEFAULT_URL || ($('#sync-url') && $('#sync-url').value) || Sync.url);
+  if (!code) { toast('الكود لازم يكون 12 حرف/رقم', { type: 'err' }); return false; }
+  if (!syncUrlOk(url)) { toast('رابط قاعدة البيانات غير صحيح', { type: 'err' }); return false; }
+  let meta;
+  try {
+    const r = await fetch(`${url}/smpro/${code}/meta.json`);
+    if (!r.ok) throw new Error('http');
+    meta = await r.json();
+  } catch (e) { toast('ما قدرت أتصل بقاعدة البيانات — تأكد من النت', { type: 'err' }); return false; }
+  if (!meta) { toast('ما لقيت محل بهذا الكود — تأكد منه', { type: 'err' }); return false; }
+  if ((db.products.length || db.shortages.length) && !(await ask({ title: 'الانضمام للمحل؟', msg: `راح تنمسح بيانات هذا الموبايل (${fmt(db.products.length)} مادة) وتنزل بيانات المحل «${meta.name || ''}».\nإذا تريدها، احفظ نسخة احتياطية أول.`, ok: 'انضمام', danger: true }))) return false;
+  syncStreamsClose();
+  Object.assign(Sync, { url: '', code: '' });            // نوقف الرفع لحد ما نفرّغ الجهاز
+  db.products = []; db.shortages = [];
+  if (meta.name) db.settings.shopName = String(meta.name);
+  dbVer++; structVer++; await flushNow(true);
+  Object.assign(Sync, { url, code, lastU: 0, syncedS: {}, syncedName: db.settings.shopName, remoteS: {}, retry: 0 });
+  Sync.pendingFull = new Map(); Sync.pendingDel = new Set(); Sync.pendingQty = new Map();
+  syncPersist(); syncConnect(); renderCurrent();
+  toast('تم الانضمام ✓ — جاري تنزيل بيانات المحل…', { ms: 4000 });
+  return true;
+}
+async function syncLeave() {
+  if (!(await ask({ title: 'فصل هذا الجهاز؟', msg: 'المواد تبقى على هذا الموبايل، بس التعديلات ما راح توصل للأجهزة الثانية ولا توصله تعديلاتهم.', ok: 'فصل', danger: true }))) return;
+  try { fetch(`${Sync.url}/smpro/${Sync.code}/devices/${DEVICE_ID}.json`, { method: 'DELETE' }).catch(() => { }); } catch (e) { }
+  syncStreamsClose(); clearTimeout(Sync.timer); clearInterval(Sync.devT);
+  Object.assign(Sync, { code: '', lastU: 0, syncedS: {}, syncedName: null, remoteS: {}, devices: {} });
+  Sync.pendingFull = new Map(); Sync.pendingDel = new Set(); Sync.pendingQty = new Map();
+  syncPersist(); syncSetState(); renderSettings(); toast('انفصل الجهاز عن المحل المشترك');
+}
+const joinLink = () => `${location.origin}${location.pathname}#join=${Sync.code}`;
+
+/* --- status --- */
+function syncSetState(force) {
+  let st;
+  if (!syncOn()) st = 'off';
+  else if (force) st = force;
+  else if (Sync.state === 'denied') st = 'denied';
+  else if (navigator.onLine === false) st = 'offline';
+  else if (Sync.pushing) st = 'pushing';
+  else if (Sync.live < Sync.es.length || !Sync.es.length) st = Sync.es.length ? 'connecting' : 'offline';
+  else if (syncPendingCount() || Sync.state === 'error') st = 'pending';
+  else st = 'ok';
+  Sync.state = st;
+  const chip = $('#sync-chip');
+  if (chip) {
+    const on = syncOn() ? deviceStats().online : 0;
+    const L = { ok: on > 1 ? `✓ ${devicesWord(on)}` : '✓ متزامن', pushing: '⟳ يرفع…', connecting: '⟳ يتصل…', pending: '⟳ بانتظار الرفع', offline: '', denied: '⚠ المزامنة مرفوضة' };
+    chip.hidden = !syncOn() || !L[st]; chip.textContent = L[st] || ''; chip.className = 'sync-chip ' + st;
+  }
+  const el = $('#sync-status');
+  if (el) el.textContent = syncStatusText();
+}
+function syncStatusText() {
+  const n = syncPendingCount();
+  return ({ ok: 'كل الأجهزة على نفس البيانات', pushing: 'جاري رفع التعديلات…', connecting: 'جاري الاتصال…', pending: `${n ? fmt(n) + ' تعديل ' : 'تعديلات '}بانتظار الرفع`, offline: `بدون نت — ${n ? fmt(n) + ' تعديل تنرفع' : 'التعديلات تنرفع'} لما يرجع النت`, denied: 'قاعدة البيانات رفضت الاتصال — تأكد من القواعد بـ Firebase', off: '' })[Sync.state] || '';
+}
+function renderSync() {
+  const g = $('#sync-group'); if (!g) return;
+  if (syncOn()) {
+    g.innerHTML = `<div class="group-h">العمل من أكثر من جهاز</div>
+      <div class="item">${ico('users')}<span class="t">متصل بالمحل المشترك<small id="sync-status">${esc(syncStatusText())}</small></span></div>
+      <div class="item">${ico('key')}<span class="t">كود المحل<small class="num code-big">${esc(Sync.code)}</small></span><button class="btn sm wa" data-act="sync-share">${ico('share')}مشاركة</button></div>
+      <button class="item" data-act="sync-copy">${ico('copy')}<span class="t">نسخ الكود</span></button>
+      <div class="item">${ico('phone')}<span class="t">الأجهزة على هذا الكود<small id="dev-count"></small></span></div>
+      <div id="dev-list"></div>
+      <button class="item dz" data-act="sync-leave">${ico('x')}<span class="t">فصل هذا الجهاز</span></button>`;
+  } else {
+    const needUrl = !SYNC_DEFAULT_URL;
+    g.innerHTML = `<div class="group-h">العمل من أكثر من جهاز</div>
+      <div class="item">${ico('users')}<span class="t">نفس المواد والنقص على كل الموبايلات<small>أي تعديل بموبايل يطلع بالباقين خلال ثواني، وحتى الكمية تنحسب صح إذا اثنين باعوا سوا</small></span></div>
+      ${needUrl ? `<div class="item col"><label for="sync-url" class="t">رابط قاعدة البيانات (Firebase)</label><input id="sync-url" class="sinp wide" dir="ltr" placeholder="https://….firebasedatabase.app" value="${esc(Sync.url)}" autocomplete="off"></div>` : ''}
+      <div class="item btns"><button class="btn sm pri" data-act="sync-create">${ico('plus')}إنشاء محل مشترك</button><button class="btn sm" data-act="sync-join-open">${ico('key')}الانضمام بكود</button></div>`;
+  }
+}
+
+/* ================= التنبيهات: تغيّر سعر، مادة جديدة/محذوفة، قائمة النقص ================= */
+const NOTE_GROUP = { price: 'price', new: 'items', del: 'items', short: 'short', done: 'short' };
+const NOTE_TITLE = { price: 'تغيّر سعر', new: 'مادة جديدة', del: 'انحذفت مادة', short: 'نقص جديد', done: 'انشالت من النقص' };
+const NOTE_ICON = { price: 'tag', new: 'plus', del: 'trash', short: 'list', done: 'check' };
+const Notes = (() => { let list = [], unread = 0; try { list = JSON.parse(kv.get('smpro.notes') || '[]'); unread = +kv.get('smpro.unread') || 0; } catch (e) { } return { list: Array.isArray(list) ? list : [], unread }; })();
+function notePrefs() {
+  let p = {}; try { p = JSON.parse(kv.get('smpro.notify') || '{}') || {}; } catch (e) { }
+  return Object.assign({ on: true, price: true, items: true, short: true, system: false }, p);
+}
+function setNotePref(k, v) { const p = notePrefs(); p[k] = v; kv.set('smpro.notify', JSON.stringify(p)); }
+function saveNotes() { kv.set('smpro.notes', JSON.stringify(Notes.list.slice(0, 150))); kv.set('smpro.unread', String(Notes.unread)); try { if (navigator.setAppBadge) Notes.unread ? navigator.setAppBadge(Notes.unread) : navigator.clearAppBadge(); } catch (e) { } }
+function noteText(e, noWho) {
+  const who = !noWho && e.by ? `${e.by}: ` : '';
+  if (e.type === 'price') return e.o !== e.r ? `${who}سعر «${e.name}» صار ${fmt(e.r)} د.ع (كان ${fmt(e.o)})` : `${who}سعر جملة «${e.name}» صار ${fmt(e.b)} د.ع (كان ${fmt(e.ob)})`;
+  if (e.type === 'new') return `${who}انضافت مادة جديدة «${e.name}»${e.r ? ' بسعر ' + money(e.r) : ''}`;
+  if (e.type === 'del') return `${who}انحذفت المادة «${e.name}»`;
+  if (e.type === 'short') return `${who}انضافت للنقص «${e.name}»${e.qty ? ` (${e.qty})` : ''}`;
+  return `انشالت «${e.name}» من قائمة النقص`;
+}
+const items = n => n === 1 ? 'مادة' : n === 2 ? 'مادتين' : n <= 10 ? `${n} مواد` : `${n} مادة`;
+const edits = n => n === 1 ? 'تعديل' : n === 2 ? 'تعديلين' : n <= 10 ? `${n} تعديلات` : `${n} تعديل`;
+function noteSummary(list) {
+  const c = {}; list.forEach(e => { c[e.type] = (c[e.type] || 0) + 1; });
+  const parts = [];
+  if (c.price) parts.push(`تغيّر سعر ${items(c.price)}`);
+  if (c.new) parts.push(c.new === 1 ? 'مادة جديدة' : c.new === 2 ? 'مادتين جداد' : `${items(c.new)} جديدة`);
+  if (c.del) parts.push(`انحذفت ${items(c.del)}`);
+  if (c.short) parts.push(`${c.short} للنقص`);
+  if (c.done) parts.push(`${c.done} انشالت من النقص`);
+  return parts.join(' · ');
+}
+const noteKey = e => [e.type, e.pid || e.name, e.r, e.b, e.qty].join('|');
+// التعديلات الي توصل ورا بعض (مثلاً استيراد ملف كامل من جهاز ثاني) تنجمع بتنبيه واحد
+let noteBuf = [], noteTimer = 0;
+function noteEvents(evs) {
+  noteBuf = noteBuf.length ? noteBuf.concat(evs) : evs;
+  if (!noteTimer) noteTimer = setTimeout(noteFlush, 600);
+}
+function noteFlush() {
+  const evs = noteBuf; noteBuf = []; noteTimer = 0;
+  const pref = notePrefs(), t = Date.now();
+  const recent = new Set(Notes.list.slice(0, 40).map(noteKey));
+  const list = evs.filter(e => !(e.away && recent.has(noteKey(e)))).map(e => Object.assign({ t }, e));
+  if (!list.length) return;
+  Notes.list = list.concat(Notes.list).slice(0, 150);
+  const alert = pref.on ? list.filter(e => pref[NOTE_GROUP[e.type]] !== false) : [];
+  Notes.unread += alert.length; saveNotes(); renderBell();
+  if (stack.includes('sheet-notes')) renderNotes();
+  if (!alert.length) return;
+  const live = alert.filter(e => !e.away), away = alert.filter(e => e.away);
+  if (away.length) toast(`🔔 من آخر مرة: ${noteSummary(away)}`, { action: { label: 'عرض', fn: openNotes }, ms: 7000 });
+  else if (live.length) {
+    const one = live.length === 1 ? live[0] : null;
+    toast('🔔 ' + (one ? noteText(one) : `${edits(live.length)}: ${noteSummary(live)}`), { action: { label: 'عرض', fn: () => { const p = one && one.pid && byId(one.pid); if (p && one.type !== 'done') showLookup(p); else openNotes(); } }, ms: 6000 });
+  }
+  if (pref.system && document.hidden) systemNotify(alert);
+}
+async function systemNotify(alerts) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  let reg = null; try { reg = navigator.serviceWorker ? await navigator.serviceWorker.getRegistration() : null; } catch (e) { }
+  const items = alerts.length > 3
+    ? [{ title: `${db.settings.shopName} · ${edits(alerts.length)}`, body: noteSummary(alerts) }]
+    : alerts.map(e => ({ title: `${db.settings.shopName} · ${NOTE_TITLE[e.type]}`, body: noteText(e) }));
+  for (const it of items) {
+    const opt = { body: it.body, icon: 'icon-192.png', badge: 'icon-192.png', lang: 'ar', dir: 'rtl', tag: 'smpro-' + Date.now() + Math.random(), data: { url: location.href.split('#')[0] } };
+    try { if (reg && reg.showNotification) await reg.showNotification(it.title, opt); else new Notification(it.title, opt); } catch (e) { }
+  }
+}
+function renderBell() {
+  const b = $('#bell'), bd = $('#bell-badge'); if (!b) return;
+  b.hidden = !(syncOn() || Notes.list.length);
+  bd.hidden = !Notes.unread; bd.textContent = Notes.unread > 99 ? '99+' : Notes.unread;
+}
+function renderNotes() {
+  const el = $('#notes-list'), now = Date.now();
+  el.innerHTML = Notes.list.length ? Notes.list.map((e, i) => `<button class="note-row" data-act="note-open" data-i="${i}">
+      <span class="note-ic ${e.type}">${ico(NOTE_ICON[e.type] || 'alert')}</span>
+      <span class="t"><span class="nt">${esc(noteText(e, true))}</span><small>${e.by ? esc(e.by) + ' · ' : ''}${agoText(now - e.t).replace('قبل دقيقة', 'هسه')}</small></span>
+    </button>`).join('') : emptyBlock('bell', 'ما في تنبيهات بعد', syncOn() ? 'لما أحد يغيّر سعر أو يضيف مادة أو نقص من جهاز ثاني، راح يطلع هنا.' : 'التنبيهات تشتغل لما تكون متصل بمحل مشترك (الإعدادات ← العمل من أكثر من جهاز).');
+}
+function openNotes() { renderNotes(); openSheet('sheet-notes'); Notes.unread = 0; saveNotes(); renderBell(); }
+function renderNotePrefs() {
+  const p = notePrefs();
+  const set = (id, v) => { const el = $(id); if (el) el.checked = !!v; };
+  set('#nt-on', p.on); set('#nt-price', p.price); set('#nt-items', p.items); set('#nt-short', p.short);
+  set('#nt-system', p.system && 'Notification' in window && Notification.permission === 'granted');
+  $$('.nt-sub').forEach(el => el.classList.toggle('off', !p.on));
+}
+
+/* ================= Actions ================= */
+const A = {
+  go: el => go(el.dataset.view),
+  scan: el => openScanner(el.dataset.target),
+  close: el => { const w = el.closest('.sheet-wrap'); if (w) closeSheet(w.id); },
+  'new-product': () => openProductForm(null),
+  'new-product-code': el => openProductForm(null, { barcode: el.dataset.code }),
+  'edit-product': el => openProductForm(el.dataset.id),
+  'open-dup': el => openProductForm(el.dataset.id),
+  'delete-product': () => deleteProduct(),
+  qty: el => changeQty(el.dataset.id, +el.dataset.d),
+  filter: el => { ui.filter = el.dataset.f; ui.limit = 150; renderProducts(); },
+  'filter-low': () => { ui.filter = 'low'; ui.q = ''; $('#p-q').value = ''; go('products'); },
+  more: () => { ui.limit += 150; renderProducts(); },
+  'lookup-id': el => { const p = byId(el.dataset.id); if (p) showLookup(p); },
+  'lk-edit': () => { const id = lookupRef.id; openProductForm(id); closeSheet('sheet-lookup'); },
+  'lk-short': () => { const p = byId(lookupRef.id); if (p && quickShortage(p)) { save(); renderCurrent(); toast('أضيفت لقائمة النقص ✓'); } },
+  'lk-add': () => { const c = lookupRef.code; openProductForm(null, { barcode: c }); closeSheet('sheet-lookup'); },
+  'lk-short-new': () => { const c = lookupRef.code; openShortageForm(null, { barcode: c }); closeSheet('sheet-lookup'); },
+  'lk-rescan': () => openScanner('lookup'),
+  'new-shortage': () => openShortageForm(null),
+  'pf-add-short': () => { const p = byId(editingProductId); if (p && quickShortage(p)) { save(); pfQuick(); renderCurrent(); toast(`أضيفت «${p.name}» لقائمة النقص ✓`); } },
+  'pf-edit-short': el => openShortageForm(el.dataset.id),
+  'sf-pick': el => sfPick(el.dataset.id),
+  'sync-create': () => syncCreate(),
+  'sync-join-open': () => { $('#join-code').value = ''; openSheet('sheet-join'); setTimeout(() => $('#join-code').focus(), 200); },
+  'sync-join-go': async () => { const ok = await syncJoin($('#join-code').value); if (ok) closeSheet('sheet-join'); },
+  'sync-leave': () => syncLeave(),
+  notes: () => openNotes(),
+  'notes-clear': () => { Notes.list = []; Notes.unread = 0; saveNotes(); renderBell(); renderNotes(); },
+  'note-open': el => { const e = Notes.list[+el.dataset.i]; const p = e && e.pid && byId(e.pid); if (p) showLookup(p); },
+  'go-sync': () => { go('settings'); setTimeout(() => { const g = $('#sync-group'); if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); },
+  'dev-rename': () => { $('#dev-name').value = deviceName(); openSheet('sheet-devname'); setTimeout(() => $('#dev-name').select(), 200); },
+  'dev-name-save': () => { const v = $('#dev-name').value.trim().slice(0, 30); kv.set('smpro.devname', v || null); closeSheet('sheet-devname'); syncHeartbeat(false); renderDevices(); toast('تم ✓'); },
+  'dev-remove': el => { const id = el.dataset.id; fetch(`${Sync.url}/smpro/${Sync.code}/devices/${id}.json`, { method: 'DELETE' }).catch(() => { }); delete Sync.devices[id]; renderDevices(); },
+  'sync-copy': () => { const t = Sync.code; const done = () => toast('انتسخ الكود ✓'); if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => toast(t)); else toast(t, { ms: 6000 }); },
+  'sync-share': () => {
+    const text = `انضم لمحل «${db.settings.shopName}» على سوبرماركت برو حتى نشتغل على نفس المواد:\n${joinLink()}\n\nأو من الإعدادات ← الانضمام بكود: ${Sync.code}`;
+    if (navigator.share) navigator.share({ title: 'كود المحل', text }).catch(() => { }); else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  },
+  'short-to-product': el => { const s = getS(el.dataset.id); if (s) openProductForm(null, { barcode: s.barcode, name: s.name }); },
+  'sf-to-product': () => { const s = getS(editingShortageId); if (!s) return; openProductForm(null, { barcode: cleanCode($('#sf-code').value) || s.barcode, name: $('#sf-name').value.trim() || s.name }); closeSheet('sheet-shortage'); },
+  'edit-shortage': el => openShortageForm(el.dataset.id),
+  'delete-shortage': () => { const id = editingShortageId; closeSheet('sheet-shortage'); removeShortage(id, 'انحذفت من القائمة'); },
+  resolve: el => resolveShortage(el.dataset.id),
+  'resolve-add': () => resolveAdd(),
+  'resolve-remove': () => { const id = resolvingId; closeSheet('sheet-resolve'); removeShortage(id, 'انشالت من القائمة'); },
+  'add-low': el => { const p = byId(el.dataset.id); if (p && quickShortage(p)) { save(); renderCurrent(); toast(`أضيفت «${p.name}» للنقص ✓`); } },
+  'add-all-low': async () => {
+    const cnt = db.products.filter(p => isLow(p) && !inShortage(p)).length;
+    if (cnt > 30 && !(await ask({ title: `إضافة ${fmt(cnt)} مادة للنقص؟`, msg: 'هذا عدد كبير. إذا موادك بدون كميات مضبوطة، خلي «نبّهني لما تقل عن» = 0 للمواد اللي ما تريد تنبيه إلها.', ok: 'أضف الكل' }))) return;
+    let n = 0; db.products.filter(isLow).forEach(p => { if (quickShortage(p)) n++; }); save(); renderCurrent(); toast(`أضيفت ${n} مواد لقائمة النقص ✓`);
+  },
+  'share-wa': () => { window.open('https://wa.me/?text=' + encodeURIComponent(shortageText()), '_blank', 'noopener'); },
+  share: () => { const text = shortageText(); if (navigator.share) navigator.share({ title: 'قائمة النقص', text }).catch(() => { }); else copyText(text); },
+  copy: () => copyText(shortageText()),
+  print: () => printShortage(),
+  'cf-ok': () => { const r = confirmResolve; confirmResolve = null; closeSheet('sheet-confirm'); if (r) r(true); },
+  theme: el => { db.settings.theme = el.dataset.v; save(); applyTheme(); renderSettings(); },
+  'export-json': () => exportJSON(),
+  'import-json': () => $('#file-json').click(),
+  'export-csv': () => exportCSV(),
+  'import-csv': () => $('#file-csv').click(),
+  'csv-template': () => csvTemplate(),
+  'backup-dismiss': () => { ui.backupDismissed = true; renderHome(); },
+  'install-hide': () => { kv.set('smpro.installHide', '1'); renderHome(); },
+  demo: async () => { if (db.products.length && !(await ask({ title: 'إضافة بيانات تجريبية؟', msg: 'راح تنضاف 12 مادة تجريبية على موادك الحالية. تقدر تحذفها بعدين.', ok: 'إضافة' }))) return; loadDemo(); },
+  wipe: async () => {
+    if (!(await ask({ title: 'حذف كل البيانات؟', msg: syncOn() ? 'انتبه: هذا الجهاز متصل بالمحل المشترك، فراح تنحذف كل المواد وقائمة النقص من كل الأجهزة. إذا تريد تمسحها من هذا الموبايل بس، افصله أول من «فصل هذا الجهاز».' : 'راح تنحذف كل المواد وقائمة النقص من هذا الجهاز. ما تقدر ترجعها إلا من نسخة احتياطية.', ok: 'حذف الكل', danger: true }))) return;
+    db = normalizeDB({ settings: { shopName: db.settings.shopName, theme: db.settings.theme, sound: db.settings.sound } });
+    save({ full: true }); renderCurrent(); toast('انحذفت كل البيانات');
+  },
+  install: async () => {
+    if (isStandalone()) { toast('التطبيق مثبت من قبل ✓'); return; }
+    if (deferredPrompt) { deferredPrompt.prompt(); try { await deferredPrompt.userChoice; } catch (e) { } deferredPrompt = null; renderSettings(); return; }
+    const inApp = isIOS() && !/Safari\//.test(navigator.userAgent);
+    info('تثبيت التطبيق على الآيفون', isIOS()
+      ? (inApp ? '⚠️ أنت فاتح الرابط من داخل تطبيق ثاني (مثل واتساب). اضغط «فتح في Safari» أو أيقونة البوصلة أول.\n\n' : '')
+        + '1. بـ <b>Safari</b> اضغط زر المشاركة <b>⬆️</b> (المربع والسهم، تحت بنص الشاشة)\n2. نزّل للأسفل واختار <b>«إضافة إلى الشاشة الرئيسية»</b>\n3. اضغط <b>«إضافة»</b> فوق\n\nراح تطلع أيقونة «سوبرماركت» على الشاشة، تفتح بشاشة كاملة مثل أي تطبيق وتشتغل بدون نت.\n\nإذا عندك محل مشترك، ادخل من الإعدادات ← «الانضمام بكود» حتى تنزل كل المواد.'
+      : '1. افتح الموقع من <b>Chrome</b>\n2. اضغط القائمة ⋮ فوق\n3. اختار <b>«تثبيت التطبيق»</b> أو «إضافة إلى الشاشة الرئيسية»\n4. وافق — وراح يصير عندك أيقونة مثل أي تطبيق');
+  },
+  torch: () => toggleTorch(),
+  zoom: () => cycleZoom(),
+  'cam-switch': () => switchCamera(),
+  'cam-retry': () => startCamera(),
+  'scan-confirm': () => { const c = cleanCode($('#scan-manual').value); if (!c) { toast('اكتب الباركود أول', { type: 'err' }); return; } handleCode(c, Scan.target); }
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const fn = A[el.dataset.act];
+  if (fn) { e.preventDefault(); fn(el, e); }
+});
+$$('.sheet-wrap').forEach(w => w.addEventListener('click', e => { if (e.target === w && w.dataset.backdrop) closeSheet(w.id); }));
+
+/* Inputs */
+let homeT, pT;
+$('#home-q').addEventListener('input', () => { clearTimeout(homeT); homeT = setTimeout(renderHomeResults, 100); });
+$('#home-q').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); homeSubmit(); } });
+$('#p-q').addEventListener('input', e => { clearTimeout(pT); pT = setTimeout(() => { ui.q = e.target.value.trim(); ui.limit = 150; renderProducts(); }, 120); });
+$('#p-q').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); const code = cleanCode(e.target.value); const p = byCode(code); if (p) showLookup(p); } });
+$('#p-sort').addEventListener('change', e => { ui.sort = e.target.value; renderProducts(); });
+$('#pf').addEventListener('submit', e => { e.preventDefault(); saveProduct(); });
+$('#pf-code').addEventListener('input', pfDupCheck);
+$('#pf-code').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pfDupCheck(); $('#pf-name').focus(); } });
+['#pf-bulk', '#pf-pack', '#pf-retail'].forEach(s => $(s).addEventListener('input', pfMargin));
+$('#sf').addEventListener('submit', e => { e.preventDefault(); saveShortage(); });
+$('#sf-code').addEventListener('input', shortageLookup);
+$('#sf-code').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shortageLookup(); ($('#sf-name').value ? $('#sf-qty') : $('#sf-name')).focus(); } });
+$('#sf-name').addEventListener('input', () => {
+  sfAuto = false;
+  sfSuggest();
+  const p = db.products.find(x => x.name === $('#sf-name').value.trim());
+  if (p && p.barcode && !$('#sf-code').value) { $('#sf-code').value = p.barcode; shortageLookup(); }
+});
+['#sf-code', '#sf-qty', '#sf-note'].forEach(s => $(s).addEventListener('focus', () => { $('#sf-sugg').hidden = true; }));
+$('#sf-name').addEventListener('focus', sfSuggest);
+['on', 'price', 'items', 'short'].forEach(k => $('#nt-' + k).addEventListener('change', e => { setNotePref(k, e.target.checked); renderNotePrefs(); }));
+$('#nt-system').addEventListener('change', async e => {
+  if (!e.target.checked) { setNotePref('system', false); return; }
+  if (!('Notification' in window)) { e.target.checked = false; toast(isIOS() ? 'على الآيفون: ثبّت التطبيق على الشاشة الرئيسية أول، وافتحه منها' : 'هذا المتصفح ما يدعم الإشعارات', { type: 'err', ms: 5000 }); return; }
+  let perm = Notification.permission;
+  if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch (err) { } }
+  if (perm !== 'granted') { e.target.checked = false; setNotePref('system', false); toast('الإشعارات مرفوضة — فعّلها من إعدادات الموبايل للتطبيق أو للمتصفح', { type: 'err', ms: 5000 }); return; }
+  setNotePref('system', true); toast('تمام ✓ — راح توصلك الإشعارات');
+});
+$('#dev-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['dev-name-save'](); } });
+$('#join-code').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['sync-join-go'](); } });
+$('#rs-qty').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); resolveAdd(); } });
+$('#cam').addEventListener('click', e => { if (!e.target.closest('button')) tapFocus(e); });
+$('#scan-manual').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['scan-confirm'](); } });
+$('#set-name').addEventListener('input', e => { db.settings.shopName = e.target.value.trim() || 'سوبرماركت'; save(); renderTop(); });
+$('#set-sound').addEventListener('change', e => { db.settings.sound = e.target.checked; save(); });
+$('#file-json').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) importJSONFile(f); });
+$('#file-csv').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) importCSVFile(f); });
+
+/* Keyboard: Escape + USB/Bluetooth barcode scanners (they type fast and press Enter) */
+const kb = { buf: '', last: 0 };
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && stack.length) { closeSheet(topSheet()); return; }
+  const t = e.target, typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (stack.length && topSheet() !== 'sheet-lookup') return;
+  const now = performance.now();
+  if (now - kb.last > 80) kb.buf = '';
+  kb.last = now;
+  if (e.key === 'Enter') { const c = cleanCode(kb.buf); kb.buf = ''; if (c.length >= 4) { e.preventDefault(); beep(); handleCode(c, 'lookup'); } return; }
+  if (e.key.length === 1) kb.buf += e.key;
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!stack.includes('sheet-scan')) return;
+  if (document.hidden) stopCamera(); else startCamera();
+});
+
+/* Keyboard: keep sheets and the focused field above the on-screen keyboard */
+const VV = window.visualViewport;
+const isTextEl = el => !!el && ((el.tagName === 'INPUT' && !/^(checkbox|radio|file|button|submit|range|color)$/.test(el.type)) || el.tagName === 'TEXTAREA' || el.isContentEditable);
+let vpW = window.innerWidth, vpBase = Math.max(window.innerHeight, VV ? VV.height : 0);
+function syncViewport() {
+  const hgt = VV ? VV.height : window.innerHeight, top = VV ? VV.offsetTop : 0, st = document.documentElement.style;
+  if (window.innerWidth !== vpW) { vpW = window.innerWidth; vpBase = 0; }
+  const typing = isTextEl(document.activeElement);
+  if (!typing) vpBase = Math.max(vpBase, window.innerHeight, hgt);
+  st.setProperty('--vvh', Math.round(hgt) + 'px');
+  st.setProperty('--vvt', Math.round(top) + 'px');
+  document.body.classList.toggle('kb-open', typing && vpBase - hgt > 120);
+}
+function keepVisible(el) {
+  const sh = el.closest('.sheet'); if (!sh) return;
+  const sr = sh.getBoundingClientRect(), r = el.getBoundingClientRect();
+  const target = el.dataset.scroll === 'start' ? sh.scrollTop + (r.top - sr.top) - 56 : sh.scrollTop + (r.top - sr.top) - (sr.height - r.height) / 2;
+  sh.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+}
+if (VV) { VV.addEventListener('resize', syncViewport); VV.addEventListener('scroll', syncViewport); }
+window.addEventListener('resize', syncViewport);
+window.addEventListener('orientationchange', () => setTimeout(syncViewport, 300));
+document.addEventListener('focusin', e => {
+  if (!isTextEl(e.target)) return;
+  syncViewport();
+  [120, 380].forEach(ms => setTimeout(() => { syncViewport(); if (document.activeElement === e.target) keepVisible(e.target); }, ms));
+});
+document.addEventListener('focusout', () => setTimeout(syncViewport, 120));
+
+/* PWA install + network */
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; if (ui.view === 'settings') renderSettings(); if (ui.view === 'home') renderHome(); });
+window.addEventListener('appinstalled', () => { deferredPrompt = null; toast('تم تثبيت التطبيق ✓'); if (ui.view === 'settings') renderSettings(); if (ui.view === 'home') renderHome(); });
+const netState = () => { $('#offline').hidden = navigator.onLine !== false; };
+window.addEventListener('online', netState); window.addEventListener('offline', netState);
+window.addEventListener('hashchange', () => {
+  const jm = /join=([A-Za-z0-9-]{12,16})/.exec(location.hash);
+  if (jm) { const jc = normCode(jm[1]); go('settings'); if (jc && jc === Sync.code) toast('هذا الجهاز متصل بنفس المحل ✓'); else if (jc) { $('#join-code').value = jc; openSheet('sheet-join'); } return; }
+  const h = location.hash.slice(1); if (['home', 'products', 'shortage', 'settings'].includes(h) && h !== ui.view) go(h);
+});
+window.addEventListener('pagehide', flushPending);
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushPending(); });
+
+/* ================= Init ================= */
+(async function init() {
+  if (history.state && history.state.sheet) { try { history.replaceState(null, ''); } catch (e) { } }
+  applyTheme();
+  syncViewport();
+  const mq = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
+  if (mq) { mq.addEventListener ? mq.addEventListener('change', applyTheme) : mq.addListener(applyTheme); }
+  $('#home-body').innerHTML = '<p class="muted" style="text-align:center;padding:30px 0">جاري تحميل المواد…</p>';
+  const joinM = /join=([A-Za-z0-9-]{12,16})/.exec(location.hash);
+  await storeBoot();
+  applyTheme();
+  const h = joinM ? 'settings' : location.hash.slice(1);
+  go(['home', 'products', 'shortage', 'settings'].includes(h) ? h : 'home');
+  netState();
+  if (syncOn()) { syncConnect(); syncSchedule(800); }
+  if (joinM) {
+    const jc = normCode(joinM[1]);
+    if (jc && jc === Sync.code) toast('هذا الجهاز متصل بنفس المحل ✓');
+    else if (jc) { $('#join-code').value = jc; openSheet('sheet-join'); }
+  }
+  window.addEventListener('online', () => { if (syncOn()) { syncConnect(); syncPush(); } });
+  window.addEventListener('offline', () => syncSetState());
+  document.addEventListener('visibilitychange', () => {
+    if (!syncOn()) return;
+    syncHeartbeat(document.hidden);
+    if (!document.hidden && (!Sync.es.length || Sync.es.some(es => es.readyState === 2))) syncConnect();
+  });
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    const whenLoaded = fn => (document.readyState === 'complete' ? fn() : window.addEventListener('load', fn));
+    whenLoaded(() => {
+      navigator.serviceWorker.register('./sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          if (nw) nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) toast('يتوفر تحديث جديد للتطبيق', { action: { label: 'تحديث', fn: () => location.reload() }, ms: 12000 });
+          });
+        });
+      }).catch(() => { });
+    });
+  }
+  // Preload the barcode decoder in the background (only where the built-in detector is missing, e.g. iPhone)
+  const idle = window.requestIdleCallback || (fn => setTimeout(fn, 2500));
+  // نجهّز فهرس البحث بالخلفية حتى أول بحث يكون فوري حتى مع آلاف المواد
+  (function warm() { ensureIdx(); const P = db.products; let i = 0; const run = () => { const end = Math.min(P.length, i + 1500); for (; i < end; i++) pkey(P[i]); if (i < P.length) (window.requestIdleCallback || setTimeout)(run); }; (window.requestIdleCallback || setTimeout)(run); })();
+  idle(() => { nativeOK().then(ok => { if (!ok && navigator.onLine !== false) loadZX().catch(() => { }); }); });
+})();
+</script>
+</body>
+</html>
