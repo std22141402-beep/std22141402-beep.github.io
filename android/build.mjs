@@ -302,6 +302,136 @@ async function viaBubblewrap() {
   return { source: 'bubblewrap', apk: signed, aab, keystore: ksFile, storePass: PASS, keyPass: bwKeyPass, alias: bwAlias };
 }
 
+// --------------------------------------------------------------- 3) مخصص: Bubblewrap + طبقة الموقع الأصلية
+function copyDir(src, dst) {
+  fs.mkdirSync(dst, { recursive: true });
+  for (const e of fs.readdirSync(src, { withFileTypes: true })) {
+    const a = path.join(src, e.name), b = path.join(dst, e.name);
+    if (e.isDirectory()) copyDir(a, b); else fs.copyFileSync(a, b);
+  }
+}
+
+/** نزرع طبقة الموقع الأصلية (android/native) بمشروع Bubblewrap */
+function patchNative(proj) {
+  const javaDir = path.join(proj, 'app', 'src', 'main', 'java');
+  copyDir(path.join(ROOT, 'android', 'native'), javaDir);
+  // 1) DelegationService: معالج الموقع مالتنا بدل مكتبة گوگل
+  const ds = path.join(javaDir, ...cfg.packageId.split('.'), 'DelegationService.java');
+  let d = fs.readFileSync(ds, 'utf8');
+  if (!d.includes('super.onCreate();')) throw new Error('DelegationService بدون super.onCreate()');
+  if (/LocationDelegationExtraCommandHandler/.test(d)) throw new Error('مكتبة الموقع القديمة بعدها مفعلة');
+  d = d.replace('super.onCreate();', 'super.onCreate();\n        registerExtraCommandHandler(new iq.salka.app.loc.SalkaLocationHandler());');
+  fs.writeFileSync(ds, d);
+  // 2) AndroidManifest: الصلاحيات + النوافذ
+  const mf = path.join(proj, 'app', 'src', 'main', 'AndroidManifest.xml');
+  let m = fs.readFileSync(mf, 'utf8');
+  const appTag = m.search(/<application[\s>]/);
+  if (appTag < 0 || !m.includes('</application>')) throw new Error('AndroidManifest غير متوقع');
+  m = m.slice(0, appTag)
+    + '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n\n    '
+    + m.slice(appTag);
+  const acts = `
+        <activity android:name="iq.salka.app.loc.PermissionActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="false"
+            android:excludeFromRecents="true" />
+        <activity android:name="iq.salka.app.loc.LocationSetupActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="salka" android:host="location" />
+            </intent-filter>
+        </activity>
+    </application>`;
+  m = m.replace('</application>', acts);
+  fs.writeFileSync(mf, m);
+  // 3) خدمات گوگل للموقع
+  const gf = path.join(proj, 'app', 'build.gradle');
+  let g = fs.readFileSync(gf, 'utf8');
+  const dep = "implementation fileTree(include: ['*.jar'], dir: 'libs')";
+  if (!g.includes(dep)) throw new Error('app/build.gradle غير متوقع');
+  g = g.replace(dep, `${dep}\n    implementation 'com.google.android.gms:play-services-location:${cfg.playServicesLocation || '21.3.0'}'`);
+  fs.writeFileSync(gf, g);
+  log('طبقة الموقع الأصلية انزرعت ✓ (DelegationService + AndroidManifest + build.gradle)');
+}
+
+/** مكتبة apksig (Apache-2.0) من Maven Central — للتوقيع خارج GitHub (المفتاح ما يطلع للسيرفر) */
+async function fetchApksig() {
+  const v = cfg.apksigVersion || '8.7.3';
+  const base = `https://repo1.maven.org/maven2/com/android/tools/build/apksig/${v}/apksig-${v}.jar`;
+  const jar = Buffer.from(await (await fetch(base, { signal: AbortSignal.timeout(60000) })).arrayBuffer());
+  const sha1 = (await (await fetch(`${base}.sha1`, { signal: AbortSignal.timeout(30000) })).text()).trim().slice(0, 40);
+  const got = crypto.createHash('sha1').update(jar).digest('hex');
+  if (!jar.length || got !== sha1) throw new Error(`apksig: بصمة غير مطابقة (${got} ≠ ${sha1})`);
+  fs.writeFileSync(path.join(PUB, `apksig-${v}.jar`), jar);
+  log(`apksig ${v} ✓ (sha1 ${sha1})`);
+}
+
+async function viaCustom() {
+  log('مخصص: تنصيب @bubblewrap/core');
+  const bw = path.join(WORK, 'bw');
+  fs.mkdirSync(bw, { recursive: true });
+  fs.writeFileSync(path.join(bw, 'package.json'), '{"name":"bw","private":true}');
+  run('npm', ['install', '--no-audit', '--no-fund', '@bubblewrap/core@latest'], { cwd: bw });
+  const require = createRequire(path.join(bw, 'index.js'));
+  const core = require('@bubblewrap/core');
+  log('Bubblewrap core:', require('@bubblewrap/core/package.json').version);
+  const json = {
+    packageId: cfg.packageId, host: new URL(cfg.origin).host, name: cfg.name, launcherName: cfg.launcherName,
+    display: 'standalone', orientation: 'default',
+    themeColor: cfg.themeColor, themeColorDark: cfg.themeColorDark, navigationColor: cfg.navigationColor, navigationColorDark: cfg.navigationColorDark,
+    navigationDividerColor: cfg.navigationDividerColor, navigationDividerColorDark: cfg.navigationDividerColorDark, backgroundColor: cfg.backgroundColor,
+    enableNotifications: false, startUrl: req.startUrl || cfg.startUrl,
+    iconUrl: abs(cfg.icon), maskableIconUrl: abs(cfg.maskableIcon), monochromeIconUrl: abs(cfg.monochromeIcon),
+    splashScreenFadeOutDuration: 300, signingKey: { path: './unused.keystore', alias: cfg.keyAlias },
+    appVersionName: req.versionName, appVersionCode: req.versionCode, appVersion: req.versionName,
+    shortcuts: bubblewrapShortcuts(), generatorApp: 'salka-ci', webManifestUrl: abs(cfg.manifest), fallbackType: 'customtabs',
+    features: {}, alphaDependencies: { enabled: false }, enableSiteSettingsShortcut: true, isChromeOSOnly: false, isMetaQuest: false,
+    fullScopeUrl: cfg.origin + '/', minSdkVersion: cfg.minSdkVersion, fingerprints: [], additionalTrustedOrigins: [], retainedBundles: [],
+  };
+  const twa = new core.TwaManifest(json);
+  const proj = path.join(WORK, 'twa');
+  fs.rmSync(proj, { recursive: true, force: true });
+  fs.mkdirSync(proj, { recursive: true });
+  await new core.TwaGenerator().createTwaProject(proj, twa, new core.ConsoleLog('twa'), () => {});
+  patchNative(proj);
+  log('Gradle: assembleRelease + bundleRelease');
+  const gradlew = path.join(proj, 'gradlew');
+  fs.chmodSync(gradlew, 0o755);
+  runLogged(gradlew, ['assembleRelease', 'bundleRelease', '--no-daemon', '--stacktrace'], path.join(OUT, 'gradle.log'), { cwd: proj, timeout: 30 * 60 * 1000 });
+  const files = walk(path.join(proj, 'app', 'build', 'outputs'));
+  const apk = files.find((f) => /\.apk$/i.test(f));
+  const aab = files.find((f) => /\.aab$/i.test(f));
+  if (!apk || !aab) throw new Error(`مخرجات Gradle ناقصة: ${files.join(', ')}`);
+  // فحص المانيفست النهائي داخل الـAPK
+  const t = buildTools();
+  const xml = run(t.aapt2, ['dump', 'xmltree', '--file', 'AndroidManifest.xml', apk]);
+  for (const need of ['iq.salka.app.loc.LocationSetupActivity', 'iq.salka.app.loc.PermissionActivity', 'android.permission.ACCESS_FINE_LOCATION', 'salka']) {
+    if (!xml.includes(need)) throw new Error(`المانيفست النهائي ناقص: ${need}`);
+  }
+  const dex = run('unzip', ['-l', apk]);
+  if (!/classes\.dex/.test(dex)) throw new Error('ماكو classes.dex');
+  const badge = run(t.aapt2, ['dump', 'badging', apk]);
+  const pk = /package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'/.exec(badge);
+  log('الحزمة (غير موقعة):', pk ? `${pk[1]} • ${pk[2]} • ${pk[3]}` : '?');
+  if (!pk || pk[1] !== cfg.packageId || +pk[2] !== +req.versionCode) throw new Error('اسم الحزمة أو versionCode غير صحيح');
+  fs.writeFileSync(path.join(OUT, 'manifest-dump.txt'), xml);
+  fs.copyFileSync(apk, path.join(PUB, 'salka-unsigned.apk'));
+  fs.copyFileSync(aab, path.join(PUB, 'salka-unsigned.aab'));
+  fs.copyFileSync(path.join(proj, 'twa-manifest.json'), path.join(PUB, 'twa-manifest.json'));
+  await fetchApksig();
+  fs.writeFileSync(path.join(PUB, 'build-info.json'), JSON.stringify({
+    packageId: cfg.packageId, versionName: req.versionName, versionCode: req.versionCode, unsigned: true,
+    sha256: crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex'), source: 'custom', builtAt: new Date().toISOString(),
+  }, null, 2) + '\n');
+  log('✅ الحزمة جاهزة للتوقيع خارج GitHub');
+}
+
 // --------------------------------------------------------------- التحقق والتغليف
 function verify(pkg) {
   const t = buildTools();
@@ -357,6 +487,11 @@ function encryptSecure() {
 // --------------------------------------------------------------- التشغيل
 async function main() {
   log(`بناء ${cfg.packageId} الإصدار ${req.versionName} (${req.versionCode})`);
+  if (req.method === 'custom') {
+    if (PUBLISHED && +req.versionCode <= +PUBLISHED.versionCode) throw new Error(`versionCode لازم يكون أكبر من ${PUBLISHED.versionCode}`);
+    await viaCustom();
+    return;
+  }
   // حماية: التطبيق منشور بمفتاح، فأي بناء بمفتاح جديد ما يكدر يحدّث النسخ المثبتة
   if (PUBLISHED && !EXIST && !req.allowNewKey) {
     throw new Error(`التطبيق منشور بالمفتاح ${PUBLISHED.certSha256}. حتى تبني تحديث، أضف المفتاح لأسرار GitHub (SALKA_KEYSTORE_B64 و SALKA_KEYSTORE_PASS و SALKA_KEY_ALIAS) — أو ضع "allowNewKey": true بملف request.json إذا تريد تطبيق جديد بمفتاح جديد عن قصد.`);
