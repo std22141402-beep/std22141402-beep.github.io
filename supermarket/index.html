@@ -357,6 +357,14 @@ a.item{color:inherit;text-decoration:none}.item.dz>.i{color:var(--danger)}
 .toast button{color:var(--accent);font-weight:800;padding:4px 8px;font-size:14.5px}
 .toast.err button{color:#fff}
 
+.sync-chip{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;background:var(--ok-soft);color:var(--ok)}
+.sync-chip.pushing,.sync-chip.connecting,.sync-chip.pending{background:var(--brand-soft);color:var(--brand)}
+.sync-chip.denied{background:var(--danger-soft);color:var(--danger)}
+.code-big{font-size:17px!important;font-weight:800!important;color:var(--ink)!important;letter-spacing:.03em;margin-top:2px;white-space:nowrap}
+.item.col{flex-direction:column;align-items:stretch;gap:8px}
+.sinp.wide{width:100%}
+.item.btns{gap:10px;flex-wrap:wrap}
+.item.btns .btn{flex:1}
 /* keyboard open */
 body.kb-open .nav{display:none}
 body.kb-open .sheet{padding-bottom:14px}
@@ -408,6 +416,8 @@ body.kb-open .toast.show{transform:none}
   <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/></symbol>
   <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></symbol>
   <symbol id="i-camswitch" viewBox="0 0 24 24"><path d="M3.5 8h3l1.5-2.5h8L17.5 8h3v11.5h-17z"/><path d="M9 13.2a3 3 0 0 1 5.3-1.7M15 13.8a3 3 0 0 1-5.3 1.7M14.6 9.6v2h-2M9.4 17.4v-2h2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M15.5 4.8a3.3 3.3 0 0 1 0 6.4M17.5 14.8c2.2.6 3.6 2.3 4 5.2"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4"/><path d="m10.5 12.5 9-9M16 7l2.5 2.5M18.5 4.5 21 7"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></symbol>
 </svg>
 
@@ -417,7 +427,7 @@ body.kb-open .toast.show{transform:none}
       <div class="logo"><svg class="i"><use href="#i-scan"/></svg></div>
       <div style="min-width:0"><h1 id="shop-name">سوبرماركت</h1><p id="today"></p></div>
     </div>
-    <span class="offline" id="offline" hidden>بدون إنترنت · يشتغل عادي</span>
+    <span class="row-btns"><span class="sync-chip" id="sync-chip" hidden></span><span class="offline" id="offline" hidden>بدون إنترنت · يشتغل عادي</span></span>
   </div>
 </header>
 
@@ -483,6 +493,7 @@ body.kb-open .toast.show{transform:none}
       </div>
       <label class="item"><svg class="i"><use href="#i-sound"/></svg><span class="t">صوت عند المسح</span><input type="checkbox" id="set-sound" class="switch"></label>
     </div>
+    <div class="group" id="sync-group"></div>
     <div class="group">
       <div class="group-h">النسخ الاحتياطي</div>
       <button class="item" data-act="export-json"><svg class="i"><use href="#i-down"/></svg><span class="t">حفظ نسخة احتياطية<small id="last-backup"></small></span></button>
@@ -504,7 +515,7 @@ body.kb-open .toast.show{transform:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 2.1<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 2.2<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -650,6 +661,17 @@ body.kb-open .toast.show{transform:none}
   </div>
 </div>
 
+<!-- Join shared shop -->
+<div class="sheet-wrap" id="sheet-join" role="dialog" aria-modal="true" aria-labelledby="jn-title">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sheet-h"><h3 id="jn-title">الانضمام لمحل مشترك</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <p class="cf-msg" style="margin-bottom:12px">اكتب كود المحل اللي يطلع بموبايل صاحب المحل (الإعدادات ← كود المحل).</p>
+    <div class="fg"><input id="join-code" class="inp num" dir="ltr" placeholder="XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" enterkeyhint="go" style="text-align:center;font-size:20px;letter-spacing:.08em"></div>
+    <div class="sheet-actions"><button class="btn" data-act="close">إلغاء</button><button class="btn pri" data-act="sync-join-go">انضمام</button></div>
+  </div>
+</div>
+
 <!-- Info -->
 <div class="sheet-wrap" id="sheet-info" data-backdrop="1" role="dialog" aria-modal="true" aria-labelledby="if-title">
   <div class="sheet">
@@ -748,10 +770,10 @@ function markSaved() {
 }
 async function idbReadAll() {
   const tx = Store.idb.transaction(['products', 'meta'], 'readonly');
-  const [products, settings, shortages] = await Promise.all([
-    reqP(tx.objectStore('products').getAll()), reqP(tx.objectStore('meta').get('settings')), reqP(tx.objectStore('meta').get('shortages'))
+  const [products, settings, shortages, sync] = await Promise.all([
+    reqP(tx.objectStore('products').getAll()), reqP(tx.objectStore('meta').get('settings')), reqP(tx.objectStore('meta').get('shortages')), reqP(tx.objectStore('meta').get('sync'))
   ]);
-  return { products, settings, shortages };
+  return { products, settings, shortages, sync };
 }
 async function storeBoot() {
   try {
@@ -764,12 +786,13 @@ async function storeBoot() {
       db = normalizeDB(legacy); dbVer++;
       if (await flushNow(true)) { try { localStorage.removeItem(KEY); } catch (e) { } }
     } else {
-      db = normalizeDB(data); dbVer++; markSaved();
+      db = normalizeDB(data); dbVer++; markSaved(); syncLoad(data.sync);
     }
     Store.idb.onversionchange = () => { try { Store.idb.close(); } catch (e) { } };
     try { Store.bc = new BroadcastChannel('smpro'); Store.bc.onmessage = onOtherTab; } catch (e) { }
   } catch (e) {
-    Store.mode = 'ls'; db = normalizeDB(lsRead() || {}); dbVer++;
+    Store.mode = 'ls'; db = normalizeDB(lsRead() || {}); dbVer++; markSaved();
+    try { syncLoad(JSON.parse(localStorage.getItem('smpro.sync') || 'null')); } catch (e2) { }
   }
 }
 let persistAsked = false;
@@ -786,33 +809,39 @@ function saveFailed() {
 }
 /* نكتب بس المواد اللي تغيّرت (أو انحذفت)، مو كل القائمة */
 function flushNow(forceFull) {
+  const full = forceFull || Store.full; Store.full = false;
+  const ids = new Set(), changed = [], removed = [];
+  for (const p of db.products) {
+    ids.add(p.id);
+    if (full || !Store.savedIds.has(p.id) || Store.savedStamp.get(p) !== p.updatedAt) { changed.push(p); Store.savedStamp.set(p, p.updatedAt); }
+  }
+  Store.savedIds.forEach(id => { if (!ids.has(id)) removed.push(id); });
+  Store.savedIds = ids;
+  syncNoteFlush(changed, removed);
+  const syncState = syncSnapshot();
   if (Store.mode !== 'idb') {
-    try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { saveFailed(); return Promise.resolve(false); }
+    try { localStorage.setItem(KEY, JSON.stringify(db)); localStorage.setItem('smpro.sync', JSON.stringify(syncState)); }
+    catch (e) { saveFailed(); return Promise.resolve(false); }
+    syncSchedule();
     return Promise.resolve(true);
   }
   return new Promise(resolve => {
     let done = false;
     const fail = err => { if (done) return; done = true; Store.full = true; saveFailed(err); resolve(false); };
     try {
-      const full = forceFull || Store.full; Store.full = false;
       const tx = Store.idb.transaction(['products', 'meta'], 'readwrite'), ps = tx.objectStore('products'), ms = tx.objectStore('meta');
-      const ids = new Set();
       if (full) ps.clear();
-      for (const p of db.products) {
-        ids.add(p.id);
-        if (full || !Store.savedIds.has(p.id) || Store.savedStamp.get(p) !== p.updatedAt) { ps.put(p); Store.savedStamp.set(p, p.updatedAt); }
-      }
-      if (!full) Store.savedIds.forEach(id => { if (!ids.has(id)) ps.delete(id); });
-      Store.savedIds = ids;
-      ms.put(db.settings, 'settings'); ms.put(db.shortages, 'shortages');
-      tx.oncomplete = () => { if (done) return; done = true; try { Store.bc && Store.bc.postMessage('changed'); } catch (e) { } resolve(true); };
+      for (const p of changed) ps.put(p);
+      if (!full) for (const id of removed) ps.delete(id);
+      ms.put(db.settings, 'settings'); ms.put(db.shortages, 'shortages'); ms.put(syncState, 'sync');
+      tx.oncomplete = () => { if (done) return; done = true; try { Store.bc && Store.bc.postMessage('changed'); } catch (e) { } syncSchedule(); resolve(true); };
       tx.onerror = () => fail(tx.error); tx.onabort = () => fail(tx.error);
     } catch (e) { fail(e); }
   });
 }
 function flushPending() { if (Store.timer) { clearTimeout(Store.timer); Store.timer = null; flushNow(); } }
 async function onOtherTab() {
-  if (Store.timer || stack.length || Store.mode !== 'idb') return;
+  if (Store.timer || stack.length || Store.mode !== 'idb' || syncOn()) return;
   try { db = normalizeDB(await idbReadAll()); dbVer++; markSaved(); applyTheme(); renderCurrent(); } catch (e) { }
 }
 
@@ -1096,7 +1125,9 @@ function productCard(p) {
 }
 function changeQty(id, d) {
   const p = byId(id); if (!p) return;
+  const before = p.qty;
   p.qty = Math.max(0, round2(p.qty + d)); p.updatedAt = stamp();
+  syncQty(p, p.qty - before);
   save();
   if (ui.view === 'products') {
     const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
@@ -1319,10 +1350,10 @@ function resolveAdd() {
   const p = linkedProduct(s), n = toNum($('#rs-qty').value);
   if (!(n > 0)) { toast('اكتب الكمية اللي وصلت', { type: 'err' }); $('#rs-qty').focus(); return; }
   const idx = db.shortages.indexOf(s), before = p.qty;
-  p.qty = round2(p.qty + n); p.updatedAt = stamp();
+  p.qty = round2(p.qty + n); p.updatedAt = stamp(); syncQty(p, n);
   db.shortages.splice(idx, 1); save();
   closeSheet('sheet-resolve'); renderCurrent();
-  toast(`انضافت ${fmt(n)} لـ «${p.name}» ✓`, { action: { label: 'تراجع', fn: () => { p.qty = before; p.updatedAt = stamp(); db.shortages.splice(idx, 0, s); save(); renderCurrent(); } } });
+  toast(`انضافت ${fmt(n)} لـ «${p.name}» ✓`, { action: { label: 'تراجع', fn: () => { const back = before - p.qty; p.qty = before; p.updatedAt = stamp(); syncQty(p, back); db.shortages.splice(idx, 0, s); save(); renderCurrent(); } } });
 }
 function shortageText() {
   let d = '';
@@ -1390,6 +1421,7 @@ function renderLookup() {
 
 /* ---------- Settings ---------- */
 function renderSettings() {
+  renderSync();
   const n = $('#set-name'); if (document.activeElement !== n) n.value = db.settings.shopName || '';
   $$('#set-theme button').forEach(b => b.classList.toggle('on', b.dataset.v === db.settings.theme));
   $('#set-sound').checked = !!db.settings.sound;
@@ -1424,7 +1456,7 @@ async function importJSONFile(file) {
   try { data = JSON.parse(await file.text()); } catch (e) { toast('الملف مو نسخة احتياطية صالحة', { type: 'err' }); return; }
   if (!data || !Array.isArray(data.products)) { toast('الملف مو نسخة احتياطية من هذا التطبيق', { type: 'err' }); return; }
   const next = normalizeDB(data);
-  const ok = await ask({ title: 'استرجاع النسخة؟', msg: `راح تتبدل البيانات الحالية (${db.products.length} مادة) بالنسخة (${next.products.length} مادة، ${next.shortages.length} نقص).`, ok: 'استرجاع' });
+  const ok = await ask({ title: 'استرجاع النسخة؟', msg: `راح تتبدل البيانات الحالية (${db.products.length} مادة) بالنسخة (${next.products.length} مادة، ${next.shortages.length} نقص).` + (syncOn() ? '\nوبما إن الجهاز متصل بالمحل المشترك، النسخة تنطبق على كل الأجهزة.' : ''), ok: 'استرجاع' });
   if (!ok) return;
   next.settings.lastBackup = Date.now();
   db = next; save({ full: true }); applyTheme(); renderCurrent(); toast('تم استرجاع البيانات ✓');
@@ -1931,6 +1963,358 @@ function handleCode(code, target) {
   }
 }
 
+/* ================= المزامنة بين أكثر من جهاز (Firebase Realtime Database عبر REST) =================
+   كل محل له كود سري (مثل ABCD-EFGH-JKLM). البيانات: smpro/{code}/p (المواد) · s (النقص) · meta (اسم المحل)
+   - التعديلات تنرفع كدفعات، والكمية تنرفع كزيادة/نقصان ذرّي حتى ما تضيع إذا جهازين باعوا بنفس الوقت
+   - التغييرات توصل للأجهزة الثانية مباشرة (بث مباشر)، والمواد تنزل بس اللي تغيّرت من آخر مرة
+   - بدون نت: التعديلات تنتظر وتنرفع لما يرجع النت */
+const SYNC_DEFAULT_URL = '';
+const SV_TS = { '.sv': 'timestamp' };
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const Sync = {
+  url: '', code: '', lastU: 0, syncedS: {}, syncedName: null,
+  pendingFull: new Map(), pendingDel: new Set(), pendingQty: new Map(),
+  remoteVer: new Map(), remoteDel: new Set(), qtyVer: new Map(), remoteS: {},
+  es: [], timer: null, reconnT: null, renderT: null, retry: 0, pushing: false, live: 0, state: 'off', lastOk: 0, remoteQ: [], remoteQT: null, noQuery: false
+};
+const syncOn = () => !!(Sync.url && Sync.code);
+const syncUrlOk = u => /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(firebaseio\.com|firebasedatabase\.app)$/i.test(u) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(u);
+const cleanUrl = u => String(u || '').trim().replace(/\/+$/, '').replace(/\/\.json$/, '');
+function normCode(c) {
+  const raw = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return raw.length === 12 ? raw.match(/.{4}/g).join('-') : '';
+}
+function genCode() {
+  const a = new Uint32Array(12); crypto.getRandomValues(a);
+  return normCode(Array.from(a, n => CODE_CHARS[n % CODE_CHARS.length]).join(''));
+}
+function syncLoad(s) {
+  if (!s || typeof s !== 'object') return;
+  Sync.url = cleanUrl(s.url); Sync.code = normCode(s.code); Sync.lastU = +s.lastU || 0;
+  Sync.syncedS = s.syncedS && typeof s.syncedS === 'object' ? s.syncedS : {};
+  Sync.syncedName = s.syncedName == null ? null : String(s.syncedName);
+  Sync.pendingFull = new Map(Array.isArray(s.pendingFull) ? s.pendingFull : []);
+  Sync.pendingDel = new Set(Array.isArray(s.pendingDel) ? s.pendingDel : []);
+  Sync.pendingQty = new Map(Array.isArray(s.pendingQty) ? s.pendingQty : []);
+}
+function syncSnapshot() {
+  return {
+    url: Sync.url, code: Sync.code, lastU: Sync.lastU, syncedS: Sync.syncedS, syncedName: Sync.syncedName,
+    pendingFull: Array.from(Sync.pendingFull), pendingDel: Array.from(Sync.pendingDel), pendingQty: Array.from(Sync.pendingQty)
+  };
+}
+function syncPersist() {
+  const snap = syncSnapshot();
+  if (Store.mode === 'idb' && Store.idb) { try { Store.idb.transaction('meta', 'readwrite').objectStore('meta').put(snap, 'sync'); } catch (e) { } }
+  else { try { localStorage.setItem('smpro.sync', JSON.stringify(snap)); } catch (e) { } }
+}
+const syncPendingCount = () => Sync.pendingFull.size + Sync.pendingDel.size + Sync.pendingQty.size;
+
+/* --- local edits → queue --- */
+function syncNoteFlush(changed, removed) {
+  if (!syncOn()) { Sync.remoteVer.clear(); Sync.remoteDel.clear(); return; }
+  for (const p of changed) {
+    if (Sync.remoteVer.get(p.id) === p.updatedAt) continue;   // جاية من جهاز ثاني
+    if (Sync.qtyVer.get(p.id) === p.updatedAt) continue;      // بس الكمية تغيّرت ← تنرفع كزيادة/نقصان
+    Sync.pendingFull.set(p.id, p.updatedAt); Sync.pendingQty.delete(p.id); Sync.pendingDel.delete(p.id);
+  }
+  for (const id of removed) {
+    Sync.pendingFull.delete(id); Sync.pendingQty.delete(id);
+    if (!Sync.remoteDel.has(id)) Sync.pendingDel.add(id);
+  }
+  Sync.remoteVer.clear(); Sync.remoteDel.clear();
+}
+function syncQty(p, d) {
+  if (!syncOn() || !d) return;
+  if (Sync.pendingFull.has(p.id)) { Sync.pendingFull.set(p.id, p.updatedAt); return; }
+  Sync.pendingQty.set(p.id, round2((Sync.pendingQty.get(p.id) || 0) + d));
+  Sync.qtyVer.set(p.id, p.updatedAt);
+}
+function syncSchedule(ms) {
+  if (!syncOn()) return;
+  clearTimeout(Sync.timer);
+  Sync.timer = setTimeout(syncPush, ms == null ? 350 : ms);
+}
+const remoteProduct = p => ({ id: p.id, barcode: p.barcode, name: p.name, category: p.category, bulk: p.bulk, pack: p.pack, retail: p.retail, qty: p.qty, minQty: p.minQty, note: p.note, createdAt: p.createdAt, updatedAt: p.updatedAt, u: SV_TS });
+const remoteShortage = s => ({ name: s.name, barcode: s.barcode, qty: s.qty, note: s.note, productId: s.productId || '', createdAt: s.createdAt });
+const sJson = s => JSON.stringify([s.name, s.barcode || '', s.qty || '', s.note || '', s.productId || '', +s.createdAt || 0]);
+
+async function syncPush() {
+  clearTimeout(Sync.timer); Sync.timer = null;
+  if (!syncOn() || Sync.pushing) return;
+  if (navigator.onLine === false) { syncSetState(); return; }
+  const ops = [];
+  Sync.pendingFull.forEach((ver, id) => {
+    const p = byId(id);
+    if (!p) { Sync.pendingFull.delete(id); return; }
+    ops.push({ k: 'p/' + id, v: remoteProduct(p), done: () => { if (Sync.pendingFull.get(id) === ver) Sync.pendingFull.delete(id); } });
+  });
+  Sync.pendingDel.forEach(id => ops.push({ k: 'p/' + id, v: { d: 1, u: SV_TS }, done: () => Sync.pendingDel.delete(id) }));
+  Sync.pendingQty.forEach((d, id) => {
+    const p = byId(id);
+    if (!p || !d || Sync.pendingFull.has(id)) { Sync.pendingQty.delete(id); return; }
+    ops.push({
+      k: `p/${id}/qty`, v: { '.sv': { increment: d } }, extra: { [`p/${id}/u`]: SV_TS, [`p/${id}/updatedAt`]: p.updatedAt },
+      done: () => { const left = round2((Sync.pendingQty.get(id) || 0) - d); if (Math.abs(left) < 1e-9) Sync.pendingQty.delete(id); else Sync.pendingQty.set(id, left); }
+    });
+  });
+  const cur = {};
+  for (const s of db.shortages) cur[s.id] = sJson(s);
+  for (const id in cur) if (Sync.syncedS[id] !== cur[id]) { const j = cur[id], s = getS(id); ops.push({ k: 's/' + id, v: remoteShortage(s), done: () => { Sync.syncedS[id] = j; } }); }
+  for (const id in Sync.syncedS) if (!(id in cur)) ops.push({ k: 's/' + id, v: null, done: () => { delete Sync.syncedS[id]; } });
+  const name = db.settings.shopName;
+  if (name !== Sync.syncedName) ops.push({ k: 'meta/name', v: name, done: () => { Sync.syncedName = name; } });
+  if (!ops.length) { syncSetState(); return; }
+  Sync.pushing = true; syncSetState('pushing');
+  try {
+    for (let i = 0; i < ops.length; i += 1000) {
+      const chunk = ops.slice(i, i + 1000), body = {};
+      for (const o of chunk) { body[o.k] = o.v; if (o.extra) Object.assign(body, o.extra); }
+      const r = await fetch(`${Sync.url}/smpro/${Sync.code}.json`, { method: 'PATCH', body: JSON.stringify(body) });
+      if (!r.ok) { const err = new Error('http ' + r.status); err.status = r.status; throw err; }
+      chunk.forEach(o => o.done());
+    }
+    Sync.retry = 0; Sync.lastOk = Date.now();
+  } catch (e) {
+    Sync.retry = Math.min(6, Sync.retry + 1);
+    Sync.state = (e && (e.status === 401 || e.status === 403)) ? 'denied' : 'error';
+    clearTimeout(Sync.timer); Sync.timer = setTimeout(syncPush, 1500 * 2 ** Sync.retry);
+  } finally {
+    Sync.pushing = false;
+    syncPersist(); syncSetState();
+  }
+  if (syncPendingCount() && !Sync.timer) syncSchedule(300);
+}
+
+/* --- live updates from other devices --- */
+function syncStreamsClose() { Sync.es.forEach(es => { try { es.close(); } catch (e) { } }); Sync.es = []; Sync.live = 0; clearTimeout(Sync.reconnT); }
+function syncConnect() {
+  syncStreamsClose();
+  if (!syncOn() || typeof EventSource === 'undefined') { syncSetState(); return; }
+  const base = `${Sync.url}/smpro/${Sync.code}`;
+  syncOpen(Sync.noQuery ? `${base}/p.json` : `${base}/p.json?orderBy=%22u%22&startAt=${Sync.lastU + 1}`, onRemoteProducts);
+  syncOpen(`${base}/s.json`, onRemoteShortages);
+  syncOpen(`${base}/meta.json`, onRemoteMeta);
+  syncSetState();
+}
+function syncOpen(url, handler) {
+  let es;
+  try { es = new EventSource(url); } catch (e) { return; }
+  Sync.es.push(es);
+  let first = true;
+  const onEv = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (first) { first = false; Sync.live++; Sync.retry = 0; if (Sync.state === 'denied') Sync.state = ''; }
+    try { handler(ev.type, m && m.path || '/', m ? m.data : null); } catch (e) { }
+    syncSetState();
+  };
+  es.addEventListener('put', onEv); es.addEventListener('patch', onEv);
+  es.addEventListener('cancel', () => { Sync.state = 'denied'; syncStreamsClose(); syncSetState(); });
+  es.onerror = () => {
+    if (!Sync.es.includes(es)) return;
+    syncStreamsClose(); syncSetState();
+    if (first && /orderBy/.test(url) && navigator.onLine !== false) {
+      // نتأكد إذا قاعدة البيانات تدعم الطلب المختصر (يحتاج .indexOn بالقواعد)
+      fetch(url.replace(/startAt=\d+/, 'startAt=1') + '&limitToFirst=1').then(r => { if (r.status === 400) Sync.noQuery = true; }).catch(() => { });
+    }
+    Sync.retry = Math.min(6, Sync.retry + 1);
+    Sync.reconnT = setTimeout(syncConnect, 1500 * 2 ** Math.min(Sync.retry, 4));
+  };
+}
+function syncRender() { clearTimeout(Sync.renderT); Sync.renderT = setTimeout(() => { renderCurrent(); }, 250); }
+
+function onRemoteProducts(type, path, data) {
+  const ch = [];
+  const segs = path.split('/').filter(Boolean);
+  if (!segs.length) {
+    if (data && typeof data === 'object') for (const k in data) {
+      const ks = k.split('/');
+      if (ks.length === 1) ch.push([k, data[k], false]); else ch.push([ks[0], { [ks.slice(1).join('/')]: data[k] }, true]);
+    }
+  } else if (segs.length === 1) ch.push([segs[0], data, false]);
+  else ch.push([segs[0], { [segs.slice(1).join('/')]: data }, true]);
+  // نجمع التحديثات اللي توصل ورا بعض ونطبقها مرة وحدة (مهم لما تنزل آلاف المواد)
+  for (const c of ch) Sync.remoteQ.push(c);
+  if (!Sync.remoteQT) Sync.remoteQT = setTimeout(() => { Sync.remoteQT = null; const all = Sync.remoteQ; Sync.remoteQ = []; applyRemoteProducts(all); }, 60);
+}
+const NUM_FIELDS = { bulk: 1, pack: 1, retail: 1, qty: 1, minQty: 1, createdAt: 1, updatedAt: 1 };
+const STR_FIELDS = { barcode: 1, name: 1, category: 1, note: 1 };
+function applyRemoteProducts(ch) {
+  if (!ch.length) return;
+  ensureIdx();
+  const map = new Map(idIdx), adds = [], dels = new Set(), missing = new Set();
+  let n = 0;
+  for (const [id, val, partial] of ch) {
+    if (!id) continue;
+    if (partial) {
+      const p = map.get(id);
+      for (const f in val) {
+        const key = f.split('/')[0], v = val[f];
+        if (key === 'u') { Sync.lastU = Math.max(Sync.lastU, +v || 0); continue; }
+        if (!p) { missing.add(id); continue; }
+        if (key === 'd' && v) { dels.add(id); map.delete(id); Sync.remoteDel.add(id); continue; }
+        if (NUM_FIELDS[key]) p[key] = Math.max(0, +v || 0); else if (STR_FIELDS[key]) p[key] = String(v == null ? '' : v);
+      }
+      if (p && !dels.has(id)) { if (p.pack < 1) p.pack = 1; Sync.remoteVer.set(id, p.updatedAt); n++; }
+      continue;
+    }
+    if (val && typeof val === 'object' && val.u) Sync.lastU = Math.max(Sync.lastU, +val.u || 0);
+    const local = map.get(id);
+    if (val === null || (val && val.d)) {
+      if (local && !(Sync.pendingFull.has(id) && local.updatedAt > (+(val && val.updatedAt) || 0))) {
+        dels.add(id); map.delete(id); Sync.remoteDel.add(id); Sync.pendingQty.delete(id); Sync.pendingFull.delete(id); n++;
+      }
+      continue;
+    }
+    if (typeof val !== 'object') continue;
+    if (local && Sync.pendingFull.has(id) && local.updatedAt > (+val.updatedAt || 0)) continue;  // تعديلي أحدث ← راح ينرفع
+    const np = normProduct(Object.assign({}, val, { id }));
+    if (!np) continue;
+    if (local) { Object.assign(local, np); Sync.remoteVer.set(id, local.updatedAt); }
+    else { adds.push(np); map.set(id, np); Sync.remoteVer.set(id, np.updatedAt); }
+    Sync.pendingFull.delete(id);
+    n++;
+  }
+  if (dels.size) db.products = db.products.filter(p => !dels.has(p.id));
+  if (adds.length) db.products = adds.concat(db.products);
+  if (n) { save(); syncRender(); }
+  else syncPersist();
+  missing.forEach(id => fetch(`${Sync.url}/smpro/${Sync.code}/p/${id}.json`).then(r => r.ok ? r.json() : null).then(v => { if (v) applyRemoteProducts([[id, v, false]]); }).catch(() => { }));
+}
+function onRemoteShortages(type, path, data) {
+  const segs = path.split('/').filter(Boolean);
+  let changed;
+  if (!segs.length) {
+    if (type === 'put') {
+      const prev = Sync.remoteS; Sync.remoteS = (data && typeof data === 'object') ? Object.assign({}, data) : {};
+      changed = new Set(Object.keys(prev).concat(Object.keys(Sync.remoteS), Object.keys(Sync.syncedS), db.shortages.map(s => s.id)));
+    } else {
+      changed = new Set();
+      for (const k in (data || {})) { const ks = k.split('/'); const id = ks[0]; changed.add(id); if (ks.length === 1) { if (data[k] == null) delete Sync.remoteS[id]; else Sync.remoteS[id] = data[k]; } else { Sync.remoteS[id] = Object.assign({}, Sync.remoteS[id] || {}, { [ks[1]]: data[k] }); } }
+    }
+  } else {
+    const id = segs[0]; changed = new Set([id]);
+    if (segs.length === 1) { if (data == null) delete Sync.remoteS[id]; else Sync.remoteS[id] = data; }
+    else Sync.remoteS[id] = Object.assign({}, Sync.remoteS[id] || {}, { [segs[1]]: data });
+  }
+  let n = 0;
+  changed.forEach(id => {
+    const r = Sync.remoteS[id], idx = db.shortages.findIndex(s => s.id === id), local = idx >= 0 ? db.shortages[idx] : null;
+    const localJ = local ? sJson(local) : undefined, dirty = localJ !== Sync.syncedS[id];
+    if (r) {
+      const rs = normShortage(Object.assign({}, r, { id, productId: r.productId || null }));
+      if (!rs) return;
+      const rJ = sJson(rs);
+      if (local && dirty && localJ !== rJ && Sync.syncedS[id] !== undefined) return;   // تعديلي ما انرفع بعد
+      if (local) { if (localJ !== rJ) { Object.assign(local, rs); n++; } } else { db.shortages.unshift(rs); n++; }
+      Sync.syncedS[id] = rJ;
+    } else if (Sync.syncedS[id] !== undefined) {
+      if (local && !dirty) { db.shortages.splice(idx, 1); n++; }
+      delete Sync.syncedS[id];
+    }
+  });
+  if (n) { save(); syncRender(); } else syncPersist();
+}
+function onRemoteMeta(type, path, data) {
+  let name;
+  if (path === '/' || path === '') name = data && typeof data === 'object' ? data.name : undefined;
+  else if (path.replace(/^\//, '') === 'name') name = data;
+  if (typeof name !== 'string' || !name.trim()) return;
+  if (db.settings.shopName === Sync.syncedName || Sync.syncedName == null) {
+    Sync.syncedName = name;
+    if (db.settings.shopName !== name) { db.settings.shopName = name; save(); renderTop(); if (ui.view === 'settings') renderSettings(); }
+    else syncPersist();
+  }
+}
+
+/* --- create / join / leave --- */
+async function syncCreate() {
+  const url = cleanUrl(SYNC_DEFAULT_URL || ($('#sync-url') && $('#sync-url').value) || Sync.url);
+  if (!syncUrlOk(url)) { toast('رابط قاعدة البيانات غير صحيح', { type: 'err' }); return; }
+  const code = genCode();
+  try {
+    const r = await fetch(`${url}/smpro/${code}/meta.json`, { method: 'PUT', body: JSON.stringify({ name: db.settings.shopName, created: SV_TS }) });
+    if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'denied' : 'http');
+  } catch (e) { toast(e.message === 'denied' ? 'قاعدة البيانات رفضت — تأكد من القواعد (Rules) بـ Firebase' : 'ما قدرت أتصل بقاعدة البيانات — تأكد من النت والرابط', { type: 'err', ms: 5000 }); return; }
+  Object.assign(Sync, { url, code, lastU: 0, syncedS: {}, syncedName: db.settings.shopName, retry: 0 });
+  Sync.pendingFull = new Map(db.products.map(p => [p.id, p.updatedAt])); Sync.pendingDel = new Set(); Sync.pendingQty = new Map();
+  syncPersist(); syncConnect(); syncPush();
+  renderSettings();
+  info('تم إنشاء المحل المشترك ✓', `كود المحل:\n<b class="num" style="font-size:22px">${esc(code)}</b>\n\nبالموبايلات الثانية: الإعدادات ← «الانضمام بكود» واكتب هذا الكود، أو ابعثلهم الرابط من زر «مشاركة».`);
+}
+async function syncJoin(raw) {
+  const code = normCode(raw), url = cleanUrl(SYNC_DEFAULT_URL || ($('#sync-url') && $('#sync-url').value) || Sync.url);
+  if (!code) { toast('الكود لازم يكون 12 حرف/رقم', { type: 'err' }); return false; }
+  if (!syncUrlOk(url)) { toast('رابط قاعدة البيانات غير صحيح', { type: 'err' }); return false; }
+  let meta;
+  try {
+    const r = await fetch(`${url}/smpro/${code}/meta.json`);
+    if (!r.ok) throw new Error('http');
+    meta = await r.json();
+  } catch (e) { toast('ما قدرت أتصل بقاعدة البيانات — تأكد من النت', { type: 'err' }); return false; }
+  if (!meta) { toast('ما لقيت محل بهذا الكود — تأكد منه', { type: 'err' }); return false; }
+  if ((db.products.length || db.shortages.length) && !(await ask({ title: 'الانضمام للمحل؟', msg: `راح تنمسح بيانات هذا الموبايل (${fmt(db.products.length)} مادة) وتنزل بيانات المحل «${meta.name || ''}».\nإذا تريدها، احفظ نسخة احتياطية أول.`, ok: 'انضمام', danger: true }))) return false;
+  syncStreamsClose();
+  Object.assign(Sync, { url: '', code: '' });            // نوقف الرفع لحد ما نفرّغ الجهاز
+  db.products = []; db.shortages = [];
+  if (meta.name) db.settings.shopName = String(meta.name);
+  dbVer++; await flushNow(true);
+  Object.assign(Sync, { url, code, lastU: 0, syncedS: {}, syncedName: db.settings.shopName, remoteS: {}, retry: 0 });
+  Sync.pendingFull = new Map(); Sync.pendingDel = new Set(); Sync.pendingQty = new Map();
+  syncPersist(); syncConnect(); renderCurrent();
+  toast('تم الانضمام ✓ — جاري تنزيل بيانات المحل…', { ms: 4000 });
+  return true;
+}
+async function syncLeave() {
+  if (!(await ask({ title: 'فصل هذا الجهاز؟', msg: 'المواد تبقى على هذا الموبايل، بس التعديلات ما راح توصل للأجهزة الثانية ولا توصله تعديلاتهم.', ok: 'فصل', danger: true }))) return;
+  syncStreamsClose(); clearTimeout(Sync.timer);
+  Object.assign(Sync, { code: '', lastU: 0, syncedS: {}, syncedName: null, remoteS: {} });
+  Sync.pendingFull = new Map(); Sync.pendingDel = new Set(); Sync.pendingQty = new Map();
+  syncPersist(); syncSetState(); renderSettings(); toast('انفصل الجهاز عن المحل المشترك');
+}
+const joinLink = () => `${location.origin}${location.pathname}#join=${Sync.code}`;
+
+/* --- status --- */
+function syncSetState(force) {
+  let st;
+  if (!syncOn()) st = 'off';
+  else if (force) st = force;
+  else if (Sync.state === 'denied') st = 'denied';
+  else if (navigator.onLine === false) st = 'offline';
+  else if (Sync.pushing) st = 'pushing';
+  else if (Sync.live < 3) st = Sync.es.length ? 'connecting' : 'offline';
+  else if (syncPendingCount() || Sync.state === 'error') st = 'pending';
+  else st = 'ok';
+  Sync.state = st;
+  const chip = $('#sync-chip');
+  if (chip) {
+    const L = { ok: '✓ متزامن', pushing: '⟳ يرفع…', connecting: '⟳ يتصل…', pending: '⟳ بانتظار الرفع', offline: '', denied: '⚠ المزامنة مرفوضة' };
+    chip.hidden = !syncOn() || !L[st]; chip.textContent = L[st] || ''; chip.className = 'sync-chip ' + st;
+  }
+  const el = $('#sync-status');
+  if (el) el.textContent = syncStatusText();
+}
+function syncStatusText() {
+  const n = syncPendingCount();
+  return ({ ok: 'كل الأجهزة على نفس البيانات', pushing: 'جاري رفع التعديلات…', connecting: 'جاري الاتصال…', pending: `${n ? fmt(n) + ' تعديل ' : 'تعديلات '}بانتظار الرفع`, offline: `بدون نت — ${n ? fmt(n) + ' تعديل تنرفع' : 'التعديلات تنرفع'} لما يرجع النت`, denied: 'قاعدة البيانات رفضت الاتصال — تأكد من القواعد بـ Firebase', off: '' })[Sync.state] || '';
+}
+function renderSync() {
+  const g = $('#sync-group'); if (!g) return;
+  if (syncOn()) {
+    g.innerHTML = `<div class="group-h">العمل من أكثر من جهاز</div>
+      <div class="item">${ico('users')}<span class="t">متصل بالمحل المشترك<small id="sync-status">${esc(syncStatusText())}</small></span></div>
+      <div class="item">${ico('key')}<span class="t">كود المحل<small class="num code-big">${esc(Sync.code)}</small></span><button class="btn sm wa" data-act="sync-share">${ico('share')}مشاركة</button></div>
+      <button class="item" data-act="sync-copy">${ico('copy')}<span class="t">نسخ الكود</span></button>
+      <button class="item dz" data-act="sync-leave">${ico('x')}<span class="t">فصل هذا الجهاز</span></button>`;
+  } else {
+    const needUrl = !SYNC_DEFAULT_URL;
+    g.innerHTML = `<div class="group-h">العمل من أكثر من جهاز</div>
+      <div class="item">${ico('users')}<span class="t">نفس المواد والنقص على كل الموبايلات<small>أي تعديل بموبايل يطلع بالباقين خلال ثواني، وحتى الكمية تنحسب صح إذا اثنين باعوا سوا</small></span></div>
+      ${needUrl ? `<div class="item col"><label for="sync-url" class="t">رابط قاعدة البيانات (Firebase)</label><input id="sync-url" class="sinp wide" dir="ltr" placeholder="https://….firebasedatabase.app" value="${esc(Sync.url)}" autocomplete="off"></div>` : ''}
+      <div class="item btns"><button class="btn sm pri" data-act="sync-create">${ico('plus')}إنشاء محل مشترك</button><button class="btn sm" data-act="sync-join-open">${ico('key')}الانضمام بكود</button></div>`;
+  }
+}
+
 /* ================= Actions ================= */
 const A = {
   go: el => go(el.dataset.view),
@@ -1955,6 +2339,15 @@ const A = {
   'pf-add-short': () => { const p = byId(editingProductId); if (p && quickShortage(p)) { save(); pfQuick(); renderCurrent(); toast(`أضيفت «${p.name}» لقائمة النقص ✓`); } },
   'pf-edit-short': el => openShortageForm(el.dataset.id),
   'sf-pick': el => sfPick(el.dataset.id),
+  'sync-create': () => syncCreate(),
+  'sync-join-open': () => { $('#join-code').value = ''; openSheet('sheet-join'); setTimeout(() => $('#join-code').focus(), 200); },
+  'sync-join-go': async () => { const ok = await syncJoin($('#join-code').value); if (ok) closeSheet('sheet-join'); },
+  'sync-leave': () => syncLeave(),
+  'sync-copy': () => { const t = Sync.code; const done = () => toast('انتسخ الكود ✓'); if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, () => toast(t)); else toast(t, { ms: 6000 }); },
+  'sync-share': () => {
+    const text = `انضم لمحل «${db.settings.shopName}» على سوبرماركت برو حتى نشتغل على نفس المواد:\n${joinLink()}\n\nأو من الإعدادات ← الانضمام بكود: ${Sync.code}`;
+    if (navigator.share) navigator.share({ title: 'كود المحل', text }).catch(() => { }); else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  },
   'short-to-product': el => { const s = getS(el.dataset.id); if (s) openProductForm(null, { barcode: s.barcode, name: s.name }); },
   'sf-to-product': () => { const s = getS(editingShortageId); if (!s) return; openProductForm(null, { barcode: cleanCode($('#sf-code').value) || s.barcode, name: $('#sf-name').value.trim() || s.name }); closeSheet('sheet-shortage'); },
   'edit-shortage': el => openShortageForm(el.dataset.id),
@@ -1983,7 +2376,7 @@ const A = {
   'install-hide': () => { kv.set('smpro.installHide', '1'); renderHome(); },
   demo: async () => { if (db.products.length && !(await ask({ title: 'إضافة بيانات تجريبية؟', msg: 'راح تنضاف 12 مادة تجريبية على موادك الحالية. تقدر تحذفها بعدين.', ok: 'إضافة' }))) return; loadDemo(); },
   wipe: async () => {
-    if (!(await ask({ title: 'حذف كل البيانات؟', msg: 'راح تنحذف كل المواد وقائمة النقص من هذا الجهاز. ما تقدر ترجعها إلا من نسخة احتياطية.', ok: 'حذف الكل', danger: true }))) return;
+    if (!(await ask({ title: 'حذف كل البيانات؟', msg: syncOn() ? 'انتبه: هذا الجهاز متصل بالمحل المشترك، فراح تنحذف كل المواد وقائمة النقص من كل الأجهزة. إذا تريد تمسحها من هذا الموبايل بس، افصله أول من «فصل هذا الجهاز».' : 'راح تنحذف كل المواد وقائمة النقص من هذا الجهاز. ما تقدر ترجعها إلا من نسخة احتياطية.', ok: 'حذف الكل', danger: true }))) return;
     db = normalizeDB({ settings: { shopName: db.settings.shopName, theme: db.settings.theme, sound: db.settings.sound } });
     save({ full: true }); renderCurrent(); toast('انحذفت كل البيانات');
   },
@@ -2031,6 +2424,7 @@ $('#sf-name').addEventListener('input', () => {
 });
 ['#sf-code', '#sf-qty', '#sf-note'].forEach(s => $(s).addEventListener('focus', () => { $('#sf-sugg').hidden = true; }));
 $('#sf-name').addEventListener('focus', sfSuggest);
+$('#join-code').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['sync-join-go'](); } });
 $('#rs-qty').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); resolveAdd(); } });
 $('#cam').addEventListener('click', e => { if (!e.target.closest('button')) tapFocus(e); });
 $('#scan-manual').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['scan-confirm'](); } });
@@ -2092,7 +2486,11 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferr
 window.addEventListener('appinstalled', () => { deferredPrompt = null; toast('تم تثبيت التطبيق ✓'); if (ui.view === 'settings') renderSettings(); if (ui.view === 'home') renderHome(); });
 const netState = () => { $('#offline').hidden = navigator.onLine !== false; };
 window.addEventListener('online', netState); window.addEventListener('offline', netState);
-window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (['home', 'products', 'shortage', 'settings'].includes(h) && h !== ui.view) go(h); });
+window.addEventListener('hashchange', () => {
+  const jm = /join=([A-Za-z0-9-]{12,16})/.exec(location.hash);
+  if (jm) { const jc = normCode(jm[1]); go('settings'); if (jc && jc === Sync.code) toast('هذا الجهاز متصل بنفس المحل ✓'); else if (jc) { $('#join-code').value = jc; openSheet('sheet-join'); } return; }
+  const h = location.hash.slice(1); if (['home', 'products', 'shortage', 'settings'].includes(h) && h !== ui.view) go(h);
+});
 window.addEventListener('pagehide', flushPending);
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushPending(); });
 
@@ -2104,11 +2502,21 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) flush
   const mq = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
   if (mq) { mq.addEventListener ? mq.addEventListener('change', applyTheme) : mq.addListener(applyTheme); }
   $('#home-body').innerHTML = '<p class="muted" style="text-align:center;padding:30px 0">جاري تحميل المواد…</p>';
+  const joinM = /join=([A-Za-z0-9-]{12,16})/.exec(location.hash);
   await storeBoot();
   applyTheme();
-  const h = location.hash.slice(1);
+  const h = joinM ? 'settings' : location.hash.slice(1);
   go(['home', 'products', 'shortage', 'settings'].includes(h) ? h : 'home');
   netState();
+  if (syncOn()) { syncConnect(); syncSchedule(800); }
+  if (joinM) {
+    const jc = normCode(joinM[1]);
+    if (jc && jc === Sync.code) toast('هذا الجهاز متصل بنفس المحل ✓');
+    else if (jc) { $('#join-code').value = jc; openSheet('sheet-join'); }
+  }
+  window.addEventListener('online', () => { if (syncOn()) { syncConnect(); syncPush(); } });
+  window.addEventListener('offline', () => syncSetState());
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && syncOn() && (!Sync.es.length || Sync.es.some(es => es.readyState === 2))) syncConnect(); });
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     const whenLoaded = fn => (document.readyState === 'complete' ? fn() : window.addEventListener('load', fn));
     whenLoaded(() => {
