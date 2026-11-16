@@ -11,5 +11,17 @@
         "F1:AE:EA:EC:0C:5F:14:24:36:EB:D0:E9:BE:68:A0:72:E5:5D:6F:D6:3F:02:C2:FD:26:97:AC:0A:84:A6:07:38"
       ]
     }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "iq.salka.app",
+      "sha256_cert_fingerprints": [
+        "72:AA:59:DE:FA:D0:55:94:FD:65:F8:0D:F1:6A:11:AD:62:13:3E:EC:5A:DE:58:49:96:CF:20:26:3E:15:3C:D3"
+      ]
+    }
   }
 ]
