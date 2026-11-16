@@ -747,7 +747,7 @@ function normalizeDB(d) {
 /* ---------- التخزين: IndexedDB (يتحمل عشرات الآلاف من المواد)، وlocalStorage احتياطي ---------- */
 const IDB_NAME = 'supermarket-pro';
 let db = normalizeDB({});
-let dbVer = 0, idxVer = -1, lastStamp = 0;
+let dbVer = 0, structVer = 0, idxVer = -1, lastStamp = 0;
 const stamp = () => (lastStamp = Math.max(Date.now(), lastStamp + 1));
 const Store = { mode: 'ls', idb: null, timer: null, full: false, savedIds: new Set(), savedStamp: new WeakMap(), bc: null, failShown: false };
 const reqP = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
@@ -783,15 +783,15 @@ async function storeBoot() {
     const data = await idbReadAll(), legacy = lsRead();
     if (!data.settings && !data.products.length && legacy) {
       // أول تشغيل بعد التحديث: ننقل البيانات القديمة من localStorage
-      db = normalizeDB(legacy); dbVer++;
+      db = normalizeDB(legacy); dbVer++; structVer++;
       if (await flushNow(true)) { try { localStorage.removeItem(KEY); } catch (e) { } }
     } else {
-      db = normalizeDB(data); dbVer++; markSaved(); syncLoad(data.sync);
+      db = normalizeDB(data); dbVer++; structVer++; markSaved(); syncLoad(data.sync);
     }
     Store.idb.onversionchange = () => { try { Store.idb.close(); } catch (e) { } };
     try { Store.bc = new BroadcastChannel('smpro'); Store.bc.onmessage = onOtherTab; } catch (e) { }
   } catch (e) {
-    Store.mode = 'ls'; db = normalizeDB(lsRead() || {}); dbVer++; markSaved();
+    Store.mode = 'ls'; db = normalizeDB(lsRead() || {}); dbVer++; structVer++; markSaved();
     try { syncLoad(JSON.parse(localStorage.getItem('smpro.sync') || 'null')); } catch (e2) { }
   }
 }
@@ -799,6 +799,7 @@ let persistAsked = false;
 function save(opts) {
   if (opts && opts.full) Store.full = true;
   dbVer++;
+  if (!(opts && opts.qtyOnly)) structVer++;   // تغيير الكمية بس ما يحتاج نعيد بناء فهرس الباركود
   clearTimeout(Store.timer);
   Store.timer = setTimeout(() => { Store.timer = null; flushNow(); }, 150);
   if (!persistAsked) { persistAsked = true; try { navigator.storage && navigator.storage.persist && navigator.storage.persist().catch(() => { }); } catch (e) { } }
@@ -842,16 +843,16 @@ function flushNow(forceFull) {
 function flushPending() { if (Store.timer) { clearTimeout(Store.timer); Store.timer = null; flushNow(); } }
 async function onOtherTab() {
   if (Store.timer || stack.length || Store.mode !== 'idb' || syncOn()) return;
-  try { db = normalizeDB(await idbReadAll()); dbVer++; markSaved(); applyTheme(); renderCurrent(); } catch (e) { }
+  try { db = normalizeDB(await idbReadAll()); dbVer++; structVer++; markSaved(); applyTheme(); renderCurrent(); } catch (e) { }
 }
 
 /* ---------- فهارس سريعة ---------- */
 const idIdx = new Map(), codeIdx = new Map(), keyCache = new WeakMap();
 function ensureIdx() {
-  if (idxVer === dbVer) return;
+  if (idxVer === structVer) return;
   idIdx.clear(); codeIdx.clear();
   for (const p of db.products) { idIdx.set(p.id, p); if (p.barcode && !codeIdx.has(p.barcode)) codeIdx.set(p.barcode, p); }
-  idxVer = dbVer;
+  idxVer = structVer;
 }
 const byId = id => { if (!id) return null; ensureIdx(); return idIdx.get(id) || null; };
 const byCode = code => { if (!code) return null; ensureIdx(); return codeIdx.get(code) || null; };
@@ -1128,7 +1129,7 @@ function changeQty(id, d) {
   const before = p.qty;
   p.qty = Math.max(0, round2(p.qty + d)); p.updatedAt = stamp();
   syncQty(p, p.qty - before);
-  save();
+  save({ qtyOnly: true });
   if (ui.view === 'products') {
     const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
     if (card) card.outerHTML = productCard(p);
@@ -2258,7 +2259,7 @@ async function syncJoin(raw) {
   Object.assign(Sync, { url: '', code: '' });            // نوقف الرفع لحد ما نفرّغ الجهاز
   db.products = []; db.shortages = [];
   if (meta.name) db.settings.shopName = String(meta.name);
-  dbVer++; await flushNow(true);
+  dbVer++; structVer++; await flushNow(true);
   Object.assign(Sync, { url, code, lastU: 0, syncedS: {}, syncedName: db.settings.shopName, remoteS: {}, retry: 0 });
   Sync.pendingFull = new Map(); Sync.pendingDel = new Set(); Sync.pendingQty = new Map();
   syncPersist(); syncConnect(); renderCurrent();
