@@ -218,6 +218,14 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .sh-add{display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:5px 11px;border-radius:9px;background:var(--brand-soft);color:var(--brand);font-size:13px;font-weight:700}
 .sh-add .i{width:16px;height:16px}
 .pf-quick{margin:-4px 0 14px}
+.sugg{margin-top:6px;border:1.5px solid var(--brand);border-radius:12px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.sugg-h{font-size:12px;font-weight:700;color:var(--ink-3);padding:7px 12px 3px}
+.sugg button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-top:1px solid var(--line)}
+.sugg-h+button{border-top:0}
+.sugg button:active,.sugg button:hover{background:var(--brand-soft)}
+.sugg .sg{flex:1;min-width:0}
+.sugg .sg .name{font-size:15px}
+.sugg mark{background:none;color:var(--brand);font-weight:800}
 .pf-quick .btn{width:100%}
 .btn.warn-soft{background:var(--accent-soft);color:var(--warn)}
 .btn.ok-soft{background:var(--ok-soft);color:var(--ok)}
@@ -487,7 +495,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 1.3<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 1.4<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -583,6 +591,8 @@ input[type=search]{-webkit-appearance:none;appearance:none}
     <div class="grab"></div>
     <div class="sheet-h"><h3 id="sf-title">إضافة نقص</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
     <form id="sf" novalidate autocomplete="off">
+      <div class="fg"><label for="sf-name">اسم المادة *</label><input id="sf-name" class="inp" placeholder="اكتب الاسم — تطلعلك موادك المشابهة" enterkeyhint="next" autocomplete="off"><div id="sf-sugg" class="sugg" hidden></div></div>
+      <button type="button" class="btn sm soft" id="sf-to-product" data-act="sf-to-product" style="width:100%;margin:-4px 0 14px" hidden><svg class="i"><use href="#i-plus"/></svg>هذي المادة مو بالمواد — أضفها للمواد</button>
       <div class="fg">
         <label for="sf-code">الباركود (اختياري)</label>
         <div class="inp-group">
@@ -591,8 +601,6 @@ input[type=search]{-webkit-appearance:none;appearance:none}
         </div>
         <div id="sf-info" class="note" hidden></div>
       </div>
-      <div class="fg"><label for="sf-name">اسم المادة *</label><input id="sf-name" class="inp" list="name-list" placeholder="مثال: زيت دوار الشمس" enterkeyhint="next"></div>
-      <button type="button" class="btn sm soft" id="sf-to-product" data-act="sf-to-product" style="width:100%;margin:-4px 0 14px" hidden><svg class="i"><use href="#i-plus"/></svg>هذي المادة مو بالمواد — أضفها للمواد</button>
       <div class="fg"><label for="sf-qty">الكمية المطلوبة</label><input id="sf-qty" class="inp" inputmode="numeric" placeholder="مثال: 24" enterkeyhint="next"></div>
       <div class="fg"><label for="sf-note">ملاحظة</label><input id="sf-note" class="inp" placeholder="مثال: كارتونتين، من المورد الفلاني" enterkeyhint="done"></div>
       <div class="sheet-actions">
@@ -1110,6 +1118,7 @@ function openShortageForm(id, preset = {}) {
   $('#sf-note').value = s ? s.note : '';
   $('#sf-del').hidden = !s;
   $('#sf-to-product').hidden = !(s && !linkedProduct(s));
+  $('#sf-sugg').hidden = true; $('#sf-sugg').innerHTML = '';
   sfAuto = false; fillDatalists(); shortageLookup();
   openSheet('sheet-shortage');
 }
@@ -1123,6 +1132,30 @@ function shortageLookup() {
   } else if (code.length >= 6) {
     el.hidden = false; el.className = 'note warn'; el.textContent = 'هذا الباركود غير مسجل بالمواد — اكتب اسم المادة يدوياً';
   } else el.hidden = true;
+}
+function sfSuggest() {
+  const el = $('#sf-sugg'), q = $('#sf-name').value.trim();
+  const hide = () => { el.hidden = true; el.innerHTML = ''; };
+  if (!q) return hide();
+  const r = searchProducts(q, 6);
+  if (!r.length || (r.length === 1 && r[0].name === q)) return hide();
+  el.innerHTML = '<div class="sugg-h">من موادك — اضغط وحدة حتى تختارها</div>' + r.map(p => {
+    const inS = inShortage(p);
+    const tag = inS ? '<span class="pill ok">بالنقص</span>' : isOut(p) ? '<span class="pill danger">نافدة</span>' : isLow(p) ? '<span class="pill warn">قليلة</span>' : '';
+    return `<button type="button" data-act="sf-pick" data-id="${esc(p.id)}"><span class="sg"><span class="name">${esc(p.name)}</span><span class="meta">${p.barcode ? `<span class="num">${esc(p.barcode)}</span> · ` : ''}الموجود ${fmt(p.qty)}</span></span>${tag}</button>`;
+  }).join('');
+  el.hidden = false;
+}
+function sfPick(id) {
+  const p = byId(id); if (!p) return;
+  const ex = db.shortages.find(s => s.id !== editingShortageId && (s.productId === p.id || (p.barcode && s.barcode === p.barcode)));
+  if (ex) { openShortageForm(ex.id); toast('هذي المادة موجودة بالقائمة — تقدر تعدّل الكمية'); return; }
+  $('#sf-name').value = p.name; $('#sf-code').value = p.barcode || ''; sfAuto = true;
+  if (!$('#sf-qty').value) $('#sf-qty').value = suggestQty(p);
+  $('#sf-sugg').hidden = true;
+  shortageLookup();
+  if (!p.barcode) { const el = $('#sf-info'); el.hidden = false; el.className = 'note ok'; el.textContent = `✓ ${p.name} — الموجود حالياً ${fmt(p.qty)}`; }
+  $('#sf-qty').focus(); $('#sf-qty').select();
 }
 function saveShortage() {
   const name = $('#sf-name').value.trim();
@@ -1783,6 +1816,7 @@ const A = {
   'new-shortage': () => openShortageForm(null),
   'pf-add-short': () => { const p = byId(editingProductId); if (p && quickShortage(p)) { save(); pfQuick(); renderCurrent(); toast(`أضيفت «${p.name}» لقائمة النقص ✓`); } },
   'pf-edit-short': el => openShortageForm(el.dataset.id),
+  'sf-pick': el => sfPick(el.dataset.id),
   'short-to-product': el => { const s = getS(el.dataset.id); if (s) openProductForm(null, { barcode: s.barcode, name: s.name }); },
   'sf-to-product': () => { const s = getS(editingShortageId); if (!s) return; openProductForm(null, { barcode: cleanCode($('#sf-code').value) || s.barcode, name: $('#sf-name').value.trim() || s.name }); closeSheet('sheet-shortage'); },
   'edit-shortage': el => openShortageForm(el.dataset.id),
@@ -1848,9 +1882,12 @@ $('#sf-code').addEventListener('input', shortageLookup);
 $('#sf-code').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); shortageLookup(); ($('#sf-name').value ? $('#sf-qty') : $('#sf-name')).focus(); } });
 $('#sf-name').addEventListener('input', () => {
   sfAuto = false;
+  sfSuggest();
   const p = db.products.find(x => x.name === $('#sf-name').value.trim());
   if (p && p.barcode && !$('#sf-code').value) { $('#sf-code').value = p.barcode; shortageLookup(); }
 });
+['#sf-code', '#sf-qty', '#sf-note'].forEach(s => $(s).addEventListener('focus', () => { $('#sf-sugg').hidden = true; }));
+$('#sf-name').addEventListener('focus', sfSuggest);
 $('#rs-qty').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); resolveAdd(); } });
 $('#cam').addEventListener('click', e => { if (!e.target.closest('button')) tapFocus(e); });
 $('#scan-manual').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); A['scan-confirm'](); } });
