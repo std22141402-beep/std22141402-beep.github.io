@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0A1120">
+  <title>تنزيل سالكة للأندرويد</title>
+  <meta name="description" content="نزّل تطبيق سالكة للأندرويد: ملاحة عراقية بصوت عراقي، ازدحام مباشر، وسوق عقارات على الخريطة.">
+  <link rel="icon" href="../icons/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Reem+Kufi:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --gold: #E2B84A; --gold-grad: linear-gradient(135deg, #FBEAB0, #E2B84A 45%, #B08325); --ink: #EAF0FA; --muted: #97A6C2; --card: rgba(255,255,255,.06); --line: rgba(255,255,255,.1); }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; color: var(--ink); line-height: 1.6;
+      background: radial-gradient(120% 70% at 30% 0%, #22396A 0%, #0D1830 55%, #070D1A 100%) fixed;
+      padding: calc(env(safe-area-inset-top) + 28px) 20px calc(env(safe-area-inset-bottom) + 32px);
+    }
+    body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .5;
+      background-image: radial-gradient(1px 1px at 12% 20%, #fff, transparent), radial-gradient(1px 1px at 72% 12%, #fff, transparent), radial-gradient(1.5px 1.5px at 85% 40%, #F2CF6B, transparent), radial-gradient(1px 1px at 30% 60%, #fff, transparent), radial-gradient(1px 1px at 55% 80%, #fff, transparent), radial-gradient(1.5px 1.5px at 18% 88%, #6FE0FF, transparent); }
+    main { max-width: 460px; margin: 0 auto; position: relative; }
+    .hero { text-align: center; }
+    .logo { width: 116px; height: 116px; border-radius: 28px; box-shadow: 0 18px 50px rgba(0,0,0,.5), 0 0 0 1px rgba(242,207,107,.25); }
+    h1 { font-family: 'Reem Kufi', 'IBM Plex Sans Arabic', sans-serif; font-size: 44px; margin: 14px 0 0; line-height: 1.1;
+      background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .tag { color: var(--muted); margin: 6px 0 22px; font-size: 16px; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 60px; border-radius: 20px; border: 0;
+      background: var(--gold-grad); color: #10151E; font: 700 19px 'IBM Plex Sans Arabic', sans-serif; text-decoration: none;
+      box-shadow: 0 12px 30px rgba(212,175,55,.38), inset 0 1px 0 rgba(255,255,255,.6); }
+    .btn:active { transform: scale(.98); }
+    .btn.disabled { opacity: .55; pointer-events: none; }
+    .btn svg { width: 24px; height: 24px; }
+    .meta { text-align: center; color: var(--muted); font-size: 13.5px; margin: 10px 0 0; min-height: 22px; }
+    .ghost { display: block; text-align: center; color: var(--ink); margin: 14px 0 0; font-weight: 600; text-decoration: none; opacity: .85; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 18px; margin-top: 22px; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+    .card h2 { margin: 0 0 10px; font-size: 18px; color: #F2CF6B; }
+    ol { margin: 0; padding: 0 22px 0 0; }
+    ol li { margin: 8px 0; }
+    ol li b { color: #fff; }
+    .feat { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .feat div { background: rgba(255,255,255,.05); border-radius: 16px; padding: 12px; font-size: 14px; border: 1px solid var(--line); }
+    .feat span { display: block; font-size: 22px; }
+    .note { font-size: 13.5px; color: var(--muted); }
+    .ios { display: none; }
+    body.is-ios .ios { display: block; }
+    body.is-ios .android-only { display: none; }
+    footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 26px; }
+    footer a { color: var(--muted); }
+    code { direction: ltr; unicode-bidi: embed; font-size: 11px; word-break: break-all; color: #9fb0cc; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <img class="logo" src="../icons/icon-512.png" alt="شعار سالكة" width="116" height="116">
+      <h1>سالكة</h1>
+      <p class="tag">عالمك على الطريق — ملاحة وعقارات بالعراقي</p>
+    </section>
+
+    <div class="android-only">
+      <a class="btn disabled" id="dl" href="salka.apk" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+        <span id="dlText">دا نجهز الرابط…</span>
+      </a>
+      <p class="meta" id="meta"></p>
+    </div>
+
+    <div class="card ios">
+      <h2>على الآيفون</h2>
+      <ol>
+        <li>افتح <b>std22141402-beep.github.io</b> بمتصفح <b>سفاري</b>.</li>
+        <li>اضغط زر <b>المشاركة</b> (المربع والسهم).</li>
+        <li>اختار <b>«إضافة إلى الشاشة الرئيسية»</b> — وصار عندك التطبيق بأيقونته.</li>
+      </ol>
+    </div>
+
+    <a class="ghost" href="../">أو افتحه هسه من المتصفح ←</a>
+
+    <div class="card android-only">
+      <h2>شلون تثبته (دقيقة وحدة)</h2>
+      <ol>
+        <li>اضغط <b>تنزيل التطبيق</b> وانتظر يكمل.</li>
+        <li>افتح الملف <b>salka.apk</b> من الإشعارات أو من «التنزيلات».</li>
+        <li>إذا طلعلك «لأسباب أمنية…» اضغط <b>الإعدادات</b> ← فعّل <b>«السماح من هذا المصدر»</b> ← ارجع.</li>
+        <li>اضغط <b>تثبيت</b>. إذا طلع تنبيه Play Protect («تطبيق غير معروف») اضغط <b>«مزيد من التفاصيل» ← «تثبيت على أي حال»</b> — هذا طبيعي لأي تطبيق مو من المتجر بعد.</li>
+        <li>افتح <b>سالكة</b> واسمح بالموقع. خلاص 🎉</li>
+      </ol>
+      <p class="note">التطبيق يشتغل بمحرك كروم، فلازم يكون كروم مثبت ومحدّث (موجود بأغلب الموبايلات). التحديثات توصلك تلقائياً بدون ما تنزّل الملف مرة ثانية.</p>
+    </div>
+
+    <div class="card">
+      <h2>شنو بيه</h2>
+      <div class="feat">
+        <div><span>🗣️</span>ملاحة بصوت عراقي</div>
+        <div><span>🚦</span>ازدحام مباشر ملوّن</div>
+        <div><span>⚠️</span>بلاغات الطريق المشتركة</div>
+        <div><span>🏡</span>عقارات بيع وإيجار</div>
+        <div><span>✏️</span>ارسم قطعتك على الخريطة</div>
+        <div><span>🌙</span>وضع ليلي فخم</div>
+      </div>
+    </div>
+
+    <footer>
+      <p id="sha"></p>
+      <p>الخرائط © <a href="https://www.openstreetmap.org/copyright" rel="noopener">مساهمو OpenStreetMap</a></p>
+    </footer>
+  </main>
+  <script>
+    (function () {
+      var ua = navigator.userAgent || '';
+      if (/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document)) document.body.classList.add('is-ios');
+      var dl = document.getElementById('dl'), t = document.getElementById('dlText'), meta = document.getElementById('meta');
+      var arDigits = function (s) { return String(s); };
+      fetch('build-info.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (b) {
+        dl.classList.remove('disabled');
+        t.textContent = 'تنزيل التطبيق';
+        var mb = (b.size / 1048576).toFixed(1);
+        var d = new Date(b.builtAt);
+        meta.textContent = 'الإصدار ' + arDigits(b.versionName) + ' • ' + mb + ' MB • أندرويد 5 وأحدث • ' + d.toLocaleDateString('ar-IQ-u-nu-latn');
+        if (b.sha256) document.getElementById('sha').innerHTML = 'بصمة الملف (SHA-256):<br><code>' + b.sha256 + '</code>';
+      }).catch(function () {
+        t.textContent = 'التطبيق قيد التجهيز — ارجع بعد شوية';
+      });
+    })();
+  </script>
+</body>
+</html>

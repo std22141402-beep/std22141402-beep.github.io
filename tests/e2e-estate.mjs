@@ -95,7 +95,7 @@ const check = (name, ok, info = '') => { results.push({ name, ok }); console.log
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function waitFor(fn, ms = 8000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { if (await fn()) return true; } catch { /* retry */ } await sleep(100); } return false; }
 
-async function newPage(browser, base, { firebase = false } = {}) {
+async function newPage(browser, base, { firebase = false, suffix = '' } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'ar-IQ', geolocation: { latitude: B[1], longitude: B[0], accuracy: 8 }, permissions: ['geolocation'], serviceWorkers: 'block' });
   await ctx.addInitScript(({ firebase, DB }) => {
     try { sessionStorage.setItem('salka:intro', '1'); } catch { /* ignore */ }
@@ -128,7 +128,7 @@ async function newPage(browser, base, { firebase = false } = {}) {
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/net::|Failed to load resource/.test(m.text())) page.errors.push(m.text()); });
-  await page.goto(base.includes('#') ? base.replace('#', `${ENTRY}#`) : base + ENTRY);
+  await page.goto(base + ENTRY + suffix);
   await waitFor(() => page.evaluate(() => document.getElementById('splash').classList.contains('hidden') && !!window.__salka?.estate));
   return { ctx, page };
 }
@@ -304,7 +304,7 @@ async function main() {
   check('Firebase: التعديل الكامل يحدّث الفهرس ويحذف الحقول المشالة', fb.l[id].g !== saved.g && fb.l[id].p === 300000 && !('ds' in fb.l[id]) && !('poly' in fb.l[id]) && fb.l[id].u === 'uid1' && fb.l[id].nph === 2 && upd.id === id, JSON.stringify(fb.l[id]).slice(0, 120));
   await A.page.evaluate(async ({ i, s }) => { const e = window.__salka.estate; const cur = await e.backend.get(i); return e.backend.update(i, { ...cur, x: s.x, y: s.y, poly: s.poly, ds: s.ds, p: 250000 }, { replace: true }); }, { i: id, s: saved });
   // رابط مشاركة
-  const C = await newPage(browser, base + `#l-${id}`, { firebase: true });
+  const C = await newPage(browser, base, { firebase: true, suffix: `#l-${id}` });
   check('رابط المشاركة يفتح الإعلان مباشرة', await waitFor(() => C.page.evaluate(() => document.getElementById('sheet').dataset.name === 're-detail' && /250 ألف.*(يوم|ليلة)/.test(document.getElementById('sheetBody').textContent))));
   // المالك يحذف
   await A.page.evaluate((i) => window.__salka.estate.open(i), id);
@@ -313,7 +313,12 @@ async function main() {
   check('Firebase: المالك يشيل إعلانه (مع الصور)', await waitFor(() => !fb.l[id] && !fb.p[id] && !fb.t[id]));
   await Bp.page.evaluate(() => window.__salka.estate.load(true));
   check('Firebase: يختفي عند الكل', await waitFor(() => Bp.page.evaluate(() => window.__map.getSource('re-pts').data.features.length === 0)));
-  const errs = [...A.page.errors, ...Bp.page.errors, ...C.page.errors];
+  // اختصارات أيقونة الأندرويد
+  const D = await newPage(browser, base, { suffix: '?go=estate&source=twa' });
+  check('اختصار الأندرويد: ?go=estate يفتح العقارات وينظف الرابط', await waitFor(() => D.page.evaluate(() => document.body.classList.contains('estate') && !location.search && localStorage.getItem('salka:twa') === '1')));
+  const E = await newPage(browser, base, { suffix: '?go=estate-add' });
+  check('اختصار الأندرويد: ?go=estate-add يفتح معالج النشر', await waitFor(() => E.page.isVisible('.re-kind')));
+  const errs = [...A.page.errors, ...Bp.page.errors, ...C.page.errors, ...D.page.errors, ...E.page.errors];
   check('لا أخطاء (Firebase)', errs.length === 0, errs.slice(0, 3).join(' | '));
 
   await browser.close();

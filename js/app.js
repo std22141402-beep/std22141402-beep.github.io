@@ -140,8 +140,8 @@ async function boot() {
   ensureHist();
   gps.start();
   traffic.connect(S.settings.showTraffic || S.settings.shareTraffic);
-  if (S.introPending) setTimeout(runIntro, 700);
-  setTimeout(handleHash, 300);
+  if (S.introPending) setTimeout(() => { if (S.introPending) runIntro(); }, 700);
+  setTimeout(() => { handleLaunch(); handleHash(); }, 300);
   connectReports();
   onReportsChanged();
   setInterval(() => updateNight(false), 5 * 60 * 1000);
@@ -204,7 +204,28 @@ function handleHash() {
   estate.open(m[1], { fly: true });
 }
 
+/** اختصارات أيقونة الأندرويد (?go=) + تمييز التطبيق المثبت */
+function handleLaunch() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('source') === 'twa' || document.referrer.startsWith('android-app://')) store.set('twa', 1);
+  const go = q.get('go');
+  if (q.has('go') || q.has('source')) { try { history.replaceState(history.state, '', location.pathname + location.hash); } catch { /* ignore */ } }
+  if (!go || nav) return;
+  if (go === 'estate') estate?.enter();
+  else if (go === 'estate-add') estate?.startWizard();
+  else if (go === 'search') openSearch();
+  else if (go === 'home' || go === 'work') goSavedPlace(go);
+}
+
+/** هل نعرض «نزّل تطبيق الأندرويد»؟ (أندرويد بالمتصفح بس، مو داخل التطبيق المثبت) */
+function showApkOffer() {
+  const ua = navigator.userAgent || '';
+  if (!/Android/i.test(ua) || store.get('twa')) return false;
+  return !window.matchMedia?.('(display-mode: standalone)')?.matches;
+}
+
 function wantIntro() {
+  if (/^#l-/.test(location.hash) || new URLSearchParams(location.search).has('go')) return false;
   let done = false;
   try { done = sessionStorage.getItem('salka:intro') === '1'; } catch { /* ignore */ }
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
@@ -657,6 +678,10 @@ function onChipClick(e) {
   if (c.dataset.cat) { searchCategory(c.dataset.cat); return; }
   const key = c.dataset.go;
   if (key === 'estate') { estate?.enter(); return; }
+  goSavedPlace(key);
+}
+
+function goSavedPlace(key) {
   const p = places()[key];
   if (p) previewRoutes({ ...p, name: key === 'home' ? 'البيت' : 'الشغل', sub: p.name });
   else toast(`ابحث عن ${key === 'home' ? 'بيتك' : 'شغلك'} أو اضغط مطولاً على الخريطة، وبعدين احفظه بزر النجمة ⭐`, 4200);
@@ -1495,6 +1520,7 @@ function openMenu() {
       <button class="item" data-a="shareme"><span class="item-ico">${icon('i-share')}</span><span class="item-main"><div class="item-name">مشاركة موقعي</div></span></button>
       <button class="item" data-a="settings"><span class="item-ico">${icon('i-gear')}</span><span class="item-main"><div class="item-name">الإعدادات والألوان</div></span></button>
       ${S.installPrompt ? `<button class="item" data-a="install"><span class="item-ico">${icon('i-down')}</span><span class="item-main"><div class="item-name">تثبيت التطبيق على الشاشة الرئيسية</div></span></button>` : ''}
+      ${showApkOffer() ? `<a class="item" href="download/"><span class="item-ico">📲</span><span class="item-main"><div class="item-name">نزّل تطبيق الأندرويد</div><div class="item-sub">أيقونة على الشاشة، يفتح بدون شريط متصفح</div></span></a>` : ''}
       <button class="item" data-a="about"><span class="item-ico">${icon('i-info')}</span><span class="item-main"><div class="item-name">حول التطبيق</div></span></button>
     </div>
     <h3>خدمات سالكة</h3>

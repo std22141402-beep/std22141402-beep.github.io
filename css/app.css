@@ -525,3 +525,4 @@ body.night .re-cta { background: linear-gradient(transparent, #0B1222 30%); }
   .re-card { width: 320px; }
   .re-bar { right: auto; max-width: 460px; }
 }
+a.item { text-decoration: none; color: inherit; }

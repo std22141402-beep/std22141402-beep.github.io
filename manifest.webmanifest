@@ -2,7 +2,7 @@
   "id": "./",
   "name": "سالكة — ملاحة العراق",
   "short_name": "سالكة",
-  "description": "تطبيق ملاحة عراقي بالعربي: صوت عراقي، بلاغات الطريق، وإعادة حساب فورية.",
+  "description": "سالكة: ملاحة عراقية بصوت عراقي، ازدحام مباشر وبلاغات الطريق، وسوق عقارات على الخريطة (بيع وإيجار).",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./",
@@ -14,7 +14,7 @@
   "categories": [
     "navigation",
     "travel",
-    "utilities"
+    "lifestyle"
   ],
   "icons": [
     {
@@ -36,10 +36,72 @@
       "purpose": "maskable"
     },
     {
+      "src": "icons/icon-monochrome-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "monochrome"
+    },
+    {
       "src": "icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }
   ],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "display_override": [
+    "standalone"
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "shortcuts": [
+    {
+      "name": "بحث عن مكان",
+      "short_name": "بحث",
+      "url": "./?go=search",
+      "icons": [
+        {
+          "src": "icons/sc-search-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "عقارات على الخريطة",
+      "short_name": "عقارات",
+      "url": "./?go=estate",
+      "icons": [
+        {
+          "src": "icons/sc-estate-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "أضف عقارك",
+      "short_name": "أضف عقار",
+      "url": "./?go=estate-add",
+      "icons": [
+        {
+          "src": "icons/sc-add-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "روح للبيت",
+      "short_name": "البيت",
+      "url": "./?go=home",
+      "icons": [
+        {
+          "src": "icons/sc-home-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

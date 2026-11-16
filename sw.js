@@ -2,7 +2,7 @@
 //  Service Worker — يخلي التطبيق يفتح بسرعة وبدون نت، ويحفظ الخريطة اللي شفتها
 //  غيّر VERSION كل ما تحدّث ملفات التطبيق حتى توصل النسخة الجديدة للمستخدمين
 // =====================================================================
-const VERSION = 'salka-v1.3.0';
+const VERSION = 'salka-v1.3.1';
 const SHELL_CACHE = `${VERSION}-shell`;
 const LIB_CACHE = 'salka-libs-v1';
 const TILE_CACHE = 'salka-tiles-v1';
@@ -13,7 +13,8 @@ const SHELL = [
   './js/app.js', './js/config.js', './js/geo.js', './js/instructions.js', './js/routing.js', './js/navengine.js',
   './js/search.js', './js/voice.js', './js/mapview.js', './js/theme.js', './js/reports.js', './js/location.js', './js/storage.js', './js/traffic.js',
   './js/estate/shape.js', './js/estate/model.js', './js/estate/backend.js', './js/estate/photos.js', './js/estate/ui.js',
-  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
+  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-monochrome-512.png',
+  './icons/sc-search-192.png', './icons/sc-estate-192.png', './icons/sc-add-192.png', './icons/sc-home-192.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -84,6 +85,9 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+
+  // ملف الـAPK وملفات التحقق تروح للشبكة مباشرة (ما نخزن 3 ميغا بلا داعي)
+  if (url.origin === self.location.origin && (/\.(apk|aab)$/.test(url.pathname) || url.pathname.includes('/.well-known/'))) return;
 
   // ملفات التطبيق نفسه
   if (url.origin === self.location.origin) {
