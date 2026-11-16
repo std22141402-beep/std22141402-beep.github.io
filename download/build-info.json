@@ -1,12 +1,12 @@
 {
   "packageId": "iq.salka.app",
-  "versionName": "1.4.0",
-  "versionCode": 2,
+  "versionName": "1.4.1",
+  "versionCode": 3,
   "size": 2098650,
-  "sha256": "affdfb6f879b723f258ea77cbcf713363b6aea5f28f2a6069ee84bb91eb99552",
+  "sha256": "55c8132a0c6bcfb01a15fac6e9647192fcac4429e02d3908dd96f8b9cb3c2eb4",
   "certSha256": "72:AA:59:DE:FA:D0:55:94:FD:65:F8:0D:F1:6A:11:AD:62:13:3E:EC:5A:DE:58:49:96:CF:20:26:3E:15:3C:D3",
   "minSdk": "24",
   "targetSdk": "36",
-  "source": "custom-native-location (bubblewrap 1.27 + salka loc)",
-  "builtAt": "2026-11-16T15:05:08.376138Z"
+  "source": "custom-native-location",
+  "builtAt": "2026-11-16T15:26:07.792907Z"
 }

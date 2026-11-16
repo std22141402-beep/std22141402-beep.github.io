@@ -538,3 +538,8 @@ a.item { text-decoration: none; color: inherit; }
 @keyframes gpsBlink { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { #btnLocate.gps-searching::after, #btnLocate.gps-searching svg { animation: none; } }
 a.btn { text-decoration: none; }
+.diag { background: var(--bg2); border-radius: 16px; padding: 4px 12px; margin: 8px 0; border: 1px solid var(--glass-border); }
+.diag-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.diag-row:last-child { border-bottom: 0; }
+.diag-row span { color: var(--muted); flex: none; }
+.diag-row b { text-align: left; direction: ltr; unicode-bidi: plaintext; word-break: break-word; font-weight: 600; }

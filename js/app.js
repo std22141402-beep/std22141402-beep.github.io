@@ -141,6 +141,17 @@ async function boot() {
   gps.start();
   traffic.connect(S.settings.showTraffic || S.settings.shareTraffic);
   setTimeout(() => { handleLaunch(); handleHash(); }, 300);
+  // التطبيق الجديد: 8 ثواني بدون أي قراءة = نشغّل نافذة التفعيل (إذا كلشي تمام تنسد وحدها بدون ما تبين)
+  setTimeout(() => {
+    if (!canNativeSetup() || (S.me && !S.me.stale) || nav) return;
+    let done = false;
+    try { done = sessionStorage.getItem('salka:autoSetup') === '1'; sessionStorage.setItem('salka:autoSetup', '1'); } catch { /* ignore */ }
+    if (!done) openNativeLocationSetup();
+  }, 8000);
+  // نسخة التطبيق القديمة ما توصلها قراءات؟ نطلب التحديث (مرة وحدة)
+  setTimeout(() => {
+    if (isAndroidApp() && (store.get('twaApk') || 1) < 2 && (!S.me || S.me.stale) && !S.sheet) openGpsHelp('update');
+  }, 12000);
   connectReports();
   onReportsChanged();
   setInterval(() => updateNight(false), 5 * 60 * 1000);
@@ -300,6 +311,12 @@ function onGpsError(e) {
 /** حالة الـGPS: مؤشر على زر موقعي + تنبيه أثناء الملاحة + مساعدة حسب المشكلة */
 function onGpsState(st) {
   S.gpsState = st;
+  // التطبيق الجديد: إذا أكو مشكلة، نافذة التفعيل تطلع وحدها (مرة وحدة بكل فتحة)
+  if (canNativeSetup() && (st === 'denied' || st === 'off' || st === 'coarse') && !nav) {
+    let done = false;
+    try { done = sessionStorage.getItem('salka:autoSetup') === '1'; sessionStorage.setItem('salka:autoSetup', '1'); } catch { /* ignore */ }
+    if (!done) setTimeout(() => { if (['denied', 'off', 'coarse'].includes(S.gpsState)) openNativeLocationSetup(); }, 500);
+  }
   const b = el.btnLocate;
   if (b) {
     b.classList.toggle('gps-searching', st === 'searching' || st === 'lost');
@@ -336,8 +353,7 @@ function locateMe() {
   const problem = st === 'denied' || st === 'off' || st === 'coarse' || st === 'unsupported';
   // التطبيق: ضغطة وحدة تفتح نافذة الصلاحية أو «تشغيل الموقع» مباشرة — بدون أي شرح
   if (canNativeSetup() && (problem || !S.me || S.me.stale)) {
-    openNativeLocationSetup();
-    gps.restart();
+    openNativeLocationSetup();   // الموقع يعيد التشغيل وحده أول ما ترجع للتطبيق
     if (S.me) mapView.flyTo(S.me.pos, Math.max(14, mapView.map.getZoom()), { bearing: 0 });
     return;
   }
@@ -518,7 +534,12 @@ function bindUi() {
   });
   el.searchClear.onclick = () => { el.searchInput.value = ''; el.searchClear.classList.add('hidden'); renderSearchHome(); el.searchInput.focus(); };
   el.btnMenu.onclick = () => { if (S.searchOpen) closeSearch(); else openMenu(); };
-  el.btnLocate.onclick = locateMe;
+  el.btnLocate.onclick = (e) => { if (S.locLong) { S.locLong = false; e.preventDefault(); return; } locateMe(); };
+  // ضغطة مطولة على زر موقعي = تشخيص الموقع
+  let lpT = null;
+  el.btnLocate.addEventListener('pointerdown', () => { clearTimeout(lpT); lpT = setTimeout(() => { S.locLong = true; openGpsDiagnostics(); }, 700); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => el.btnLocate.addEventListener(ev, () => clearTimeout(lpT)));
+  el.btnLocate.addEventListener('contextmenu', (e) => e.preventDefault());
   el.btnCompass.onclick = () => mapView.resetNorth();
   el.btnReport.onclick = () => { voice.unlock(); openReportMenu(); };
   el.sheetBackdrop.onclick = () => closeSheet();
@@ -896,7 +917,7 @@ function bindPreviewSheet(b) {
     if (a === 'addstop') { openSearch({ forStop: true }); el.searchInput.placeholder = 'وين تريد توقف بالطريق؟'; setTimeout(() => el.searchInput.focus(), 50); }
     if (a === 'avoid') { S.settings.avoidMotorway = !S.settings.avoidMotorway; saveSettings(); previewRoutes(S.place, { origin: S.originOverride, keepStops: true }); }
     if (a === 'retry') { const pl = S.place; previewRoutes(pl); }
-    if (a === 'gpshelp') { if (canNativeSetup()) { openNativeLocationSetup(); gps.restart(); } else openGpsHelp(isAndroidApp() ? 'update' : (['denied', 'off', 'coarse'].includes(S.gpsState) ? S.gpsState : 'tips')); }
+    if (a === 'gpshelp') { if (canNativeSetup()) { openNativeLocationSetup(); } else openGpsHelp(isAndroidApp() ? 'update' : (['denied', 'off', 'coarse'].includes(S.gpsState) ? S.gpsState : 'tips')); }
     if (a === 'center') previewRoutes(S.place, { origin: mapView.center() });
     if (a === 'retry2') previewRoutes(S.place, { origin: S.originOverride, keepStops: true });
   };
@@ -1556,6 +1577,7 @@ function openMenu() {
       <button class="item" data-a="settings"><span class="item-ico">${icon('i-gear')}</span><span class="item-main"><div class="item-name">الإعدادات والألوان</div></span></button>
       ${S.installPrompt ? `<button class="item" data-a="install"><span class="item-ico">${icon('i-down')}</span><span class="item-main"><div class="item-name">تثبيت التطبيق على الشاشة الرئيسية</div></span></button>` : ''}
       ${showApkOffer() ? `<a class="item" href="download/"><span class="item-ico">📲</span><span class="item-main"><div class="item-name">نزّل تطبيق الأندرويد</div><div class="item-sub">أيقونة على الشاشة، يفتح بدون شريط متصفح</div></span></a>` : ''}
+      <button class="item" data-a="gpsdiag"><span class="item-ico">📡</span><span class="item-main"><div class="item-name">تشخيص الموقع</div><div class="item-sub">إذا الموقع ما يتحدد — صوّر هاي الشاشة</div></span></button>
       <button class="item" data-a="about"><span class="item-ico">${icon('i-info')}</span><span class="item-main"><div class="item-name">حول التطبيق</div></span></button>
     </div>
     <h3>خدمات سالكة</h3>
@@ -1573,6 +1595,7 @@ function openMenu() {
       if (a === 'shareme') { if (S.me) sharePlace({ name: 'موقعي', pos: S.me.pos }); else toast('ما عندي موقعك بعد'); }
       if (a === 'settings') openSettings();
       if (a === 'about') openAbout();
+      if (a === 'gpsdiag') openGpsDiagnostics();
       if (a === 'soon-taxi') toast('🚕 خدمة التكسي قيد التجهيز — بالتحديث الجاي', 3500);
       if (a === 'estate') { closeAllSheets({ silent: true }); estate?.enter(); }
       if (a === 'estate-add') { closeAllSheets({ silent: true }); estate?.startWizard(); }
@@ -1618,6 +1641,43 @@ function openAbout() {
 }
 
 function isAndroidApp() { return !!store.get('twa') || (document.referrer || '').startsWith('android-app://'); }
+
+/** تشخيص الموقع: كل شي يصير بالتفصيل — صورة شاشة منه تكفي حتى نعرف السبب */
+async function openGpsDiagnostics() {
+  let perm = 'غير معروف';
+  try { perm = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch { /* ignore */ }
+  const st = gps.stats || {};
+  const ago = (t) => (t ? `${Math.round((Date.now() - t) / 1000)} ث` : '—');
+  const ua = navigator.userAgent || '';
+  const android = (/Android\s([\d.]+)/.exec(ua) || [])[1];
+  const chrome = (/Chrome\/([\d.]+)/.exec(ua) || [])[1];
+  const me = S.me;
+  const names = { idle: 'متوقف', searching: 'دا يدور', ok: 'شغال ✅', weak: 'ضعيف', lost: 'انقطع', off: 'مطفي بالموبايل', denied: 'مرفوض', coarse: 'تقريبي', unsupported: 'غير مدعوم' };
+  const rows = [
+    ['المنصة', isAndroidApp() ? `تطبيق الأندرويد (نسخة ${store.get('twaApk') || 1})` : 'المتصفح'],
+    ['أندرويد / كروم', `${android || '—'} / ${chrome || '—'}`],
+    ['صلاحية الموقع (كروم)', perm],
+    ['حالة الـGPS', names[S.gpsState] || S.gpsState || '—'],
+    ['القراءات المستلمة', `${st.fixes || 0}`],
+    ['آخر قراءة', me ? `قبل ${ago(me.t)} • دقة ${Math.round(me.accuracy)} م • ${me.src || ''}${me.stale ? ' (قديمة)' : ''}` : 'ماكو'],
+    ['السرعة / الاتجاه', me && me.speed != null ? `${Math.round(me.speed * 3.6)} كم/س / ${me.heading != null ? Math.round(me.heading) + '°' : '—'}` : '—'],
+    ['الأخطاء', `${st.errors || 0}${st.lastErr ? ` • آخر: ${st.lastErr.code} ${st.lastErr.message} (قبل ${ago(st.lastErrAt)})` : ''}`],
+    ['إعادات التشغيل', `${gps.restarts || 0} • آخر بدء قبل ${ago(st.lastStart)}`],
+    ['نافذة التفعيل', S.nativeSetupAt ? `انفتحت قبل ${ago(S.nativeSetupAt)}` : '—'],
+    ['الإنترنت / الشاشة', `${navigator.onLine ? 'متصل' : 'مقطوع'} / ${document.visibilityState}`],
+    ['الإصدار', APP.version],
+  ];
+  const text = rows.map(([k, v]) => `${k}: ${v}`).join('\n');
+  openSheet('gpsdiag', `<h2>📡 تشخيص الموقع</h2><div class="diag">${rows.map(([k, v]) => `<div class="diag-row"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`).join('')}</div>
+    <div class="actions">${canNativeSetup() ? '<button class="btn primary" data-a="fix">📍 فعّل الموقع</button>' : ''}<button class="btn" data-a="restart">🔄 أعد التشغيل</button><button class="btn" data-a="copy">📋 نسخ</button></div>`, {
+    onRender: (b) => b.onclick = async (e) => {
+      const a = e.target.closest('[data-a]')?.dataset.a;
+      if (a === 'fix') { closeSheet(); openNativeLocationSetup(); }
+      if (a === 'restart') { gps.restart(); toast('📡 دا أعيد تشغيل الموقع…'); setTimeout(() => { if (S.sheet?.name === 'gpsdiag') openGpsDiagnostics(); }, 2500); }
+      if (a === 'copy') { try { await navigator.clipboard.writeText(text); toast('انتسخ ✓'); } catch { toast('ما كدرت أنسخ'); } }
+    },
+  });
+}
 
 /** مساعدة مختصرة (للمتصفح أو نسخة التطبيق القديمة): denied | off | coarse | tips | update */
 function openGpsHelp(kind = 'denied') {

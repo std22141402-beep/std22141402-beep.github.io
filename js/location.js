@@ -47,6 +47,7 @@ export class GpsSource {
     this.retryT = null;
     this.dog = null;
     this.waiters = [];
+    this.stats = { fixes: 0, errors: 0, lastErr: null, lastErrAt: 0, lastStart: 0 };
     this.prevAny = null;
     this.skew = 0;
     this.skewSet = false;
@@ -103,6 +104,7 @@ export class GpsSource {
   _watch() {
     this._clear();
     this.watchStart = this.now();
+    this.stats.lastStart = this.watchStart;
     try {
       this.watchId = this.geo.watchPosition(
         (p) => this._handle(p, 'watch'),
@@ -170,6 +172,7 @@ export class GpsSource {
     else heading = this.last?.heading ?? null;
 
     const fix = { pos, raw, accuracy, speed, heading, t: recv, gpsT, sim: false, stale, src };
+    this.stats.fixes++;
     if (!stale && accuracy <= 60) this.lastGoodT = recv;
     this.last = fix;
     this.lastRecv = recv;
@@ -191,6 +194,9 @@ export class GpsSource {
   _err(e) {
     if (!this.active) return;
     const code = e?.code ?? 2;
+    this.stats.errors++;
+    this.stats.lastErr = { code, message: String(e?.message || '').slice(0, 120) };
+    this.stats.lastErrAt = this.now();
     if (code === 1) {
       this._clear();
       clearTimeout(this.retryT); this.retryT = null;
@@ -256,6 +262,8 @@ export class GpsSource {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', wake);
       window.addEventListener('pageshow', wake);
+      // رجعنا من نافذة صلاحية/إعدادات فوك التطبيق (الصفحة ما تختفي، بس ترجع إلها اللمسة)
+      window.addEventListener('focus', wake);
     }
     // تغيير الصلاحية من الإعدادات بدون ما يعيد فتح التطبيق
     try {
