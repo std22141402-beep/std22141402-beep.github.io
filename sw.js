@@ -2,7 +2,7 @@
 //  Service Worker — يخلي التطبيق يفتح بسرعة وبدون نت، ويحفظ الخريطة اللي شفتها
 //  غيّر VERSION كل ما تحدّث ملفات التطبيق حتى توصل النسخة الجديدة للمستخدمين
 // =====================================================================
-const VERSION = 'salka-v1.1.0';
+const VERSION = 'salka-v1.2.0';
 const SHELL_CACHE = `${VERSION}-shell`;
 const LIB_CACHE = 'salka-libs-v1';
 const TILE_CACHE = 'salka-tiles-v1';
@@ -11,7 +11,7 @@ const MAX_TILES = 4000;
 const SHELL = [
   './', './index.html', './css/app.css', './manifest.webmanifest',
   './js/app.js', './js/config.js', './js/geo.js', './js/instructions.js', './js/routing.js', './js/navengine.js',
-  './js/search.js', './js/voice.js', './js/mapview.js', './js/theme.js', './js/reports.js', './js/location.js', './js/storage.js',
+  './js/search.js', './js/voice.js', './js/mapview.js', './js/theme.js', './js/reports.js', './js/location.js', './js/storage.js', './js/traffic.js',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
 ];
 

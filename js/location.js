@@ -1,7 +1,7 @@
 // =====================================================================
 //  location.js — مصدر الموقع: GPS حقيقي أو محاكاة قيادة
 // =====================================================================
-import { haversine, bearing, destination, pointAt, clamp } from './geo.js';
+import { haversine, bearing, destination, pointAt, clamp, GpsSmoother } from './geo.js';
 
 export class GpsSource {
   constructor(onFix, onError) {
@@ -10,6 +10,7 @@ export class GpsSource {
     this.watchId = null;
     this.last = null;
     this.lastGoodT = 0;
+    this.smoother = new GpsSmoother();
   }
 
   get available() { return typeof navigator !== 'undefined' && 'geolocation' in navigator; }
@@ -43,14 +44,16 @@ export class GpsSource {
     let speed = c.speed != null && isFinite(c.speed) && c.speed >= 0 ? c.speed : null;
     let heading = c.heading != null && isFinite(c.heading) ? c.heading : null;
     if (this.last) {
-      const d = haversine(this.last.pos, pos);
+      const d = haversine(this.last.raw || this.last.pos, pos);
       const dt = (t - this.last.t) / 1000;
       if (speed == null && dt > 0) speed = d / dt;
-      if ((heading == null || (speed ?? 0) < 1.2) && d > Math.max(4, accuracy * 0.4)) heading = bearing(this.last.pos, pos);
+      if ((heading == null || (speed ?? 0) < 1.2) && d > Math.max(4, accuracy * 0.4)) heading = bearing(this.last.raw || this.last.pos, pos);
       else if (heading == null) heading = this.last.heading;
     }
     if (accuracy <= 50) this.lastGoodT = t;
-    const fix = { pos, accuracy, speed, heading, t, sim: false };
+    // تنعيم الموقع (فلتر كالمان): يشيل الارتجاج وما يأخر الحركة
+    const smooth = this.smoother.process(pos, accuracy, t, speed);
+    const fix = { pos: smooth, raw: pos, accuracy, speed, heading, t, sim: false };
     this.last = fix;
     this.onFix(fix);
   }

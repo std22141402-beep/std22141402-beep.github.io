@@ -71,3 +71,20 @@ export function mockOsrmResponse(from, to, alternatives) {
   }
   return { code: 'Ok', routes, waypoints: [] };
 }
+
+/** طريق بعدة محطات (كل مقطع على شكل L) بنفس بنية OSRM */
+export function mockMultiLeg(points) {
+  const legs = [];
+  let coords = [];
+  let distance = 0, duration = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], b = points[i + 1];
+    const mid = [b[0], a[1]];
+    const r = mockRoute([a, mid, b], [`شارع ${i + 1}`, `طريق ${i + 1}`, ''], 12);
+    const lc = r.geometry.coordinates;
+    coords = coords.length ? coords.concat(lc.slice(1)) : lc.slice();
+    legs.push(r.legs[0]);
+    distance += r.distance; duration += r.duration;
+  }
+  return { code: 'Ok', routes: [{ geometry: { type: 'LineString', coordinates: coords }, distance, duration, weight: duration, legs }], waypoints: [] };
+}

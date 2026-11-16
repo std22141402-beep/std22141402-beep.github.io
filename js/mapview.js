@@ -7,14 +7,15 @@ import { escapeHtml } from './storage.js';
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const W = (base) => ['interpolate', ['exponential', 1.5], ['zoom'], 8, base * 0.45, 13, base, 16, base * 1.9, 19, base * 3.6];
 
+const GOLD_DEFS = '<defs><linearGradient id="gGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF1BF"/><stop offset=".45" stop-color="#E7BE4F"/><stop offset="1" stop-color="#A97A1C"/></linearGradient><radialGradient id="gGlow"><stop offset="0" style="stop-color:var(--route)" stop-opacity=".55"/><stop offset="1" style="stop-color:var(--route)" stop-opacity="0"/></radialGradient></defs>';
 const CAR_SVG = {
-  arrow: `<svg viewBox="0 0 54 54"><circle cx="27" cy="27" r="25" fill="rgba(255,255,255,.18)"/><path d="M27 6 L44 46 L27 37 L10 46 Z" fill="var(--accent)" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/></svg>`,
-  car: `<svg viewBox="0 0 54 54"><rect x="15" y="6" width="24" height="42" rx="9" fill="var(--accent)" stroke="#fff" stroke-width="3"/><path d="M19 17 Q27 12 35 17 L33 23 H21 Z" fill="#cfe6ff" opacity=".95"/><path d="M20.5 37 H33.5 L35 42 Q27 45 19 42 Z" fill="#cfe6ff" opacity=".75"/><circle cx="19" cy="8.5" r="1.8" fill="#FFF7C2"/><circle cx="35" cy="8.5" r="1.8" fill="#FFF7C2"/></svg>`,
-  dot: `<svg viewBox="0 0 54 54"><path d="M27 4 L37 22 H17 Z" fill="var(--accent)" opacity=".55"/><circle cx="27" cy="29" r="12" fill="var(--accent)" stroke="#fff" stroke-width="4"/></svg>`,
-  plain: `<svg viewBox="0 0 54 54"><circle cx="27" cy="27" r="12" fill="var(--accent)" stroke="#fff" stroke-width="4"/></svg>`,
+  arrow: `<svg viewBox="0 0 64 64">${GOLD_DEFS}<circle cx="32" cy="32" r="31" fill="url(#gGlow)"/><path d="M32 7 L52 54 L32 43 L12 54 Z" fill="url(#gGold)" stroke="#fff" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 7 L32 43 L12 54 Z" fill="#000" opacity=".12"/></svg>`,
+  car: `<svg viewBox="0 0 64 64">${GOLD_DEFS}<circle cx="32" cy="32" r="31" fill="url(#gGlow)"/><rect x="20" y="8" width="24" height="48" rx="10" fill="url(#gGold)" stroke="#fff" stroke-width="2.6"/><path d="M24 20 Q32 14.5 40 20 L38 27 H26 Z" fill="#0E1A30" opacity=".85"/><path d="M25.5 44 H38.5 L40 49.5 Q32 52.5 24 49.5 Z" fill="#0E1A30" opacity=".7"/><circle cx="24" cy="10.5" r="1.9" fill="#FFFBE0"/><circle cx="40" cy="10.5" r="1.9" fill="#FFFBE0"/></svg>`,
+  dot: `<svg viewBox="0 0 64 64">${GOLD_DEFS}<circle cx="32" cy="32" r="31" fill="url(#gGlow)"/><path d="M32 6 L42 24 H22 Z" style="fill:var(--route)" opacity=".75"/><circle cx="32" cy="34" r="12" style="fill:var(--route)" stroke="#fff" stroke-width="4"/></svg>`,
+  plain: `<svg viewBox="0 0 64 64">${GOLD_DEFS}<circle cx="32" cy="32" r="28" fill="url(#gGlow)"/><circle cx="32" cy="32" r="12" style="fill:var(--route)" stroke="#fff" stroke-width="4"/></svg>`,
 };
-const DEST_SVG = `<svg viewBox="0 0 40 50"><path d="M20 49 C20 49 3 30 3 18 A17 17 0 0 1 37 18 C37 30 20 49 20 49 Z" fill="#E53935" stroke="#fff" stroke-width="2.5"/><path d="M14 11 V26 M14 11 H26 L23.5 14.5 L26 18 H14" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
-const PIN_SVG = `<svg viewBox="0 0 40 50"><path d="M20 49 C20 49 3 30 3 18 A17 17 0 0 1 37 18 C37 30 20 49 20 49 Z" fill="var(--accent)" stroke="#fff" stroke-width="2.5"/><circle cx="20" cy="18" r="6" fill="#fff"/></svg>`;
+const DEST_SVG = `<svg viewBox="0 0 44 56">${GOLD_DEFS}<ellipse cx="22" cy="53" rx="8" ry="2.6" fill="#000" opacity=".25"/><path d="M22 52 C22 52 4 32 4 19 A18 18 0 0 1 40 19 C40 32 22 52 22 52 Z" fill="url(#gGold)" stroke="#fff" stroke-width="2.5"/><path d="M16 11 V27 M16 11 H28 L25.5 14.5 L28 18 H16" fill="none" stroke="#0E1A30" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+const PIN_SVG = `<svg viewBox="0 0 40 50"><path d="M20 49 C20 49 3 30 3 18 A17 17 0 0 1 37 18 C37 30 20 49 20 49 Z" style="fill:var(--accent)" stroke="#fff" stroke-width="2.5"/><circle cx="20" cy="18" r="6" fill="#fff"/></svg>`;
 
 function gradient(color, traveled, frac) {
   if (!(frac > 0.0005)) return ['interpolate', ['linear'], ['line-progress'], 0, color, 1, color];
@@ -89,12 +90,24 @@ export class MapView {
   _addLayers() {
     const map = this.map;
     const before = this._firstSymbol();
+    // الازدحام (تحت المسارات)
+    map.addSource('salka-traffic', { type: 'geojson', data: EMPTY });
+    map.addLayer({
+      id: 'salka-traffic', type: 'line', source: 'salka-traffic',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': ['step', ['get', 'r'], '#E0312E', 0.25, '#F57C00', 0.4, '#F9C22E'],
+        'line-width': W(4.2),
+        'line-opacity': ['interpolate', ['linear'], ['get', 'a'], 0, 0.95, 20, 0.35],
+      },
+    }, before);
     map.addSource('salka-alts', { type: 'geojson', data: EMPTY });
     map.addLayer({ id: 'salka-alts-casing', type: 'line', source: 'salka-alts', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#5E708A', 'line-width': W(9) } }, before);
     map.addLayer({ id: 'salka-alts-line', type: 'line', source: 'salka-alts', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#A9BCD6', 'line-width': W(6) } }, before);
     map.addLayer({ id: 'salka-alts-hit', type: 'line', source: 'salka-alts', paint: { 'line-color': '#000', 'line-opacity': 0, 'line-width': 28 } }, before);
 
     map.addSource('salka-route', { type: 'geojson', data: EMPTY, lineMetrics: true });
+    map.addLayer({ id: 'salka-route-glow', type: 'line', source: 'salka-route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-width': W(22), 'line-blur': W(9), 'line-opacity': 0.55, 'line-gradient': gradient('#2F80ED', 'rgba(0,0,0,0)', 0) } }, before);
     map.addLayer({ id: 'salka-route-casing', type: 'line', source: 'salka-route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-width': W(10.5), 'line-gradient': gradient('#1A4F99', 'rgba(0,0,0,0)', 0) } }, before);
     map.addLayer({ id: 'salka-route-line', type: 'line', source: 'salka-route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-width': W(7), 'line-gradient': gradient('#2F80ED', 'rgba(150,160,175,0.6)', 0) } }, before);
 
@@ -150,6 +163,7 @@ export class MapView {
     try {
       this.map.setPaintProperty('salka-route-line', 'line-gradient', gradient(c, 'rgba(150,160,175,0.55)', this.progress));
       this.map.setPaintProperty('salka-route-casing', 'line-gradient', gradient(shade(c, -0.38), 'rgba(0,0,0,0)', this.progress));
+      this.map.setPaintProperty('salka-route-glow', 'line-gradient', gradient(c, 'rgba(0,0,0,0)', this.progress));
     } catch (e) { console.warn(e); }
   }
 
@@ -228,6 +242,37 @@ export class MapView {
     const m = this._marker('pinMarker', this.pinEl, { anchor: 'bottom' });
     m.setLngLat(pos);
     if (!this._pinAdded) { m.addTo(this.map); this._pinAdded = true; }
+  }
+
+  setTraffic(fc) {
+    this.map?.getSource('salka-traffic')?.setData(fc || EMPTY);
+  }
+
+  /** علامات المحطات المرقمة */
+  setStops(list = []) {
+    if (!this.map) return;
+    this.stopMarkers = this.stopMarkers || [];
+    this.stopMarkers.forEach((m) => m.remove());
+    this.stopMarkers = list.map((p, i) => {
+      const el = document.createElement('div');
+      el.className = 'stop-marker';
+      el.textContent = String(i + 1);
+      return new this.ml.Marker({ element: el }).setLngLat(p).addTo(this.map);
+    });
+  }
+
+  setSky(sky) { try { this.map?.setSky?.(sky); } catch { /* ignore */ } }
+
+  setGlobe(on) { try { this.map?.setProjection?.({ type: on ? 'globe' : 'mercator' }); } catch { /* ignore */ } }
+
+  /** افتتاحية سينمائية: من الفضاء إلى موقعك */
+  intro(center, zoom, done) {
+    if (!this.map) { done?.(); return; }
+    let finished = false;
+    const finish = () => { if (finished) return; finished = true; done?.(); };
+    this.map.once('moveend', finish);
+    setTimeout(finish, 6000);
+    this.map.flyTo({ center, zoom, pitch: 50, bearing: -18, duration: 4200, curve: 1.6, essential: true });
   }
 
   setReports(list) {

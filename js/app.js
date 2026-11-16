@@ -1,7 +1,7 @@
 // =====================================================================
 //  app.js — العقل المدبر: يربط الخريطة، البحث، الملاحة، الصوت، البلاغات
 // =====================================================================
-import { APP, MAP, NAV, LIBS, REPORT_TYPES, THEME_PRESETS, DEFAULT_SETTINGS, CATEGORIES } from './config.js';
+import { APP, MAP, NAV, LIBS, REPORT_TYPES, THEME_PRESETS, DEFAULT_SETTINGS, CATEGORIES, TRAFFIC } from './config.js';
 import { haversine, bearing, destination, pointAt, lerpAngle, mercFraction, sliceLine, bboxOf, clamp } from './geo.js';
 import { fetchRoutes } from './routing.js';
 import { NavEngine } from './navengine.js';
@@ -11,6 +11,7 @@ import { Voice } from './voice.js';
 import { MapView } from './mapview.js';
 import { transformStyle, applyPalette, applyUiTheme, uiColors, isNight, MAP_PALETTES, setBuildings3d } from './theme.js';
 import { ReportStore, reportsOnRoute, TYPE as RTYPE } from './reports.js';
+import { TrafficStore, TrafficProbe, trafficDelay } from './traffic.js';
 import { GpsSource, SimSource } from './location.js';
 import { store, deviceId, escapeHtml as esc } from './storage.js';
 
@@ -69,6 +70,8 @@ const reports = new ReportStore({
   onChange: () => onReportsChanged(),
 });
 
+const traffic = new TrafficStore({ onChange: () => onTrafficChanged() });
+const probe = new TrafficProbe();
 const gps = new GpsSource(onFix, onGpsError);
 const sim = new SimSource(onFix);
 
@@ -106,10 +109,12 @@ async function boot() {
   } catch {
     return fatal('تعذر تحميل الخريطة. تأكد من الانترنت وحاول مرة ثانية.');
   }
-  const styled = transformStyle(style, S.night ? MAP_PALETTES.night : MAP_PALETTES.day, { buildings3d: S.settings.buildings3d });
+  const styled = transformStyle(style, S.night ? MAP_PALETTES.night : MAP_PALETTES.day, { buildings3d: S.settings.buildings3d, night: S.night, globe: S.settings.globe });
   const last = store.get('lastView');
   try {
-    await mapView.init(styled, { center: last?.center || MAP.center, zoom: last?.zoom || MAP.zoom });
+    S.introPending = wantIntro();
+    const view = S.introPending ? { center: [44.4, 30.5], zoom: 1.35 } : { center: last?.center || MAP.center, zoom: last?.zoom || MAP.zoom };
+    await mapView.init(styled, view);
   } catch (e) {
     console.error(e);
     return fatal('صار خطأ بتحميل الخريطة. حاول مرة ثانية.');
@@ -123,6 +128,8 @@ async function boot() {
   hideSplash();
   ensureHist();
   gps.start();
+  traffic.connect(S.settings.showTraffic || S.settings.shareTraffic);
+  if (S.introPending) setTimeout(runIntro, 700);
   connectReports();
   onReportsChanged();
   setInterval(() => updateNight(false), 5 * 60 * 1000);
@@ -175,6 +182,30 @@ function reportStatusText() {
   return `🟡 دا يتصل ب${where}…`;
 }
 
+function wantIntro() {
+  let done = false;
+  try { done = sessionStorage.getItem('salka:intro') === '1'; } catch { /* ignore */ }
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  return !!(S.settings.intro && S.settings.globe && !done && !reduce);
+}
+
+/** افتتاحية من الفضاء إلى موقعك */
+function runIntro() {
+  S.introPending = false;
+  S.introRunning = true;
+  try { sessionStorage.setItem('salka:intro', '1'); } catch { /* ignore */ }
+  const go = () => {
+    const last = store.get('lastView');
+    const target = S.me?.pos || last?.center || MAP.center;
+    mapView.intro(target, S.me ? 15.6 : (last?.zoom || 12), () => {
+      S.introRunning = false;
+      if (S.me) { mapView.setMe(S.me.pos, S.me.heading, 'dot'); mapView.setAccuracy(S.me.pos, S.me.accuracy); }
+    });
+  };
+  // ننتظر شوية الـGPS حتى نطير لموقعك الحقيقي
+  if (S.me) go(); else { const t0 = Date.now(); const wait = () => (S.me || Date.now() - t0 > 1800 ? go() : setTimeout(wait, 150)); wait(); }
+}
+
 function setSplash(msg) { el.splashMsg.textContent = msg; }
 function hideSplash() { el.splash.classList.add('out'); setTimeout(() => el.splash.classList.add('hidden'), 450); }
 /** هل التطبيق مفتوح داخل معاينة ملفات (مثل معاينة تطبيق Claude) تمنع الانترنت والموقع؟ */
@@ -216,7 +247,7 @@ function onFix(fix) {
   if (!S.firstFix) {
     S.firstFix = true;
     updateNight(false);
-    if (!nav && S.mode === 'browse' && mapView.map) mapView.flyTo(fix.pos, 15.5, { duration: 1200 });
+    if (!nav && S.mode === 'browse' && mapView.map && !S.introRunning && !S.introPending) mapView.flyTo(fix.pos, 15.5, { duration: 1200 });
   }
   if (nav) { navFix(fix); return; }
   if (!mapView.map) return;
@@ -254,7 +285,7 @@ function updateNight(force) {
   S.night = night;
   const c = applyUiTheme(S.settings, night);
   if (mapView.map) {
-    applyPalette(mapView.map, night ? MAP_PALETTES.night : MAP_PALETTES.day);
+    applyPalette(mapView.map, night ? MAP_PALETTES.night : MAP_PALETTES.day, night);
     mapView.setRouteColor(c.route);
   }
 }
@@ -428,9 +459,17 @@ function bindUi() {
   window.addEventListener('pointerdown', unlock);
 }
 
-function openSearch() {
+function openSearch({ forStop = false } = {}) {
   if (S.searchOpen || nav) return;
-  closeAllSheets({ keepHist: true });
+  S.addingStop = forStop && S.mode === 'preview';
+  closeAllSheets({ keepHist: true, silent: S.addingStop });
+  if (S.addingStop) {
+    // بحث جديد نظيف للمحطة (بدون نتائج البحث القديم)
+    searchAbort?.abort();
+    clearTimeout(searchTimer);
+    el.searchInput.value = '';
+    el.searchClear.classList.add('hidden');
+  }
   hideAlert();
   S.searchOpen = true;
   el.searchPanel.classList.remove('hidden');
@@ -449,8 +488,11 @@ function closeSearch({ fromPop = false } = {}) {
   el.btnMenu.innerHTML = icon('i-menu');
   el.btnMenu.setAttribute('aria-label', 'القائمة');
   el.searchInput.blur();
+  el.searchInput.placeholder = 'وين رايح؟';
   searchAbort?.abort();
   if (!fromPop) releaseHist();
+  // رجع من "إضافة محطة" بدون ما يختار: نرجع للمعاينة
+  if (S.addingStop) { S.addingStop = false; if (S.mode === 'preview') restorePreview(); }
 }
 
 function places() { return { home: null, work: null, favs: [], ...store.get('places', {}) }; }
@@ -538,6 +580,7 @@ async function searchCategory(catId) {
 }
 
 function onResultClick(e) {
+  if (el.searchResults.querySelector('.spinner')) return; // النتائج دا تتحدث
   const cat = e.target.closest('[data-cat]');
   if (cat) { searchCategory(cat.dataset.cat); return; }
   if (e.target.closest('[data-clear-recents]')) { store.set('recents', []); renderSearchHome(); return; }
@@ -548,6 +591,15 @@ function onResultClick(e) {
   voice.unlock();
   const pl = { name: it.name, sub: it.sub, pos: it.pos, kind: it.kind };
   if (!it._ico) addRecent(pl);
+  if (S.addingStop && S.mode === 'preview' && S.place) {
+    S.addingStop = false;
+    S.stops = [...(S.stops || []), pl].slice(0, 4);
+    el.searchInput.value = '';
+    closeSearch();
+    previewRoutes(S.place, { origin: S.originOverride, keepStops: true });
+    return;
+  }
+  S.stops = [];
   closeSearch();
   previewRoutes(pl);
 }
@@ -631,9 +683,11 @@ function excludes() {
 
 function scoreRoutes(routes, fromAlong = 0) {
   const list = reports.list();
+  const tr = traffic.list();
   return routes.map((r, i) => {
     const { penalty, hits } = reportsOnRoute(r, list, fromAlong);
-    return { route: r, idx: i, penalty, hits, cost: r.duration + penalty };
+    const td = trafficDelay(r, tr, fromAlong).delay;
+    return { route: r, idx: i, penalty: penalty + td, reportPenalty: penalty, traffic: td, hits, cost: r.duration + penalty + td };
   });
 }
 
@@ -648,10 +702,12 @@ function previewOpts(extra = {}) {
 function restorePreview() {
   if (S.mode !== 'preview' || !S.place) { S.sheet = null; return; }
   if (S.routes.length) renderPreview({ fit: false });
-  else previewRoutes(S.place, { origin: S.originOverride });
+  else previewRoutes(S.place, { origin: S.originOverride, keepStops: true });
 }
 
-async function previewRoutes(place, { origin = null } = {}) {
+async function previewRoutes(place, { origin = null, keepStops = false } = {}) {
+  if (!keepStops && S.place !== place) S.stops = [];
+  S.stops = S.stops || [];
   S.place = place;
   S.mode = 'preview';
   S.routes = [];
@@ -673,7 +729,8 @@ async function previewRoutes(place, { origin = null } = {}) {
   previewAbort = new AbortController();
   try {
     const heading = S.me && !origin && (S.me.speed ?? 0) > 3 ? S.me.heading : null;
-    const routes = await fetchRoutes(from, place.pos, { alternatives: true, exclude: excludes(), bearing: heading, signal: previewAbort.signal });
+    mapView.setStops(S.stops.map((x) => x.pos));
+    const routes = await fetchRoutes(from, place.pos, { alternatives: !S.stops.length, via: S.stops.map((x) => x.pos), exclude: excludes(), bearing: heading, signal: previewAbort.signal });
     if (S.mode !== 'preview' || S.place !== place) return;
     if (routes.flags?.excludeIgnored) toast('خادم الطرق ما يدعم «تجنب الطرق السريعة» حالياً');
     S.routes = scoreRoutes(routes).sort((a, b) => a.cost - b.cost);
@@ -701,18 +758,21 @@ function renderPreview({ fit = true } = {}) {
     const eta = fmtClock(new Date(Date.now() + r.route.duration * 1000));
     const badges = [];
     if (i === 0) badges.push('<span class="badge">الأفضل</span>');
-    if (r.route.duration === fastest && i !== 0) badges.push('<span class="badge warn">الأسرع بدون بلاغات</span>');
+    if (r.route.duration === fastest && i !== 0) badges.push('<span class="badge warn">الأقصر لولا الزحمة</span>');
     const bad = r.hits.find((h) => h.rep.type.penalty >= 300);
     if (bad) badges.push(`<span class="badge bad">${esc(bad.rep.type.label)}</span>`);
+    if (r.traffic >= 60) badges.push(`<span class="badge traffic">زحمة +${fmtDuration(r.traffic)}</span>`);
     return `<button class="route-opt ${i === S.routeIdx ? 'sel' : ''}" data-r="${i}">
       <span class="r-time">${fmtDuration(r.route.duration + r.penalty)}</span>
       <span class="r-main"><div class="r-dist">${fmtDistanceStr(r.route.distance)} • يوصل ${eta} ${badges.join('')}</div><div class="r-via">${r.route.summary ? `عبر ${esc(r.route.summary)}` : ''}</div></span>
     </button>`;
   }).join('');
+  const stops = (S.stops || []).map((x, i) => `<div class="stop-row"><span class="num">${num(i + 1)}</span><span class="nm">${esc(x.name)}</span><button class="icon-btn sm" data-delstop="${i}" aria-label="حذف المحطة">${icon('i-x')}</button></div>`).join('');
   const html = `${previewHeader(S.place)}
+    ${stops ? `<div class="stops">${stops}</div>` : ''}
     <div class="routes">${opts}</div>
     <div class="actions"><button class="btn go" data-a="go">${icon('i-nav')}انطلق</button><button class="btn" data-a="sim">${icon('i-play')}تجربة القيادة</button></div>
-    <div class="actions"><button class="btn sm" data-a="share">${icon('i-share')}مشاركة</button><button class="btn sm" data-a="avoid">${S.settings.avoidMotorway ? '✓ ' : ''}تجنب السريعات</button></div>
+    <div class="actions"><button class="btn sm" data-a="addstop" ${(S.stops || []).length >= 4 ? 'disabled' : ''}>＋ محطة</button><button class="btn sm" data-a="share">${icon('i-share')}مشاركة</button><button class="btn sm" data-a="avoid">${S.settings.avoidMotorway ? '✓ ' : ''}تجنب السريعات</button></div>
     ${S.originOverride ? '<div class="note">البداية: مركز الخريطة (مو موقعك الحقيقي)</div>' : ''}`;
   openSheet('preview', html, previewOpts());
   drawPreview();
@@ -726,6 +786,8 @@ function bindPreviewSheet(b) {
   b.onclick = (e) => {
     const r = e.target.closest('[data-r]');
     if (r) { selectRoute(+r.dataset.r); return; }
+    const ds = e.target.closest('[data-delstop]');
+    if (ds) { S.stops.splice(+ds.dataset.delstop, 1); previewRoutes(S.place, { origin: S.originOverride, keepStops: true }); return; }
     const a = e.target.closest('[data-a]')?.dataset.a;
     if (!a) return;
     if (a === 'go' || a === 'sim') {
@@ -736,10 +798,11 @@ function bindPreviewSheet(b) {
     }
     if (a === 'save') openSavePlace(S.place);
     if (a === 'share') sharePlace(S.place);
-    if (a === 'avoid') { S.settings.avoidMotorway = !S.settings.avoidMotorway; saveSettings(); previewRoutes(S.place, { origin: S.originOverride }); }
+    if (a === 'addstop') { openSearch({ forStop: true }); el.searchInput.placeholder = 'وين تريد توقف بالطريق؟'; setTimeout(() => el.searchInput.focus(), 50); }
+    if (a === 'avoid') { S.settings.avoidMotorway = !S.settings.avoidMotorway; saveSettings(); previewRoutes(S.place, { origin: S.originOverride, keepStops: true }); }
     if (a === 'retry') { gps.stop(); gps.start(); toast('دا أحدد موقعك…'); const pl = S.place; setTimeout(() => { if (S.mode === 'preview' && S.place === pl) previewRoutes(pl); }, 2500); }
     if (a === 'center') previewRoutes(S.place, { origin: mapView.center() });
-    if (a === 'retry2') previewRoutes(S.place, { origin: S.originOverride });
+    if (a === 'retry2') previewRoutes(S.place, { origin: S.originOverride, keepStops: true });
   };
 }
 
@@ -761,8 +824,10 @@ function cancelPreview() {
   S.mode = 'browse';
   S.routes = [];
   S.place = null;
+  S.stops = [];
   mapView.clearRoutes();
   mapView.setDestination(null);
+  mapView.setStops([]);
 }
 
 // ================================================================== الملاحة
@@ -800,7 +865,12 @@ function startNav(route, { sim: simulate = false } = {}) {
     lastNextIdx: -1,
     arrivedHandled: false,
     lastSave: 0,
+    stops: (S.stops || []).slice(),
+    wpPassed: 0,
+    trafficAhead: 0,
+    trafficT: 0,
   };
+  probe.reset();
   S.mode = 'nav';
   document.body.classList.add('navigating');
   el.topbar.classList.add('hidden');
@@ -810,9 +880,15 @@ function startNav(route, { sim: simulate = false } = {}) {
   el.btnCompass.classList.add('hidden');
   mapView.setRoutes(route, []);
   mapView.setDestination(dest.pos);
+  mapView.setStops(nav.stops.map((x) => x.pos));
   mapView.setPin(null);
   mapView.setAccuracy(null);
   computeHits();
+  updateTrafficAhead(true);
+  if (!simulate && S.settings.shareTraffic && !store.get('trafficNotice')) {
+    store.set('trafficNotice', 1);
+    setTimeout(() => toast('🛰️ سالكة يشارك سرعتك بدون اسم ولا رقم حتى يلوّن الازدحام للكل — تكدر تطفيه من الإعدادات', 5500), 2500);
+  }
   const first = route.steps[0];
   const start = S.me && !simulate ? S.me : { pos: route.coords[0], heading: route.line.brg[0], speed: 0, accuracy: 5 };
   nav.target = { along: 0, onRoute: false, pos: start.pos, heading: start.heading ?? route.line.brg[0], speed: 0, recv: performance.now() };
@@ -848,6 +924,20 @@ function navFix(fix) {
   n.prevPos = fix.pos;
 
   if (!n.rerouting) hideNavStatus();
+  // المحطات اللي عديناها
+  const wps = n.route.steps.filter((x) => x.waypoint);
+  const passed = wps.filter((x) => x.startDist <= st.along + 10).length;
+  if (passed > n.wpPassed) {
+    for (let k = n.wpPassed; k < passed; k++) { const done = n.stops.shift(); if (done) toast(`✅ وصلت: ${done.name}`); }
+    n.wpPassed = passed;
+    mapView.setStops(n.stops.map((x) => x.pos));
+  }
+  // الازدحام: عينة مجهولة كل 30 ثانية (مو بوضع التجربة)
+  if (!n.sim && S.settings.shareTraffic) {
+    const smp = probe.update({ route: n.route, along: st.along, t: fix.t, onRoute: st.joined && !st.offRoute });
+    if (smp) traffic.publish(smp);
+  }
+  if (Date.now() - n.trafficT > 10000) updateTrafficAhead();
   renderBanner(st);
   for (const a of st.announcements) voice.speak(a.text, { priority: a.priority });
   if (st.needReroute) reroute(st.reason);
@@ -896,8 +986,9 @@ function renderBanner(st) {
   el.mUnit.textContent = f.unit;
   el.mRoad.textContent = road;
   // الوصول
-  el.etaTime.textContent = fmtClock(new Date(Date.now() + st.remainingTime * 1000));
-  el.etaLeft.textContent = fmtDuration(st.remainingTime);
+  const total = st.remainingTime + (nav.trafficAhead || 0);
+  el.etaTime.textContent = fmtClock(new Date(Date.now() + total * 1000));
+  el.etaLeft.innerHTML = nav.trafficAhead >= 60 ? `${fmtDuration(total)} <span class="eta-traffic">(+${fmtDuration(nav.trafficAhead)} زحمة)</span>` : fmtDuration(total);
   el.etaDist.textContent = fmtDistanceStr(st.remainingDist);
   mapView.setProgress(mercFraction(nav.route.line, st.along));
 }
@@ -966,7 +1057,7 @@ function frame(ts) {
     d.zoom = d.zoom == null ? z : d.zoom + (z - d.zoom) * Math.min(1, dt * 1.2);
     const { h } = mapView.size;
     const tilt = S.settings.tilt;
-    mapView.follow({ center: d.pos, bearing: d.bearing, zoom: d.zoom, pitch: tilt ? 52 : 0, padding: { top: Math.round(h * (tilt ? 0.42 : 0.3)), bottom: 90, left: 0, right: 0 } });
+    mapView.follow({ center: d.pos, bearing: d.bearing, zoom: d.zoom, pitch: tilt ? 56 : 0, padding: { top: Math.round(h * (tilt ? 0.42 : 0.3)), bottom: 90, left: 0, right: 0 } });
   }
 }
 
@@ -1003,7 +1094,7 @@ async function reroute(reason) {
   try {
     const heading = fix && (fix.speed ?? 0) > 2 ? fix.heading : null;
     const anyPenalty = reports.list().some((r) => r.type.penalty > 0);
-    const routes = await fetchRoutes(fix.pos, n.dest.pos, { bearing: heading, alternatives: anyPenalty, exclude: excludes(), signal: n.abort.signal, timeoutMs: 10000 });
+    const routes = await fetchRoutes(fix.pos, n.dest.pos, { bearing: heading, alternatives: anyPenalty || traffic.list().length > 0, via: n.stops.map((x) => x.pos), exclude: excludes(), signal: n.abort.signal, timeoutMs: 10000 });
     if (nav !== n) return;
     const best = scoreRoutes(routes).sort((a, b) => a.cost - b.cost)[0];
     voice.speak(P().rerouted, { priority: 1, chime: false });
@@ -1025,8 +1116,12 @@ function swapRoute(route, { rerouted = false } = {}) {
   nav.display.along = null;
   if (nav.target) nav.target = { ...nav.target, onRoute: false, pos: nav.display.pos || nav.target.pos, speed: 0, recv: performance.now() };
   nav.lastNextIdx = -1;
+  nav.wpPassed = 0;
+  probe.reset();
   mapView.setRoutes(route, []);
+  mapView.setStops(nav.stops.map((x) => x.pos));
   computeHits();
+  updateTrafficAhead(true);
   if (nav.sim) sim.continueOn(route);
   if (nav.lastFix) {
     const f = nav.lastFix;
@@ -1068,6 +1163,7 @@ function sliceDistance(route, p, fromAlong) {
 async function checkFaster(force = false) {
   const n = nav;
   if (!n || n.fasterBusy || n.rerouting || !n.state || n.state.offRoute || !n.lastFix) return;
+  if (n.stops.length) { n.lastFasterCheck = Date.now(); return; } // مع المحطات نلتزم بالترتيب
   if (!force && n.state.remainingDist < 2500) { n.lastFasterCheck = Date.now(); return; }
   n.fasterBusy = true;
   n.lastFasterCheck = Date.now();
@@ -1077,13 +1173,14 @@ async function checkFaster(force = false) {
     const routes = await fetchRoutes(fix.pos, n.dest.pos, { bearing: heading, alternatives: true, exclude: excludes(), signal: n.abort.signal });
     if (nav !== n || n.rerouting) return;
     const list = reports.list();
-    const curCost = n.state.remainingTime + reportsOnRoute(n.route, list, n.state.along).penalty;
+    const curCost = n.state.remainingTime + reportsOnRoute(n.route, list, n.state.along).penalty + trafficDelay(n.route, traffic.list(), n.state.along).delay;
     const best = scoreRoutes(routes).sort((a, b) => a.cost - b.cost)[0];
     const gain = curCost - best.cost;
     if (gain >= NAV.fasterMinGainS && !sameRoute(best.route, n.route, n.state.along)) {
       const mins = Math.max(1, Math.round(gain / 60));
       voice.speak(P().faster(mins), { priority: 1 });
-      const why = best.hits.length < reportsOnRoute(n.route, list, n.state.along).hits.length ? 'يتجنب بلاغات على طريقك' : 'حسب الطرق الحالية';
+      const why = best.traffic < trafficDelay(n.route, traffic.list(), n.state.along).delay - 60 ? 'يتجنب الازدحام اللي قدامك'
+        : best.hits.length < reportsOnRoute(n.route, list, n.state.along).hits.length ? 'يتجنب بلاغات على طريقك' : 'حسب الطرق الحالية';
       showAlert({
         ico: '⚡', color: 'color-mix(in srgb, var(--ok) 18%, var(--bg))',
         title: `طريق أسرع — يوفر ${num(mins)} د`, sub: why,
@@ -1103,6 +1200,23 @@ function acceptFaster(route) {
 }
 
 // ---------------------------------------------------- البلاغات أثناء الملاحة
+function onTrafficChanged() {
+  mapView.setTraffic(S.settings.showTraffic ? traffic.geojson() : null);
+  if (nav) {
+    const before = nav.trafficAhead || 0;
+    updateTrafficAhead(true);
+    // زحمة جديدة كبيرة قدامك → ندور طريق أسرع
+    if (nav.trafficAhead - before > 180 && Date.now() - nav.lastFasterCheck > 60000) setTimeout(() => checkFaster(true), 300);
+  }
+}
+
+function updateTrafficAhead(force = false) {
+  if (!nav) return;
+  if (!force && Date.now() - nav.trafficT < 10000) return;
+  nav.trafficT = Date.now();
+  nav.trafficAhead = trafficDelay(nav.route, traffic.list(), nav.state ? nav.state.along : 0).delay;
+}
+
 function computeHits() {
   if (!nav) return;
   nav.hits = reportsOnRoute(nav.route, reports.list(), 0).hits;
@@ -1211,6 +1325,8 @@ function endNav() {
   el.btnRecenter.classList.add('hidden');
   mapView.clearRoutes();
   mapView.setDestination(null);
+  mapView.setStops([]);
+  S.stops = [];
   if (wasSim) S.me = gps.last || null;
   if (S.me) {
     mapView.setMe(S.me.pos, S.me.heading, 'dot');
@@ -1331,7 +1447,7 @@ function shareEta() {
 
 // ================================================================== القائمة والإعدادات
 function openMenu() {
-  openSheet('menu', `<div class="row" style="gap:12px;margin-bottom:8px"><div class="splash-logo" style="width:52px;height:52px;border-radius:16px;margin:0;background:var(--accent);color:#fff"><svg viewBox="0 0 64 64" style="width:30px;height:30px"><use href="#i-logo"/></svg></div><div><h2 style="margin:0">${APP.name}</h2><p class="sub" style="margin:0">طريقك… سالكة</p></div></div>
+  openSheet('menu', `<div class="row" style="gap:12px;margin-bottom:8px"><div class="menu-logo"><svg viewBox="0 0 64 64"><use href="#i-logo"/></svg></div><div><h2 class="brand-title" style="margin:0;font-size:28px">${APP.name}</h2><p class="sub" style="margin:0">عالمك على الطريق</p></div></div>
     <div class="menu-list">
       <button class="item" data-a="places"><span class="item-ico">${icon('i-star')}</span><span class="item-main"><div class="item-name">أماكني المحفوظة</div></span></button>
       <button class="item" data-a="report"><span class="item-ico">${icon('i-alert')}</span><span class="item-main"><div class="item-name">إبلاغ عن الطريق</div></span></button>
@@ -1339,6 +1455,11 @@ function openMenu() {
       <button class="item" data-a="settings"><span class="item-ico">${icon('i-gear')}</span><span class="item-main"><div class="item-name">الإعدادات والألوان</div></span></button>
       ${S.installPrompt ? `<button class="item" data-a="install"><span class="item-ico">${icon('i-down')}</span><span class="item-main"><div class="item-name">تثبيت التطبيق على الشاشة الرئيسية</div></span></button>` : ''}
       <button class="item" data-a="about"><span class="item-ico">${icon('i-info')}</span><span class="item-main"><div class="item-name">حول التطبيق</div></span></button>
+    </div>
+    <h3>خدمات سالكة</h3>
+    <div class="menu-list">
+      <button class="item" data-a="soon-taxi"><span class="item-ico">🚕</span><span class="item-main"><div class="item-name">تكسي سالكة</div><div class="item-sub">اطلب سيارة أو اشتغل سائق</div></span><span class="badge warn">قريباً</span></button>
+      <button class="item" data-a="soon-estate"><span class="item-ico">🏡</span><span class="item-main"><div class="item-name">عقارات على الخريطة</div><div class="item-sub">بيع وشراء القطع والبيوت بموقعها</div></span><span class="badge warn">قريباً</span></button>
     </div>`, {
     onRender: (b) => b.onclick = async (e) => {
       const a = e.target.closest('[data-a]')?.dataset.a;
@@ -1347,6 +1468,7 @@ function openMenu() {
       if (a === 'shareme') { if (S.me) sharePlace({ name: 'موقعي', pos: S.me.pos }); else toast('ما عندي موقعك بعد'); }
       if (a === 'settings') openSettings();
       if (a === 'about') openAbout();
+      if (a === 'soon-taxi' || a === 'soon-estate') toast(a === 'soon-taxi' ? '🚕 خدمة التكسي قيد التجهيز — بالتحديث الجاي' : '🏡 خدمة العقارات قيد التجهيز — بالتحديث الجاي', 3500);
       if (a === 'install' && S.installPrompt) { S.installPrompt.prompt(); try { await S.installPrompt.userChoice; } catch { /* ignore */ } S.installPrompt = null; closeSheet(); }
     },
   });
@@ -1412,6 +1534,8 @@ function openSettings() {
     ${seg('mode', 'الخريطة', [['auto', 'تلقائي'], ['day', 'نهاري'], ['night', 'ليلي']])}
     ${seg('carIcon', 'شكل السيارة', [['arrow', 'سهم'], ['car', 'سيارة'], ['dot', 'نقطة']])}
     ${sw('tilt', 'منظور مائل ثلاثي الأبعاد', 'أثناء الملاحة')}
+    ${sw('globe', 'الكرة الأرضية والسماء', 'تبعّد الخريطة تشوف الأرض كاملة')}
+    ${sw('intro', 'افتتاحية الطيران من الفضاء', 'أول ما تفتح التطبيق')}
     ${sw('buildings3d', 'مباني ثلاثية الأبعاد')}
     <h3>الصوت</h3>
     ${sw('voice', 'التعليمات الصوتية', voiceNote)}
@@ -1425,6 +1549,9 @@ function openSettings() {
     <div class="set-row"><span class="set-label">تنبيه السرعة<small>كم/س — اتركه 0 حتى تطفيه</small></span><input class="num-input" type="number" inputmode="numeric" min="0" max="200" step="10" value="${s.speedAlert}" data-num="speedAlert"></div>
     ${sw('batterySaver', 'توفير البطارية', 'تحريك أقل سلاسة شوية')}
     ${seg('digits', 'الأرقام', [['latn', '123'], ['arab', '١٢٣']])}
+    <h3>الازدحام المباشر</h3>
+    ${sw('showTraffic', 'عرض الازدحام على الشوارع', 'أحمر = واقف، برتقالي = بطيء، أصفر = مزدحم شوية')}
+    ${sw('shareTraffic', 'شارك سرعتي حتى أساعد الكل', 'مجهولة تماماً: بدون اسم ولا رقم جهاز، وبس أثناء الملاحة')}
     <h3>البلاغات المشتركة</h3>
     ${sw('shareReports', 'مشاركة البلاغات مع كل المستخدمين', 'مثل ويز: بلاغك يشوفه الكل وبلاغاتهم توصلك')}
     <p class="sub" id="repStatus">${reportStatusText()}</p>
@@ -1491,6 +1618,11 @@ function applySetting(key) {
     case 'buildings3d': if (mapView.map) setBuildings3d(mapView.map, s.buildings3d); break;
     case 'digits': setDigits(s.digits); if (nav?.state) renderBanner(nav.state); break;
     case 'firebaseUrl': case 'shareReports': connectReports(); break;
+    case 'showTraffic': case 'shareTraffic':
+      traffic.connect(s.showTraffic || s.shareTraffic);
+      mapView.setTraffic(s.showTraffic ? traffic.geojson() : null);
+      break;
+    case 'globe': mapView.setGlobe(s.globe); break;
     default:
   }
 }
@@ -1518,6 +1650,6 @@ function offerResume() {
 }
 
 // للاختبارات والتطوير
-window.__salka = { S, get nav() { return nav; }, mapView, reports, sim, gps, voice, startNav, endNav, previewRoutes, reroute };
+window.__salka = { S, get nav() { return nav; }, mapView, reports, traffic, probe, TRAFFIC, sim, gps, voice, startNav, endNav, previewRoutes, reroute };
 
 boot().catch((e) => { console.error(e); fatal('صار خطأ غير متوقع. حاول مرة ثانية.'); });

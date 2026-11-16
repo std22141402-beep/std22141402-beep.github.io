@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { mockOsrmResponse } from './mock-osrm.js';
+import { mockOsrmResponse, mockMultiLeg } from './mock-osrm.js';
 import { destination } from '../js/geo.js';
 
 const require = createRequire(import.meta.url);
@@ -90,6 +90,10 @@ async function main() {
   // خادم بلاغات وهمي (نفس واجهة ntfy.sh)
   const ntfyMsgs = [];
   const ntfyPosts = [];
+  const trafficMsgs = [];
+  const trafficPosts = [];
+  // عينة ازدحام من سيارة ثانية على أول شارع بطريقنا (غرب بغداد)
+  trafficMsgs.push({ id: 't1', time: Math.floor(Date.now() / 1000), event: 'message', topic: 'salka_iq_traffic_v1', message: JSON.stringify({ s: [destination(BAGHDAD, 270, 300), destination(BAGHDAD, 270, 450), destination(BAGHDAD, 270, 600)], r: 0.15 }) });
   let ntfySeq = 0;
   const ntfyAdd = (obj) => ntfyMsgs.push({ id: `m${++ntfySeq}`, time: Math.floor(Date.now() / 1000), event: 'message', topic: 'salka_iq_road_reports_v1', message: JSON.stringify(obj) });
   // بلاغ من مستخدم ثاني موجود قبل ما نفتح التطبيق + تصويت عليه
@@ -123,6 +127,12 @@ async function main() {
       if (url.pathname.startsWith('/reverse')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ features: [{ geometry: { coordinates: [44.39, 33.33] }, properties: { name: 'ساحة الأندلس', city: 'بغداد', osm_value: 'square' } }] }) });
       return route.fulfill({ contentType: 'application/json', body: JSON.stringify(PHOTON) });
     }
+    if (h === 'ntfy.sh' && url.pathname.startsWith('/salka_iq_traffic_v1')) {
+      const req = route.request();
+      if (req.method() === 'POST') { trafficPosts.push(JSON.parse(req.postData())); return route.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{}' }); }
+      const body = [{ id: 'o', event: 'open' }, ...trafficMsgs].map((m) => `data: ${JSON.stringify(m)}\n\n`).join('');
+      return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Access-Control-Allow-Origin': '*' }, body });
+    }
     if (h === 'ntfy.sh') {
       const req = route.request();
       if (req.method() === 'POST') {
@@ -145,11 +155,11 @@ async function main() {
     if (h === 'routing.openstreetmap.de' || h === 'router.project-osrm.org') {
       osrmCalls.push(url.href);
       if (h === 'routing.openstreetmap.de' && failFirstRouter) { failFirstRouter = false; return route.fulfill({ status: 503, body: 'down' }); }
-      const m = url.pathname.match(/driving\/([\d.\-]+),([\d.\-]+);([\d.\-]+),([\d.\-]+)/);
-      const from = [+m[1], +m[2]], to = [+m[3], +m[4]];
+      const pts = url.pathname.split('/driving/')[1].split(';').map((x) => x.split(',').map(Number));
       const alt = url.searchParams.get('alternatives') === 'true';
       await sleep(120);
-      return route.fulfill({ contentType: 'application/json', body: JSON.stringify(mockOsrmResponse(from, to, alt)) });
+      const body = pts.length > 2 ? mockMultiLeg(pts) : mockOsrmResponse(pts[0], pts[1], alt);
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
     }
     return route.abort();
   });
@@ -170,6 +180,11 @@ async function main() {
   check('الخريطة: طبقات المسار انضافت', ['salka-route-line', 'salka-route-casing', 'salka-alts-line', 'salka-acc'].every((id) => style.some((l) => l.id === id)));
   check('الخريطة: المسار تحت أسماء الشوارع', style.findIndex((l) => l.id === 'salka-route-line') < style.findIndex((l) => l.type === 'symbol'));
   check('GPS: وصل الموقع', await waitFor(() => page.evaluate(() => !!window.__salka.S.me)));
+  const st2 = await page.evaluate(() => ({ proj: window.__map.getStyle().projection, sky: window.__map.getStyle().sky, fly: window.__mapCalls.lastFly, glow: !!window.__map.getLayer('salka-route-glow'), tr: !!window.__map.getLayer('salka-traffic') }));
+  check('الفخامة: الكرة الأرضية والسماء', st2.proj?.type === 'globe' && !!st2.sky?.['sky-color']);
+  check('الفخامة: افتتاحية الطيران من الفضاء', await waitFor(() => page.evaluate(() => window.__mapCalls.lastFly && window.__mapCalls.lastFly.duration >= 3000 && window.__mapCalls.lastFly.pitch > 0)));
+  check('الفخامة: طبقة توهج المسار وطبقة الازدحام', st2.glow && st2.tr);
+  check('الازدحام: عينات السواق الثانين تظهر على الشوارع', await waitFor(() => page.evaluate(() => (window.__map.getSource('salka-traffic').data.features || []).length === 1)));
   check('البلاغات المشتركة: متصل بالخادم', await waitFor(() => page.evaluate(() => window.__salka.reports.status === 'live' && window.__salka.reports.mode === 'ntfy')));
   check('البلاغات المشتركة: بلاغ مستخدم ثاني يظهر', await waitFor(() => page.evaluate(() => document.querySelectorAll('.rep-marker').length === 1)));
   check('البلاغات المشتركة: تصويت الآخرين وصل', await page.evaluate(() => { const r = window.__salka.reports.list().find((x) => x.c === 'otheruser1-abc'); return r && r.v.otheruser2 === 1 && !r.mine; }));
@@ -187,6 +202,7 @@ async function main() {
 
   // ---------------------------------------------------------------- 3) معاينة الطرق
   check('المعاينة: تظهر خيارات الطرق', await waitFor(() => page.evaluate(() => document.querySelectorAll('.route-opt').length === 2)));
+  check('الازدحام: يدخل بحساب الطرق ويبين شارة الزحمة', await page.evaluate(() => window.__salka.S.routes.some((r) => r.traffic > 60) && document.getElementById('sheetBody').textContent.includes('زحمة')));
   check('الخادم الاحتياطي: لما الأول عطلان يشتغل الثاني', osrmCalls.some((u) => u.includes('router.project-osrm.org')), `${osrmCalls.length} calls`);
   await page.screenshot({ path: '/tmp/shot-3-preview.png' });
   await page.click('.route-opt[data-r="1"]');
@@ -197,6 +213,20 @@ async function main() {
   check('اللوحات: الحفظ ينفتح فوق المعاينة', await waitFor(() => page.evaluate(() => document.getElementById('sheet').dataset.name === 'save')));
   await page.click('[data-k="fav"]');
   check('اللوحات: بعد الحفظ نرجع للمعاينة', await waitFor(() => page.evaluate(() => document.getElementById('sheet').dataset.name === 'preview' && document.querySelectorAll('.route-opt').length === 2)));
+
+  // إضافة محطة بالطريق
+  const nOsrm = osrmCalls.length;
+  await page.click('[data-a="addstop"]');
+  check('المحطات: البحث ينفتح لإضافة محطة', await waitFor(() => page.isVisible('#searchPanel')));
+  check('المحطات: بحث المحطة يبدأ فارغ (أماكني بدل النتائج القديمة)', await page.evaluate(() => document.getElementById('searchInput').value === '' && !!document.querySelector('#searchResults .list-title') && document.getElementById('searchInput').placeholder.includes('توقف')));
+  await page.fill('#searchInput', 'رمضان');
+  await sleep(150);
+  await waitFor(() => page.evaluate(() => !document.querySelector('#searchResults .spinner') && document.querySelectorAll('#searchResults .item').length === 2));
+  await page.click('#searchResults .item >> nth=1');
+  check('المحطات: المحطة انضافت للمعاينة', await waitFor(() => page.evaluate(() => document.querySelectorAll('.stop-row').length === 1 && document.querySelectorAll('.route-opt').length >= 1)));
+  const stopUrl = osrmCalls.slice(nOsrm).pop() || '';
+  check('المحطات: الطريق ينحسب عبر المحطة (3 نقاط)', (stopUrl.split('/driving/')[1] || '').split('?')[0].split(';').length === 3, stopUrl.split('?')[0].split('/').pop());
+  check('المحطات: علامة رقم المحطة على الخريطة', await page.evaluate(() => document.querySelectorAll('.stop-marker').length === 1));
 
   // ---------------------------------------------------------------- 4) تجربة القيادة
   await page.click('[data-a="sim"]');
@@ -242,6 +272,8 @@ async function main() {
   await page.evaluate(() => { const s = window.__salka.sim; s.setSpeed(160); });
   check('الوصول: تظهر شاشة الوصول', await waitFor(() => page.evaluate(() => document.getElementById('sheet').dataset.name === 'arrived' && !document.getElementById('sheet').classList.contains('hidden')), 90000, 250));
   check('الصوت: أعلن الوصول', await waitFor(() => page.evaluate(() => window.__spoken.some((t) => t.includes('وصلت')))));
+  check('المحطات: أعلن الوصول للوقفة الأولى وكمّل', await page.evaluate(() => window.__spoken.some((t) => t.includes('الوقفة الأولى'))), (await page.evaluate(() => window.__spoken.filter((t) => t.includes('وقفة')))).join(' | '));
+  check('الخصوصية: وضع التجربة ما يرسل سرعات وهمية', trafficPosts.length === 0);
   const said = await page.evaluate(() => window.__spoken);
   check('الصوت: انقالت تعليمات انعطاف', said.some((t) => t.includes('لِف') || t.includes('انعطف')), said.slice(0, 6).join(' | '));
   await page.screenshot({ path: '/tmp/shot-6-arrived.png' });
@@ -256,6 +288,7 @@ async function main() {
   const dest = destination(destination(BAGHDAD, 90, 900), 0, 700);
   await page.evaluate((d) => window.__salka.previewRoutes({ name: 'اختبار GPS', sub: '', pos: d }), dest);
   await waitFor(() => page.evaluate(() => document.querySelectorAll('.route-opt').length >= 1));
+  await page.evaluate(() => { window.__salka.TRAFFIC.windowMs = 1200; });
   await page.click('[data-a="go"]');
   check('GPS: بدأت الملاحة الحقيقية', await waitFor(() => page.evaluate(() => window.__salka.nav && !window.__salka.nav.sim)));
   const coords = await page.evaluate(() => window.__salka.nav.route.coords);
@@ -265,6 +298,7 @@ async function main() {
     await context.setGeolocation({ latitude: c[1], longitude: c[0], accuracy: 6 });
     await sleep(250);
   }
+  check('الازدحام: الملاحة الحقيقية ترسل عينة سرعة مجهولة', await waitFor(() => trafficPosts.length >= 1, 4000) && trafficPosts.every((p) => Array.isArray(p.s) && typeof p.r === 'number' && Object.keys(p).length === 2), JSON.stringify(trafficPosts[0] || {}).slice(0, 120));
   check('GPS: التقدم على الطريق', await page.evaluate(() => window.__salka.nav.state.along > 50), String(await page.evaluate(() => Math.round(window.__salka.nav.state.along))));
   const n1 = osrmCalls.length;
   // انحراف 150م يمين الطريق
@@ -300,7 +334,7 @@ async function main() {
   check('الثيم: اللون تغيّر', await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() === '#0E9F6E'));
   await page.click('[data-seg="mode"][data-v="night"]');
   check('الوضع الليلي: الواجهة', await page.evaluate(() => document.body.classList.contains('night')));
-  check('الوضع الليلي: الخريطة', await page.evaluate(() => window.__map.getLayer('background').paint['background-color'] === '#171E2B'));
+  check('الوضع الليلي: الخريطة', await page.evaluate(() => window.__map.getLayer('background').paint['background-color'] === '#070D1A'));
   await page.click('[data-seg="dialect"][data-v="msa"]');
   await page.click('[data-seg="carIcon"][data-v="car"]');
   await page.click('[data-a="testvoice"]');

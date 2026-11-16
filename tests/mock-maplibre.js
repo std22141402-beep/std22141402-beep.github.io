@@ -50,6 +50,7 @@
     addLayer(l, before) {
       if (this._layers.find((x) => x.id === l.id)) fail(`layer exists ${l.id}`);
       if (l.source && !this._sources[l.source]) fail(`missing source ${l.source}`);
+      for (const [k, v] of Object.entries(l.paint || {})) if (v === undefined || v === null) fail(`layer ${l.id} paint ${k} null`);
       if (l.paint?.['line-gradient']) { if (!this._sources[l.source].spec.lineMetrics) fail('line-gradient needs lineMetrics'); checkGradient(l.paint['line-gradient']); }
       const i = before ? this._layers.findIndex((x) => x.id === before) : -1;
       if (before && i < 0) fail(`before layer missing ${before}`);
@@ -73,7 +74,7 @@
     }
     jumpTo(o) { calls.jumpTo++; this._cam(o); this._fire('move', {}); }
     easeTo(o) { this._cam(o); this._fire('moveend', {}); }
-    flyTo(o) { this.easeTo(o); }
+    flyTo(o) { calls.flyTo = (calls.flyTo || 0) + 1; calls.lastFly = o; this.easeTo(o); }
     fitBounds(b, o) {
       calls.fit++;
       const [[w, s], [e, n]] = b;
@@ -86,6 +87,8 @@
     getBearing() { return this.bearing; }
     getPitch() { return this.pitch; }
     getContainer() { return this._c; }
+    setSky(sky) { if (!sky || !sky['sky-color']) fail('bad sky'); this._style.sky = sky; calls.sky = (calls.sky || 0) + 1; }
+    setProjection(p) { if (!p || !['globe', 'mercator'].includes(p.type)) fail('bad projection'); this._style.projection = p; calls.projection = p.type; }
     queryRenderedFeatures() { return []; }
     resize() {}
   }

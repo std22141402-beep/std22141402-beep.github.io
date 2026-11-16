@@ -214,3 +214,87 @@ export function parseLatLon(text) {
   if (Math.abs(a) <= 90 && Math.abs(b) <= 180) return [b, a];
   return null;
 }
+
+// ---------------------------------------------------------------------
+// فهرس شبكي لقطع الخط — يخلي البحث عن أقرب نقطة سريع جداً حتى لآلاف النقاط
+// ---------------------------------------------------------------------
+const CELL = 0.003; // تقريباً 300 متر
+
+function cellKey(x, y) { return `${Math.floor(x / CELL)},${Math.floor(y / CELL)}`; }
+
+export function buildSegIndex(line) {
+  if (line._idx) return line._idx;
+  const idx = new Map();
+  const c = line.coords;
+  for (let i = 0; i < c.length - 1; i++) {
+    const [x1, y1] = c[i], [x2, y2] = c[i + 1];
+    const cx0 = Math.floor(Math.min(x1, x2) / CELL), cx1 = Math.floor(Math.max(x1, x2) / CELL);
+    const cy0 = Math.floor(Math.min(y1, y2) / CELL), cy1 = Math.floor(Math.max(y1, y2) / CELL);
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cy = cy0; cy <= cy1; cy++) {
+        const k = `${cx},${cy}`;
+        let arr = idx.get(k);
+        if (!arr) { arr = []; idx.set(k, arr); }
+        arr.push(i);
+      }
+    }
+  }
+  line._idx = idx;
+  return idx;
+}
+
+/** أقرب نقطة على الخط باستخدام الفهرس (يرجع null إذا أبعد من maxDist تقريباً) */
+export function nearestOnLine(line, p, maxDist = 60) {
+  const idx = buildSegIndex(line);
+  const cx = Math.floor(p[0] / CELL), cy = Math.floor(p[1] / CELL);
+  let best = null;
+  const seen = new Set();
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      const arr = idx.get(`${cx + dx},${cy + dy}`);
+      if (!arr) continue;
+      for (const i of arr) {
+        if (seen.has(i)) continue;
+        seen.add(i);
+        const pr = projectToSegment(p, line.coords[i], line.coords[i + 1]);
+        if (!best || pr.dist < best.dist) best = { seg: i, t: pr.t, dist: pr.dist, point: pr.point };
+      }
+    }
+  }
+  if (!best || best.dist > maxDist) return null;
+  const along = line.cum[best.seg] + (line.cum[best.seg + 1] - line.cum[best.seg]) * best.t;
+  return { ...best, along, bearing: line.brg[best.seg] };
+}
+
+/** تبسيط خط لعدد نقاط محدود (أخذ عينات منتظمة على المسافة) */
+export function sampleLine(coords, maxPoints = 10) {
+  if (coords.length <= maxPoints) return coords.slice();
+  const line = buildLine(coords);
+  const out = [];
+  for (let k = 0; k < maxPoints; k++) out.push(pointAt(line, (line.total * k) / (maxPoints - 1)).point);
+  return out;
+}
+
+/** فلتر كالمان مبسط للـGPS: ينعّم الارتجاج بدون ما يأخر الحركة السريعة */
+export class GpsSmoother {
+  constructor() { this.v = -1; }
+  reset() { this.v = -1; }
+  process(pos, accuracy, t, speed) {
+    const acc = Math.max(accuracy || 10, 1);
+    if (this.v < 0 || (this.last && haversine(this.last, pos) > Math.max(250, acc * 4))) {
+      this.lng = pos[0]; this.lat = pos[1]; this.v = acc * acc; this.t = t;
+      this.last = [this.lng, this.lat];
+      return this.last;
+    }
+    const dt = Math.max(0, (t - this.t) / 1000);
+    this.t = t;
+    const q = Math.max(3, speed || 0);
+    this.v += dt * q * q;
+    const k = this.v / (this.v + acc * acc);
+    this.lng += k * (pos[0] - this.lng);
+    this.lat += k * (pos[1] - this.lat);
+    this.v = (1 - k) * this.v;
+    this.last = [this.lng, this.lat];
+    return this.last;
+  }
+}

@@ -3,6 +3,7 @@
 //  + أيقونات الاتجاهات + تنسيق المسافات والأوقات
 // =====================================================================
 
+const ORD_F = ['', 'الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة'];
 const ORD_MSA = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر'];
 
 const T = {
@@ -23,6 +24,7 @@ const T = {
     depart: (dir) => `انطلق باتجاه ${dir}`,
     arrive: 'لقد وصلت إلى وجهتك', arriveR: 'وجهتك على اليمين', arriveL: 'وجهتك على اليسار',
     arriveSoon: 'وجهتك',
+    waypoint: (n) => `وصلت إلى المحطة ${ORD_F[n] || n}، نكمل للوجهة التالية`, waypointSoon: (n) => `المحطة ${ORD_F[n] || n}`,
     to: (r) => ` إلى ${r}`, toward: (r) => ` باتجاه ${r}`,
     then: 'ثم', after: 'بعد',
     m: (n) => `${n} متر`,
@@ -54,6 +56,7 @@ const T = {
     depart: (dir) => `اطلع باتجاه ${dir}`,
     arrive: 'وصلت لوجهتك، الحمد لله على السلامة', arriveR: 'وجهتك على يمينك', arriveL: 'وجهتك على يسارك',
     arriveSoon: 'وجهتك',
+    waypoint: (n) => `وصلت للوقفة ${ORD_F[n] || n}، نكمل الطريق`, waypointSoon: (n) => `الوقفة ${ORD_F[n] || n}`,
     to: (r) => ` على ${r}`, toward: (r) => ` باتجاه ${r}`,
     then: 'وبعدين', after: 'بعد',
     m: (n) => `${n} متر`,
@@ -117,7 +120,8 @@ export function instructionFor(step, dialect = 'msa') {
       break;
     }
     case 'arrive':
-      text = side === 'R' ? P.arriveR : side === 'L' ? P.arriveL : P.arrive;
+      if (step.waypoint) text = P.waypoint((step.waypointIndex ?? 0) + 1);
+      else text = side === 'R' ? P.arriveR : side === 'L' ? P.arriveL : P.arrive;
       withRoad = false;
       break;
     case 'roundabout':
@@ -265,7 +269,7 @@ export function maneuverIcon(step) {
   const isLeft = mod.includes('left');
   const base = mod.replace('left', 'right');
   if (type === 'arrive') {
-    return wrap(`<path d="M32 60 C32 60 14 40 14 27 A18 18 0 0 1 50 27 C50 40 32 60 32 60 Z" fill="currentColor"/><circle cx="32" cy="27" r="7" fill="var(--banner-bg,#1E88E5)"/>`);
+    return wrap(`<path d="M32 60 C32 60 14 40 14 27 A18 18 0 0 1 50 27 C50 40 32 60 32 60 Z" fill="currentColor"/><circle cx="32" cy="27" r="7" style="fill:var(--banner-hole,#0E1A30)"/>`);
   }
   if (type === 'depart') {
     return wrap(`<circle cx="32" cy="50" r="8" fill="currentColor"/><path d="M32 40 V18" ${STROKE}/>${HEAD(32, 8, 0)}`);

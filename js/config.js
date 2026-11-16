@@ -6,7 +6,7 @@
 export const APP = {
   name: 'سالكة',
   nameEn: 'Salka',
-  version: '1.1.0',
+  version: '1.2.0',
 };
 
 export const MAP = {
@@ -65,6 +65,19 @@ export const LIBS = {
 export const SHARED = {
   ntfyBase: 'https://ntfy.sh',
   ntfyTopic: 'salka_iq_road_reports_v1',
+  ntfyTrafficTopic: 'salka_iq_traffic_v1',
+};
+
+// =====================================================================
+//  الازدحام المباشر — من سرعات السواق (مجهولة الهوية: بدون اسم ولا رقم جهاز)
+// =====================================================================
+export const TRAFFIC = {
+  windowMs: 30000,   // كل سيارة ترسل عينة وحدة كل 30 ثانية
+  ttlMin: 20,        // العينة تبقى 20 دقيقة
+  stillWindows: 3,   // واقف 90 ثانية على الطريق = زحمة
+  slowBelow: 0.6,    // أقل من 60% من السرعة الطبيعية = ازدحام
+  refSpeed: 11,      // سرعة مرجعية (م/ث) لحساب التأخير
+  maxSamples: 4000,
 };
 
 // إعدادات الملاحة (بالمتر والثانية)
@@ -103,6 +116,9 @@ export const REPORT_TYPES = [
 //  ثيمات الألوان — غيّر أو أضف ثيمك الخاص
 // =====================================================================
 export const THEME_PRESETS = {
+  royal:  { name: 'ملكي',      accent: '#D4AF37', route: '#3FD0FF', accent2: '#F2A33A',
+            grad: 'linear-gradient(135deg,#FBEAB0 0%,#E2B84A 45%,#B08325 100%)',
+            banner: 'linear-gradient(135deg,#0D1A31 0%,#1B3157 100%)', bannerIcon: '#F2CF6B' },
   tigris: { name: 'دجلة',      accent: '#1E88E5', route: '#2F80ED', accent2: '#F5B700' },
   palm:   { name: 'نخيل',      accent: '#0E9F6E', route: '#10B981', accent2: '#F59E0B' },
   dates:  { name: 'تمر',       accent: '#B45309', route: '#D97706', accent2: '#0EA5E9' },
@@ -111,7 +127,7 @@ export const THEME_PRESETS = {
 };
 
 export const DEFAULT_SETTINGS = {
-  theme: 'tigris',
+  theme: 'royal',
   accent: null,          // لون مخصص (يتجاوز الثيم)
   routeColor: null,      // لون مسار مخصص
   mode: 'auto',          // auto | day | night
@@ -127,6 +143,10 @@ export const DEFAULT_SETTINGS = {
   speedAlert: 0,         // كم/س، 0 = مطفأ
   autoFaster: true,      // اقتراح طريق أسرع تلقائياً
   shareReports: true,    // مشاركة البلاغات مع باقي المستخدمين
+  shareTraffic: true,    // مشاركة سرعتي (مجهولة) لحساب الازدحام
+  showTraffic: true,     // عرض الازدحام على الخريطة
+  globe: true,           // الكرة الأرضية والسماء
+  intro: true,           // افتتاحية الطيران من الفضاء
   firebaseUrl: '',       // رابط قاعدة Firebase خاصة (اختياري — بدونه نستخدم الخادم المجاني)
   batterySaver: false,
   digits: 'latn',        // latn = 123 | arab = ١٢٣

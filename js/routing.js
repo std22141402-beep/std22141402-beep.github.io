@@ -12,12 +12,15 @@ export class RouteError extends Error {
 }
 
 function buildUrl(base, from, to, o) {
-  const c = `${from[0].toFixed(6)},${from[1].toFixed(6)};${to[0].toFixed(6)},${to[1].toFixed(6)}`;
+  const pts = [from, ...(o.via || []), to];
+  const c = pts.map((p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join(';');
+  // OSRM يدعم الطرق البديلة بس لما تكون نقطتين
+  const alt = o.alternatives && pts.length === 2;
   const q = [
     'overview=full', 'geometries=geojson', 'steps=true', 'annotations=duration',
-    `alternatives=${o.alternatives ? 'true' : 'false'}`, 'continue_straight=true',
+    `alternatives=${alt ? 'true' : 'false'}`, 'continue_straight=true',
   ];
-  if (o.bearing != null && isFinite(o.bearing)) q.push(`bearings=${Math.round(normAngle(o.bearing)) % 360},${o.bearingRange ?? 60};`);
+  if (o.bearing != null && isFinite(o.bearing)) q.push(`bearings=${Math.round(normAngle(o.bearing)) % 360},${o.bearingRange ?? 60}${';'.repeat(pts.length - 1)}`);
   if (o.exclude && o.exclude.length) q.push(`exclude=${o.exclude.join(',')}`);
   return `${base}${c}?${q.join('&')}`;
 }
@@ -140,6 +143,15 @@ export function normalizeRoute(r, index = 0) {
   // نضمن أن آخر خطوة "وصول" عند نهاية الخط
   const last = steps[steps.length - 1];
   if (last.maneuver.type === 'arrive') { last.startIdx = n - 1; last.startDist = line.total; }
+  // المحطات الوسطية: "وصول" مو أخير = محطة، والانطلاق اللي بعدها ما ينحچى
+  let wp = 0;
+  for (let i = 0; i < steps.length - 1; i++) {
+    if (steps[i].maneuver.type === 'arrive') {
+      steps[i].waypoint = true;
+      steps[i].waypointIndex = wp++;
+      if (steps[i + 1] && steps[i + 1].maneuver.type === 'depart') steps[i + 1].silent = true;
+    }
+  }
 
   // زمن تراكمي لكل نقطة (لحساب الوقت المتبقي بدقة)
   const durCum = new Float64Array(n);
@@ -163,6 +175,7 @@ export function normalizeRoute(r, index = 0) {
     distance: r.distance ?? line.total,
     duration: r.duration ?? durCum[n - 1],
     summary,
+    waypoints: wp,
     bbox: bboxOf(coords),
   };
 }

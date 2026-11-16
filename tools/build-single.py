@@ -9,7 +9,7 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ORDER = ['config', 'storage', 'geo', 'instructions', 'routing', 'navengine', 'search',
-         'voice', 'theme', 'reports', 'location', 'mapview', 'app']
+         'voice', 'theme', 'reports', 'traffic', 'location', 'mapview', 'app']
 
 IMPORT_RE = re.compile(r"^import \{([^}]*)\} from '\./(\w+)\.js';\s*$", re.M)
 EXPORT_RE = re.compile(r"^export (?:async )?(?:function\*? |const |let |class )([A-Za-z_$][\w$]*)", re.M)

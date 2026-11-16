@@ -52,7 +52,10 @@ export class NavEngine {
     if (step.maneuver.type === 'arrive') {
       const P = phrases(this.dialect);
       const mod = step.maneuver.modifier || '';
-      ins.soon = mod.includes('right') ? P.arriveR : mod.includes('left') ? P.arriveL : P.arriveSoon;
+      if (step.waypoint) {
+        const side = mod.includes('right') ? ' على اليمين' : mod.includes('left') ? ' على اليسار' : '';
+        ins.soon = P.waypointSoon((step.waypointIndex ?? 0) + 1) + side;
+      } else ins.soon = mod.includes('right') ? P.arriveR : mod.includes('left') ? P.arriveL : P.arriveSoon;
     }
     return ins;
   }
@@ -160,7 +163,8 @@ export class NavEngine {
 
   _announce(nextIdx, thenIdx, dist, out) {
     const step = this.steps[nextIdx];
-    const isArrive = step.maneuver.type === 'arrive';
+    const isArrive = step.maneuver.type === 'arrive' && !step.waypoint;
+    const isWaypoint = step.maneuver.type === 'arrive' && !!step.waypoint;
     const v = Math.max(this.speed, 5);
     const prevIdx = this.prevNonSilent(this.stepIdx);
     const segLen = step.startDist - this.steps[prevIdx].startDist;
@@ -185,14 +189,14 @@ export class NavEngine {
     if (dist <= nowD) {
       if (!done.has('now') && !isArrive) {
         ['now', 'mid', 'far'].forEach((b) => done.add(b));
-        out.push({ kind: 'maneuver', band: 'now', text: ins.text + thenTxt, priority: 3, stepIdx: nextIdx });
+        out.push({ kind: isWaypoint ? 'waypoint' : 'maneuver', band: 'now', text: isWaypoint ? ins.text : ins.text + thenTxt, priority: 3, stepIdx: nextIdx });
       }
       return;
     }
     if (dist <= midHi && dist > midLo && segLen > 250) {
       if (!done.has('mid')) {
         done.add('mid'); done.add('far');
-        const txt = isArrive ? ins.soon : ins.text + thenTxt;
+        const txt = isArrive || isWaypoint ? ins.soon : ins.text + thenTxt;
         out.push({ kind: 'maneuver', band: 'mid', text: withDistance(dist, txt, this.dialect), priority: 2, stepIdx: nextIdx });
       }
       return;
@@ -200,7 +204,7 @@ export class NavEngine {
     if (dist <= farHi && dist > farLo && segLen > 1300) {
       if (!done.has('far')) {
         done.add('far');
-        const txt = isArrive ? ins.soon : ins.text;
+        const txt = isArrive || isWaypoint ? ins.soon : ins.text;
         out.push({ kind: 'maneuver', band: 'far', text: withDistance(dist, txt, this.dialect), priority: 1, stepIdx: nextIdx });
       }
     }

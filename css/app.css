@@ -3,38 +3,49 @@
    الألوان كلها متغيرات: غيّرها من الإعدادات داخل التطبيق أو من هنا
    ===================================================================== */
 :root {
-  --accent: #1E88E5;
-  --accent2: #F5B700;
-  --route: #2F80ED;
-  --accent-ink: #fff;
-  --bg: #ffffff;
-  --bg2: #F3F5F8;
-  --fg: #16202C;
-  --muted: #6B7686;
-  --line: #E4E8EE;
-  --card: #ffffff;
+  --accent: #D4AF37;
+  --accent2: #F2A33A;
+  --route: #3FD0FF;
+  --accent-ink: #10151E;
+  --accent-grad: linear-gradient(135deg,#FBEAB0 0%,#E2B84A 45%,#B08325 100%);
+  --banner: linear-gradient(135deg,#0D1A31 0%,#1B3157 100%);
+  --banner-ink: #fff;
+  --banner-icon: #F2CF6B;
+  --gold: #D4AF37;
+  --gold-grad: linear-gradient(135deg,#FBEAB0 0%,#E2B84A 45%,#B08325 100%);
+  --bg: #FBFAF7;
+  --bg2: #F1EEE7;
+  --fg: #131A26;
+  --muted: #6F7684;
+  --line: #E7E1D6;
+  --card: rgba(255, 255, 255, .82);
+  --card-solid: #FFFFFF;
+  --glass-border: rgba(20, 30, 50, .08);
   --danger: #E53935;
   --ok: #16A34A;
   --warn: #F59E0B;
-  --shadow: 0 6px 24px rgba(16, 24, 40, .16), 0 2px 6px rgba(16, 24, 40, .08);
-  --shadow-sm: 0 2px 10px rgba(16, 24, 40, .14);
-  --radius: 18px;
+  --shadow: 0 10px 30px rgba(16, 24, 40, .16), 0 2px 8px rgba(16, 24, 40, .08);
+  --shadow-sm: 0 3px 12px rgba(16, 24, 40, .14);
+  --radius: 20px;
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
   --font: "IBM Plex Sans Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  --font-brand: "Reem Kufi", "IBM Plex Sans Arabic", serif;
   color-scheme: light;
 }
 body.night {
-  --bg: #161D2A;
-  --bg2: #1F2838;
-  --fg: #EEF2F7;
-  --muted: #98A3B5;
-  --line: #2B3547;
-  --card: #1C2433;
-  --shadow: 0 6px 24px rgba(0, 0, 0, .45), 0 2px 6px rgba(0, 0, 0, .3);
-  --shadow-sm: 0 2px 10px rgba(0, 0, 0, .4);
+  --bg: #0A1120;
+  --bg2: #131C30;
+  --fg: #EEF2F8;
+  --muted: #8F9BB2;
+  --line: rgba(255, 255, 255, .08);
+  --card: rgba(14, 22, 40, .74);
+  --card-solid: #111A2D;
+  --glass-border: rgba(255, 255, 255, .09);
+  --shadow: 0 12px 34px rgba(0, 0, 0, .5), 0 2px 8px rgba(0, 0, 0, .35);
+  --shadow-sm: 0 3px 12px rgba(0, 0, 0, .45);
   color-scheme: dark;
 }
 
@@ -275,3 +286,100 @@ body.navigating .toast { top: calc(var(--sat) + 160px); }
   .sheet { max-height: 92vh; right: auto; width: 60%; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+
+/* =====================================================================
+   الطبقة الفخمة — زجاج، ذهب، وحركة ناعمة
+   ===================================================================== */
+.search-box, .topbar .icon-btn#btnMenu, .fab, .chip, .nav-bottom, .alert-card, .speedo, .pill, .then {
+  background: var(--card);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  backdrop-filter: blur(18px) saturate(170%);
+  border: 1px solid var(--glass-border);
+}
+.sheet {
+  background: var(--card-solid);
+  border-top: 1px solid var(--glass-border);
+}
+body.night .sheet { background: linear-gradient(180deg, #121C31 0%, #0B1222 100%); }
+.search-panel { background: var(--bg); }
+body.night .search-panel { background: radial-gradient(120% 60% at 50% 0%, #15233F 0%, #0A1120 60%); }
+
+.search-box { box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.06); }
+.search-box:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: var(--shadow), 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.chip svg { color: var(--gold); }
+body:not(.night) .chip svg { color: color-mix(in srgb, var(--accent) 80%, #6b4d0a); }
+
+.btn.primary { background: var(--accent-grad); color: var(--accent-ink); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.btn.go { background: linear-gradient(135deg, #2BD27A 0%, #13A35A 100%); box-shadow: 0 6px 18px rgba(19, 163, 90, .35); }
+.fab.report { background: radial-gradient(circle at 30% 25%, #FFD27A 0%, var(--accent2) 55%, #C46F12 100%); box-shadow: 0 8px 24px color-mix(in srgb, var(--accent2) 45%, transparent), var(--shadow); border: 1px solid rgba(255,255,255,.35); }
+.fab.active { color: var(--gold); }
+
+/* لافتة الملاحة */
+.banner { background: var(--banner); color: var(--banner-ink); border: 1px solid rgba(255,255,255,.08); box-shadow: 0 14px 36px rgba(5, 10, 25, .45), inset 0 1px 0 rgba(255,255,255,.08); position: relative; overflow: hidden; }
+.banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.07) 45%, transparent 60%); transform: translateX(-100%); animation: sheen 6s ease-in-out infinite; pointer-events: none; }
+@keyframes sheen { 0%, 70% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.m-icon { color: var(--banner-icon); filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+.m-dist { font-feature-settings: "tnum"; }
+.banner.off { background: linear-gradient(135deg, #3A4256 0%, #262C3B 100%); }
+.lanes { background: rgba(8, 13, 25, .88); border: 1px solid rgba(255,255,255,.08); }
+.lane.on { color: var(--gold); }
+.eta-time { background: linear-gradient(135deg, #2BD27A, #13A35A); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.eta-traffic { color: var(--danger); font-weight: 700; }
+.speedo { border: 2px solid color-mix(in srgb, var(--gold) 55%, transparent); }
+
+/* علامة السيارة: هالة نابضة */
+.car-marker { width: 64px; height: 64px; }
+.car-marker svg { width: 64px; height: 64px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
+.car-marker::before { content: ""; position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; border: 2px solid var(--route); opacity: 0; animation: ring 2.4s ease-out infinite; }
+@keyframes ring { 0% { transform: scale(.6); opacity: .7; } 100% { transform: scale(2.6); opacity: 0; } }
+.dest-marker { width: 44px; height: 56px; }
+.dest-marker svg { width: 44px; height: 56px; animation: bob 2.2s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes bob { 50% { transform: translateY(-4px); } }
+.stop-marker { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 15px; color: #10151E; background: var(--gold-grad); border: 2.5px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,.35); }
+.rep-marker { box-shadow: 0 4px 14px rgba(0,0,0,.4), 0 0 0 4px rgba(255,255,255,.12); }
+
+/* المحطات بالمعاينة */
+.stops { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 2px; }
+.stop-row { display: flex; align-items: center; gap: 10px; background: var(--bg2); border-radius: 14px; padding: 8px 10px; font-size: 14px; }
+.stop-row .num { width: 24px; height: 24px; border-radius: 50%; background: var(--gold-grad); color: #10151E; font-weight: 700; display: grid; place-items: center; font-size: 13px; flex: none; }
+.stop-row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge.traffic { background: linear-gradient(135deg, #F57C00, #E0312E); }
+
+/* الشاشة الافتتاحية: سماء نجوم + شعار ذهبي */
+.splash { background: radial-gradient(120% 80% at 50% 30%, #1C2F58 0%, #0A1120 55%, #04070F 100%); overflow: hidden; }
+.splash::before { content: ""; position: absolute; inset: -50%; background-image:
+  radial-gradient(1.2px 1.2px at 20% 30%, rgba(255,255,255,.9), transparent 60%),
+  radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,.7), transparent 60%),
+  radial-gradient(1.4px 1.4px at 40% 70%, rgba(255,240,200,.8), transparent 60%),
+  radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,.6), transparent 60%),
+  radial-gradient(1.2px 1.2px at 10% 85%, rgba(255,255,255,.7), transparent 60%),
+  radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,.5), transparent 60%);
+  background-size: 240px 240px; animation: drift 40s linear infinite; opacity: .8; }
+@keyframes drift { to { transform: translate(120px, 80px); } }
+.splash > * { position: relative; }
+.splash-logo { width: 116px; height: 116px; border-radius: 34px; background: radial-gradient(circle at 30% 25%, #22396A 0%, #0D1830 70%); border: 1px solid rgba(242, 207, 107, .35); box-shadow: 0 0 60px rgba(212, 175, 55, .25), inset 0 1px 0 rgba(255,255,255,.08); animation: glow 3s ease-in-out infinite; }
+@keyframes glow { 50% { box-shadow: 0 0 90px rgba(212, 175, 55, .45), inset 0 1px 0 rgba(255,255,255,.08); } }
+.splash-logo svg { width: 66px; height: 66px; color: var(--gold); }
+.splash-name { font-family: var(--font-brand); font-size: 52px; font-weight: 700; background: linear-gradient(100deg, #B08325 0%, #FBEAB0 30%, #E2B84A 50%, #FFF6D6 60%, #B08325 90%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 3.2s linear infinite; letter-spacing: .5px; }
+@keyframes shimmer { to { background-position: -220% 0; } }
+.splash-sub { color: #C9D3E6; letter-spacing: .5px; }
+.splash-msg .btn { background: var(--gold-grad); color: #10151E; }
+.howto { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); color: #E6ECF6; }
+
+/* القوائم واللوحات */
+.menu-list .item .item-ico { background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--gold); }
+body:not(.night) .menu-list .item .item-ico { color: #9A7414; }
+.route-opt.sel { border-color: var(--route); background: color-mix(in srgb, var(--route) 12%, var(--bg)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--route) 12%, transparent); }
+.report-btn { background: var(--bg2); border: 1px solid var(--glass-border); }
+.report-btn .r-ico { box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.35); }
+.switch input:checked + span { background: var(--accent-grad); }
+.brand-title { font-family: var(--font-brand); background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.menu-logo { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: radial-gradient(circle at 30% 25%, #22396A 0%, #0D1830 75%); border: 1px solid rgba(242,207,107,.35); color: var(--gold); flex: none; box-shadow: 0 0 24px rgba(212,175,55,.2); }
+.menu-logo svg { width: 36px; height: 36px; }
+.menu-list .item .badge { flex: none; }
+
+.toast { background: rgba(12, 19, 35, .9); color: #fff; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(242, 207, 107, .25); }
+
+.actions .btn.sm { white-space: nowrap; padding: 0 11px; }

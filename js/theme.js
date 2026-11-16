@@ -5,23 +5,33 @@
 import { THEME_PRESETS } from './config.js';
 
 export const MAP_PALETTES = {
+  // نهاري "لؤلؤي": فاتح وناعم ومريح للعين
   day: {
-    bg: '#F2F1EC', water: '#A9D6F0', waterLine: '#8EC7EA', park: '#D3EBC6', wood: '#C3E2B3', sand: '#F1E7CF',
-    residential: '#ECEAE3', landuseOther: '#E9E5DC', building: '#E0DCD3', building3d: '#E3DED5', aeroway: '#E6E2EE',
-    motorway: '#FFC94A', motorwayCasing: '#D9A730', trunk: '#FFE18F', trunkCasing: '#DCC072',
-    primary: '#FFFFFF', primaryCasing: '#CFC9BE', minor: '#FFFFFF', minorCasing: '#DAD4CA',
-    path: '#E2DCD1', rail: '#C2BCB2', boundary: '#B4A3C6', text: '#3B3934', waterText: '#3274A3', halo: '#FFFFFF',
+    bg: '#F6F3EC', water: '#9FD3F2', waterLine: '#86C4EA', park: '#D5ECC9', wood: '#C4E2B3', sand: '#F2E8D0',
+    residential: '#EFEBE2', landuseOther: '#EBE5D9', building: '#E4DED2', b3dLow: '#ECE6DA', b3dHigh: '#C9BFAE', aeroway: '#E8E3F0',
+    motorway: '#F2C14E', motorwayCasing: '#C99A2E', trunk: '#F8DC8F', trunkCasing: '#D9BC6C',
+    primary: '#FFFFFF', primaryCasing: '#CDC5B7', minor: '#FFFFFF', minorCasing: '#DCD5C9',
+    path: '#E4DDD1', rail: '#BFB8AC', boundary: '#B19FCB', text: '#2E2C28', waterText: '#2D6E9E', halo: '#FFFFFF',
     rasterBright: 1, rasterSat: 0,
   },
+  // ليلي "مخملي": أزرق ليلي عميق وطرق ذهبية
   night: {
-    bg: '#171E2B', water: '#0E2A45', waterLine: '#16395B', park: '#1B3026', wood: '#1A2E23', sand: '#2C2A22',
-    residential: '#1D2534', landuseOther: '#1E2635', building: '#262F40', building3d: '#2A3446', aeroway: '#252B40',
-    motorway: '#BF8F2E', motorwayCasing: '#7D5E22', trunk: '#7A6635', trunkCasing: '#4B4130',
-    primary: '#45526A', primaryCasing: '#2B3446', minor: '#38445A', minorCasing: '#252E3F',
-    path: '#2F394B', rail: '#3C475B', boundary: '#6A5A8A', text: '#D6DCE6', waterText: '#6EA7D6', halo: '#121823',
-    rasterBright: 0.35, rasterSat: -0.6,
+    bg: '#070D1A', water: '#0A2341', waterLine: '#0F3157', park: '#0C231C', wood: '#0B2019', sand: '#13120E',
+    residential: '#0B1424', landuseOther: '#0C1526', building: '#14213A', b3dLow: '#15223B', b3dHigh: '#2E4A7A', aeroway: '#121A30',
+    motorway: '#E2B34A', motorwayCasing: '#6E5418', trunk: '#B98C2E', trunkCasing: '#4A3A16',
+    primary: '#2C3E60', primaryCasing: '#121C30', minor: '#1D2A44', minorCasing: '#0F1729',
+    path: '#1A263E', rail: '#2A3550', boundary: '#8E7BC4', text: '#D3DCEB', waterText: '#62ABE3', halo: '#070D1A',
+    rasterBright: 0.25, rasterSat: -0.7,
   },
 };
+
+/** السماء والأفق (تبين لما تميل الخريطة أو بوضع الكرة الأرضية) */
+export function skyFor(night) {
+  const atm = ['interpolate', ['linear'], ['zoom'], 0, 1, 9, 1, 12, 0];
+  return night
+    ? { 'sky-color': '#040915', 'horizon-color': '#1E3360', 'fog-color': '#0A1428', 'sky-horizon-blend': 0.7, 'horizon-fog-blend': 0.8, 'fog-ground-blend': 0.9, 'atmosphere-blend': atm }
+    : { 'sky-color': '#6EC1F5', 'horizon-color': '#F7EEDB', 'fog-color': '#EAF2F8', 'sky-horizon-blend': 0.5, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.85, 'atmosphere-blend': atm };
+}
 
 const has = (s, ...keys) => keys.some((k) => s.includes(k));
 
@@ -60,8 +70,9 @@ export function paintFor(layer, P) {
       break;
     }
     case 'fill-extrusion':
-      out['fill-extrusion-color'] = P.building3d;
-      out['fill-extrusion-opacity'] = 0.75;
+      // المباني العالية تاخذ لون أفتح — عمق ثلاثي الأبعاد حقيقي
+      out['fill-extrusion-color'] = ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], ['get', 'height'], 8], 0, P.b3dLow, 80, P.b3dHigh];
+      out['fill-extrusion-opacity'] = 0.88;
       break;
     case 'line': {
       if (sl === 'waterway' || has(id, 'waterway', 'river', 'canal', 'stream')) { out['line-color'] = P.waterLine; break; }
@@ -100,8 +111,10 @@ function usesName(tf) {
 export const AR_NAME = ['coalesce', ['get', 'name:ar'], ['get', 'name'], ['get', 'name_int'], ['get', 'name:latin']];
 
 /** تحويل ستايل الخريطة قبل أول رسم (بدون وميض) */
-export function transformStyle(style, P, { buildings3d = true } = {}) {
+export function transformStyle(style, P, { buildings3d = true, night = false, globe = true } = {}) {
   const s = JSON.parse(JSON.stringify(style));
+  s.sky = skyFor(night);
+  if (globe) s.projection = { type: 'globe' };
   for (const layer of s.layers || []) {
     const paint = paintFor(layer, P);
     if (Object.keys(paint).length) layer.paint = { ...(layer.paint || {}), ...paint };
@@ -116,7 +129,8 @@ export function transformStyle(style, P, { buildings3d = true } = {}) {
 }
 
 /** تطبيق الألوان على خريطة شغالة (تبديل نهاري/ليلي بدون إعادة تحميل) */
-export function applyPalette(map, P) {
+export function applyPalette(map, P, night = false) {
+  try { map.setSky?.(skyFor(night)); } catch { /* ignore */ }
   const layers = map.getStyle()?.layers || [];
   for (const layer of layers) {
     if (layer.id.startsWith('salka-')) continue;
@@ -139,11 +153,15 @@ export function setBuildings3d(map, on) {
 // ألوان الواجهة
 // ---------------------------------------------------------------------
 export function uiColors(settings) {
-  const preset = THEME_PRESETS[settings.theme] || THEME_PRESETS.tigris;
+  const preset = THEME_PRESETS[settings.theme] || THEME_PRESETS.royal;
+  const custom = !!settings.accent;
   return {
     accent: settings.accent || preset.accent,
     route: settings.routeColor || preset.route,
     accent2: preset.accent2,
+    grad: custom ? null : preset.grad || null,
+    banner: custom ? null : preset.banner || null,
+    bannerIcon: custom ? null : preset.bannerIcon || null,
   };
 }
 
@@ -153,7 +171,7 @@ function readableInk(hex) {
   const n = parseInt(m[1], 16);
   const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.68 ? '#10151E' : '#fff';
+  return lum > 0.6 ? '#10151E' : '#fff';
 }
 
 export function applyUiTheme(settings, night) {
@@ -163,9 +181,13 @@ export function applyUiTheme(settings, night) {
   root.setProperty('--accent-ink', readableInk(c.accent));
   root.setProperty('--route', c.route);
   root.setProperty('--accent2', c.accent2);
+  root.setProperty('--accent-grad', c.grad || c.accent);
+  root.setProperty('--banner', c.banner || c.accent);
+  root.setProperty('--banner-ink', c.banner ? '#fff' : readableInk(c.accent));
+  root.setProperty('--banner-icon', c.bannerIcon || (c.banner ? '#fff' : readableInk(c.accent)));
   document.body.classList.toggle('night', !!night);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', night ? '#161D2A' : c.accent);
+  if (meta) meta.setAttribute('content', night ? '#0A1120' : '#F6F3EC');
   return c;
 }
 
