@@ -242,7 +242,8 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .item>.i{color:var(--ink-2)}
 .item .t{flex:1;min-width:0;font-weight:600;font-size:15px}
 .item .t small{display:block;color:var(--ink-3);font-size:12.5px;font-weight:500}
-.item.dz{color:var(--danger)}.item.dz>.i{color:var(--danger)}
+.item.dz{color:var(--danger)}
+a.item{color:inherit;text-decoration:none}.item.dz>.i{color:var(--danger)}
 .sinp{width:52%;height:42px;border:1.5px solid var(--line);background:var(--surface-2);border-radius:10px;padding:0 12px;font-size:16px;outline:none}
 .sinp:focus{border-color:var(--brand)}
 .seg{display:flex;background:var(--surface-2);border-radius:11px;padding:3px}
@@ -496,13 +497,14 @@ body.kb-open .toast.show{transform:none}
     <div class="group">
       <div class="group-h">التطبيق</div>
       <button class="item" data-act="install"><svg class="i"><use href="#i-phone"/></svg><span class="t">تثبيت على الشاشة الرئيسية<small id="install-state"></small></span></button>
+      <a class="item" id="apk-link" href="app/supermarket-pro.apk" download="supermarket-pro.apk" hidden><svg class="i"><use href="#i-down"/></svg><span class="t">تنزيل تطبيق أندرويد (APK)<small>ملف تطبيق تنصبه وتشاركه ويا غيرك</small></span></a>
       <button class="item" data-act="demo"><svg class="i"><use href="#i-box"/></svg><span class="t">إضافة بيانات تجريبية<small>12 مادة للتجربة</small></span></button>
       <div class="item"><svg class="i"><use href="#i-db"/></svg><span class="t">التخزين<small id="storage-info"></small></span></div>
     </div>
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 2.0<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 2.1<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -1392,6 +1394,7 @@ function renderSettings() {
   $$('#set-theme button').forEach(b => b.classList.toggle('on', b.dataset.v === db.settings.theme));
   $('#set-sound').checked = !!db.settings.sound;
   $('#last-backup').textContent = daysAgoText(db.settings.lastBackup);
+  $('#apk-link').hidden = !/Android/i.test(navigator.userAgent) || isStandalone();
   $('#install-state').textContent = isStandalone() ? 'التطبيق مثبت ✓' : deferredPrompt ? 'اضغط هنا للتثبيت' : isIOS() ? 'من سفاري: زر المشاركة ثم «إضافة إلى الشاشة الرئيسية»' : 'من قائمة المتصفح ⋮ ثم «تثبيت التطبيق»';
   $('#storage-info').textContent = `${fmt(db.products.length)} مادة · ${fmt(db.shortages.length)} نقص · ${Store.mode === 'idb' ? 'قاعدة بيانات الجهاز (تتحمل عشرات الآلاف)' : 'ذاكرة المتصفح'}`;
 }
