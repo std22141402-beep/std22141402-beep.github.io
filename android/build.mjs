@@ -423,7 +423,7 @@ async function viaCustom() {
   fs.writeFileSync(path.join(OUT, 'manifest-dump.txt'), xml);
   fs.copyFileSync(apk, path.join(PUB, 'salka-unsigned.apk'));
   fs.copyFileSync(aab, path.join(PUB, 'salka-unsigned.aab'));
-  fs.copyFileSync(path.join(proj, 'twa-manifest.json'), path.join(PUB, 'twa-manifest.json'));
+  fs.writeFileSync(path.join(PUB, 'twa-manifest.json'), JSON.stringify({ ...json, signingKey: undefined }, null, 2) + '\n');
   await fetchApksig();
   fs.writeFileSync(path.join(PUB, 'build-info.json'), JSON.stringify({
     packageId: cfg.packageId, versionName: req.versionName, versionCode: req.versionCode, unsigned: true,
