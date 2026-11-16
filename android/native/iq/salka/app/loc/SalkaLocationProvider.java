@@ -30,7 +30,9 @@ class SalkaLocationProvider {
     interface Sink { void run(String name, Bundle args); }
 
     private static final String NEW_LOCATION = "onNewLocationAvailable";
-    private static final String NEW_ERROR = "onNewErrorAvailable";
+    // كروم الحالي يسمع «onNewLocationError» (مكتبة گوگل ترسل الاسم القديم فالأخطاء ما توصل أبداً)
+    private static final String NEW_ERROR = "onNewLocationError";
+    private static final String NEW_ERROR_LEGACY = "onNewErrorAvailable";
 
     private final Context ctx;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -181,6 +183,7 @@ class SalkaLocationProvider {
         Bundle b = new Bundle();
         b.putString("message", message);
         s.run(NEW_ERROR, b);
+        s.run(NEW_ERROR_LEGACY, b);
     }
 
     boolean locationEnabled() {

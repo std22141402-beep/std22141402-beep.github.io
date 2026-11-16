@@ -34,7 +34,17 @@ public class LocationSetupActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        PermissionActivity.sSetupActive = true;
         if (savedInstanceState == null) step();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (PermissionActivity.sSetupActive) {
+            PermissionActivity.sSetupActive = false;
+            PermissionActivity.flush(getApplicationContext());
+        }
+        super.onDestroy();
     }
 
     private void step() {
@@ -60,6 +70,7 @@ public class LocationSetupActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         busy = false;
+        if (!SalkaLocationHandler.hasAny(this)) LocPrefs.markDenied(this);
         if (SalkaLocationHandler.hasFine(this)) {
             checkDeviceLocation();
         } else if (SalkaLocationHandler.hasAny(this)) {
@@ -146,6 +157,9 @@ public class LocationSetupActivity extends Activity {
 
     private void done() {
         busy = false;
+        // كروم ممكن ينتظر جواب الصلاحية — نجاوبه هسه بالحالة الحقيقية
+        PermissionActivity.sSetupActive = false;
+        PermissionActivity.flush(getApplicationContext());
         if (!isFinishing()) {
             finish();
             overridePendingTransition(0, 0);

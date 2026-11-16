@@ -1,8 +1,8 @@
 {
-  "versionName": "1.4.0",
-  "versionCode": 2,
+  "versionName": "1.4.1",
+  "versionCode": 3,
   "method": "custom",
   "extraFingerprints": [],
-  "build": 7,
-  "startUrl": "/?source=twa&apk=2"
+  "build": 8,
+  "startUrl": "/?source=twa&apk=3"
 }
