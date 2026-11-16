@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>سالكة — ملاحة العراق</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="سالكة: تطبيق ملاحة عراقي بالعربي، صوت عراقي، بلاغات الطريق، وإعادة حساب فورية للطريق.">
+  <meta name="theme-color" content="#1E88E5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="سالكة">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="map" aria-label="الخريطة"></div>
+
+  <!-- ===== شريط البحث ===== -->
+  <header id="topbar" class="topbar">
+    <div class="search-row">
+      <button id="btnMenu" class="icon-btn" aria-label="القائمة"><svg><use href="#i-menu"/></svg></button>
+      <div id="searchBox" class="search-box" role="search">
+        <svg class="ico"><use href="#i-search"/></svg>
+        <input id="searchInput" type="search" placeholder="وين رايح؟" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" aria-label="البحث عن مكان">
+        <button id="searchClear" class="icon-btn sm hidden" aria-label="مسح"><svg><use href="#i-x"/></svg></button>
+      </div>
+    </div>
+    <div id="quickChips" class="chips" role="list"></div>
+  </header>
+
+  <!-- ===== لوحة نتائج البحث ===== -->
+  <section id="searchPanel" class="search-panel hidden" aria-live="polite">
+    <div id="searchResults" class="list"></div>
+  </section>
+
+  <!-- ===== أزرار الخريطة ===== -->
+  <div id="mapFabs" class="fab-col">
+    <button id="btnCompass" class="fab sm hidden" aria-label="اتجاه الشمال"><svg id="compassNeedle" viewBox="0 0 24 24"><path d="M12 2 L16 12 H8 Z" fill="#E53935"/><path d="M12 22 L8 12 H16 Z" fill="currentColor" opacity=".55"/></svg></button>
+    <button id="btnLocate" class="fab" aria-label="موقعي"><svg><use href="#i-locate"/></svg></button>
+  </div>
+  <button id="btnReport" class="fab report" aria-label="إبلاغ"><svg><use href="#i-alert"/></svg></button>
+
+  <!-- ===== واجهة الملاحة ===== -->
+  <div id="navTop" class="nav-top hidden">
+    <div class="banner" id="banner">
+      <div class="m-icon" id="mIcon"></div>
+      <div class="m-text">
+        <div class="m-dist"><span id="mDist">–</span><small id="mUnit"></small></div>
+        <div class="m-road" id="mRoad"></div>
+      </div>
+    </div>
+    <div class="banner-sub">
+      <div id="lanes" class="lanes hidden" dir="ltr"></div>
+      <div id="thenChip" class="then hidden"><span id="thenLabel">ثم</span><span id="thenIcon" class="then-icon"></span></div>
+    </div>
+    <div id="navStatus" class="nav-status hidden"></div>
+  </div>
+
+  <div id="speedo" class="speedo hidden" aria-label="السرعة"><b id="speedVal">0</b><small>كم/س</small></div>
+  <button id="btnRecenter" class="pill recenter hidden"><svg><use href="#i-nav"/></svg>متابعة</button>
+
+  <div id="navBottom" class="nav-bottom hidden">
+    <button id="btnEndNav" class="icon-btn round danger" aria-label="إنهاء الملاحة"><svg><use href="#i-x"/></svg></button>
+    <button id="etaBox" class="eta" aria-label="تفاصيل الرحلة">
+      <span class="eta-time" id="etaTime">–</span>
+      <span class="eta-sub"><span id="etaLeft">–</span> • <span id="etaDist">–</span></span>
+    </button>
+    <button id="btnNavMenu" class="icon-btn round" aria-label="خيارات"><svg><use href="#i-more"/></svg></button>
+  </div>
+
+  <!-- ===== بطاقة التنبيهات (بلاغ قدامك / طريق أسرع) ===== -->
+  <div id="alertCard" class="alert-card hidden" role="alert"></div>
+
+  <!-- ===== اللوحة السفلية العامة ===== -->
+  <div id="sheetBackdrop" class="backdrop hidden"></div>
+  <section id="sheet" class="sheet hidden" role="dialog" aria-modal="true">
+    <div class="grabber"></div>
+    <div id="sheetBody" class="sheet-body"></div>
+  </section>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <div id="splash" class="splash">
+    <div class="splash-logo"><svg viewBox="0 0 64 64"><use href="#i-logo"/></svg></div>
+    <div class="splash-name">سالكة</div>
+    <div class="splash-sub">طريقك… سالكة</div>
+    <div id="splashMsg" class="splash-msg"></div>
+  </div>
+
+  <!-- ===== الأيقونات ===== -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="i-logo" viewBox="0 0 64 64"><path d="M32 4 L54 56 L32 44 L10 56 Z" fill="currentColor"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 1.5v3.5M12 19v3.5M1.5 12H5M19 12h3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-nav" viewBox="0 0 24 24"><path d="M12 2.5 L19.5 21 L12 16.8 L4.5 21 Z" fill="currentColor"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 11.5 L12 4 L20.5 11.5 M6 10v9.5h4.5v-6h3v6H18V10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-work" viewBox="0 0 24 24"><rect x="3" y="7.5" width="18" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 7.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5v2M3 13h18" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></symbol>
+    <symbol id="i-star-f" viewBox="0 0 24 24"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill="currentColor"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5.5" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18.5" r="2.6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.3 10.8l7.4-4M8.3 13.2l7.4 4" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5" fill="currentColor"/><circle cx="18" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 18h7.5a3 3 0 0 0 0-6h-7a3 3 0 0 1 0-6H15.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="18.5" cy="12" r="2" fill="currentColor"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 L22 20 H2 Z" fill="currentColor"/><path d="M12 9.5v5" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.3" fill="#fff"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21.5s-6.5-6.4-6.5-11.2a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11.2-6.5 11.2z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10.3" r="2.4" fill="currentColor"/></symbol>
+    <symbol id="i-fuel" viewBox="0 0 24 24"><rect x="4" y="4" width="10" height="16" rx="1.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6.5 8h5M14 9h2.5a1.5 1.5 0 0 1 1.5 1.5V17a1.5 1.5 0 0 0 3 0V8l-2.5-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-food" viewBox="0 0 24 24"><path d="M7 3v7a2 2 0 0 0 4 0V3M9 10v11M16.5 21V3c-2 1.5-3 4-3 7h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-hospital" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-pharmacy" viewBox="0 0 24 24"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-45 12 12)" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.5 9.5l5 5" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-coffee" viewBox="0 0 24 24"><path d="M4.5 9h11v5.5a4.5 4.5 0 0 1-4.5 4.5H9a4.5 4.5 0 0 1-4.5-4.5zM15.5 10.5h1.5a2.5 2.5 0 0 1 0 5h-1.6M8 3.5v2.5M11 3.5v2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 9.5L12 4l9 5.5zM5 10.5v7M9.5 10.5v7M14.5 10.5v7M19 10.5v7M3 20h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-parking" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.5 17V7.5h3.2a2.8 2.8 0 0 1 0 5.6H9.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.5 4.2a4.8 4.8 0 0 0-5.6 6.4L3.6 15.9a2 2 0 0 0 2.8 2.8l5.3-5.3a4.8 4.8 0 0 0 6.4-5.6l-2.8 2.8-2.6-.6-.6-2.6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-mosque" viewBox="0 0 24 24"><path d="M6 20v-6.5a6 6 0 0 1 12 0V20zM12 7.5V5M12 5a1.2 1.2 0 1 0 0-.1M3 20V10M21 20V10M2 20h20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M7 11l5-6 5 6M12 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M7 13l5 6 5-6M12 19V5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4v15M7 19l-3-3M7 19l3-3M17 20V5M17 5l-3 3M17 5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  </svg>
+
+  <noscript><div class="noscript">هذا التطبيق يحتاج تفعيل JavaScript.</div></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
