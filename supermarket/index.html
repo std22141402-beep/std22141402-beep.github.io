@@ -141,10 +141,15 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .card .main{flex:1;min-width:0;padding:12px 14px;display:block}
 .name{display:block;font-weight:700;font-size:16px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--ink-3);margin-top:2px}
-.prices{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+.prices{display:flex;gap:8px 14px;margin-top:9px;flex-wrap:wrap;align-items:center}
+.rp{display:inline-flex;align-items:baseline;gap:6px;background:var(--brand);color:var(--brand-ink);padding:5px 12px 4px;border-radius:12px;box-shadow:0 2px 8px rgba(14,107,79,.22)}
+.rp small{font-size:12px;font-weight:700;opacity:.85}
+.rp b{font-size:20px;font-weight:800;line-height:1.25;font-variant-numeric:tabular-nums}
+.rp em{font-style:normal;font-size:12.5px;font-weight:700;opacity:.9}
 .price small{display:block;font-size:11.5px;color:var(--ink-3);line-height:1.3}
 .price b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
-.price.r b{color:var(--brand)}
+.price b{font-size:14px}
+.price .mg{color:var(--ok);font-weight:700}
 .price.m b{color:var(--ok);font-size:14px}
 .stepper{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 10px;border-inline-start:1px solid var(--line);background:var(--surface-2);min-width:64px}
 .stepper button{width:38px;height:32px;border-radius:9px;background:var(--surface);display:grid;place-items:center;border:1px solid var(--line)}
@@ -208,7 +213,14 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .sh-item{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;display:flex;align-items:center;gap:12px}
 .sh-check{width:44px;height:44px;border-radius:13px;border:2px solid var(--line);display:grid;place-items:center;color:var(--ok);flex-shrink:0;transition:.15s}
 .sh-check:active,.sh-check:hover{background:var(--ok-soft);border-color:var(--ok)}
-.sh-main{flex:1;min-width:0;display:block}
+.sh-body{flex:1;min-width:0}
+.sh-main{display:block;width:100%}
+.sh-add{display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:5px 11px;border-radius:9px;background:var(--brand-soft);color:var(--brand);font-size:13px;font-weight:700}
+.sh-add .i{width:16px;height:16px}
+.pf-quick{margin:-4px 0 14px}
+.pf-quick .btn{width:100%}
+.btn.warn-soft{background:var(--accent-soft);color:var(--warn)}
+.btn.ok-soft{background:var(--ok-soft);color:var(--ok)}
 .sh-qty{font-weight:800;font-size:15px;background:var(--accent-soft);color:var(--warn);padding:5px 11px;border-radius:10px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .hint-c{text-align:center;font-size:13px;color:var(--ink-3);margin-top:14px}
 
@@ -475,7 +487,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 1.2<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 1.3<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -532,6 +544,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
   <div class="sheet">
     <div class="grab"></div>
     <div class="sheet-h"><h3 id="pf-title">مادة جديدة</h3><button class="icon-plain" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="pf-quick" id="pf-quick" hidden></div>
     <form id="pf" novalidate autocomplete="off">
       <div class="fg">
         <label for="pf-code">الباركود</label>
@@ -579,6 +592,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
         <div id="sf-info" class="note" hidden></div>
       </div>
       <div class="fg"><label for="sf-name">اسم المادة *</label><input id="sf-name" class="inp" list="name-list" placeholder="مثال: زيت دوار الشمس" enterkeyhint="next"></div>
+      <button type="button" class="btn sm soft" id="sf-to-product" data-act="sf-to-product" style="width:100%;margin:-4px 0 14px" hidden><svg class="i"><use href="#i-plus"/></svg>هذي المادة مو بالمواد — أضفها للمواد</button>
       <div class="fg"><label for="sf-qty">الكمية المطلوبة</label><input id="sf-qty" class="inp" inputmode="numeric" placeholder="مثال: 24" enterkeyhint="next"></div>
       <div class="fg"><label for="sf-note">ملاحظة</label><input id="sf-note" class="inp" placeholder="مثال: كارتونتين، من المورد الفلاني" enterkeyhint="done"></div>
       <div class="sheet-actions">
@@ -796,6 +810,7 @@ function renderCurrent() {
   ({ home: renderHome, products: renderProducts, shortage: renderShortage, settings: renderSettings })[ui.view]();
   renderTop();
   if (stack.includes('sheet-lookup')) renderLookup();
+  if (stack.includes('sheet-product')) pfQuick();
 }
 function renderTop() {
   $('#shop-name').textContent = db.settings.shopName || 'سوبرماركت';
@@ -934,9 +949,8 @@ function productCard(p) {
       <span class="name">${esc(p.name)}</span>
       <span class="meta">${p.barcode ? `<span class="num">${esc(p.barcode)}</span>` : ''}${p.category ? `<span>${p.barcode ? '· ' : ''}${esc(p.category)}</span>` : ''}${st === 'out' ? '<span class="pill danger">نافدة</span>' : st === 'low' ? '<span class="pill warn">قليلة</span>' : ''}</span>
       <span class="prices">
-        <span class="price r"><small>مفرد</small><b>${money(p.retail)}</b></span>
-        <span class="price"><small>جملة${p.pack > 1 ? ` (${p.pack} قطعة)` : ''}</small><b>${money(p.bulk)}</b></span>
-        ${m !== null ? `<span class="price m"><small>ربح</small><b>${m}%</b></span>` : ''}
+        <span class="rp"><small>مفرد</small><b>${fmt(p.retail)}</b><em>د.ع</em></span>
+        <span class="price"><small>جملة${p.pack > 1 ? ` (${p.pack} قطعة)` : ''}${m !== null ? ` · <span class="mg">ربح ${m}%</span>` : ''}</small><b>${money(p.bulk)}</b></span>
       </span>
     </button>
     <div class="stepper">
@@ -978,9 +992,27 @@ function openProductForm(id, preset = {}) {
   $('#pf-min').value = p ? p.minQty : '';
   $('#pf-note').value = p ? p.note : '';
   $('#pf-del').hidden = !p;
+  pfQuick();
   fillDatalists(); pfDupCheck(); pfMargin();
   openSheet('sheet-product');
   $('#sheet-product .sheet').scrollTop = 0;
+}
+function pfQuick() {
+  const el = $('#pf-quick'), p = editingProductId && byId(editingProductId);
+  el.hidden = !p;
+  if (!p) { el.innerHTML = ''; return; }
+  const s = db.shortages.find(x => x.productId === p.id || (p.barcode && x.barcode === p.barcode));
+  el.innerHTML = s
+    ? `<button type="button" class="btn sm ok-soft" data-act="pf-edit-short" data-id="${esc(s.id)}">${ico('check')}بقائمة النقص${s.qty ? ` (${esc(s.qty)})` : ''} — تعديل</button>`
+    : `<button type="button" class="btn sm warn-soft" data-act="pf-add-short">${ico('list')}أضفها لقائمة النقص</button>`;
+}
+function linkShortagesTo(p) {
+  let n = 0;
+  db.shortages.forEach(s => {
+    if (s.productId === p.id) return;
+    if ((p.barcode && s.barcode === p.barcode) || (!s.productId && norm(s.name) === norm(p.name))) { s.productId = p.id; if (!s.barcode && p.barcode) s.barcode = p.barcode; n++; }
+  });
+  return n;
 }
 function pfDupCheck() {
   const code = cleanCode($('#pf-code').value), d = code && byCode(code), el = $('#pf-dup');
@@ -1009,10 +1041,12 @@ function saveProduct() {
     minQty: minRaw === '' ? 5 : Math.max(0, toNum(minRaw)), note: $('#pf-note').value.trim(), updatedAt: Date.now()
   };
   const editing = !!editingProductId;
-  if (editing) Object.assign(byId(editingProductId), data);
-  else db.products.unshift(Object.assign({ id: uid(), createdAt: Date.now() }, data));
+  let prod;
+  if (editing) prod = Object.assign(byId(editingProductId), data);
+  else { prod = Object.assign({ id: uid(), createdAt: Date.now() }, data); db.products.unshift(prod); }
+  const linked = linkShortagesTo(prod);
   save(); closeSheet('sheet-product'); renderCurrent();
-  toast(editing ? 'تم حفظ التعديلات ✓' : 'تمت إضافة المادة ✓');
+  toast((editing ? 'تم حفظ التعديلات ✓' : 'تمت إضافة المادة ✓') + (linked && !editing ? ' — وانربطت بقائمة النقص' : ''));
 }
 async function deleteProduct() {
   const p = byId(editingProductId); if (!p) return;
@@ -1054,7 +1088,10 @@ function shortRow(s) {
   const meta = [s.barcode ? `<span class="num">${esc(s.barcode)}</span>` : '', p ? `الموجود ${fmt(p.qty)}` : '', s.note ? esc(s.note) : ''].filter(Boolean).join(' · ');
   return `<div class="sh-item">
     <button class="sh-check" data-act="resolve" data-id="${esc(s.id)}" aria-label="وصلت">${ico('check')}</button>
-    <button class="sh-main" data-act="edit-shortage" data-id="${esc(s.id)}"><span class="name">${esc(s.name)}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</button>
+    <div class="sh-body">
+      <button class="sh-main" data-act="edit-shortage" data-id="${esc(s.id)}"><span class="name">${esc(s.name)}</span>${meta ? `<span class="meta">${meta}</span>` : ''}</button>
+      ${p ? '' : `<button class="sh-add" data-act="short-to-product" data-id="${esc(s.id)}">${ico('plus')}أضفها للمواد</button>`}
+    </div>
     ${s.qty ? `<span class="sh-qty">${esc(s.qty)}</span>` : ''}
   </div>`;
 }
@@ -1072,6 +1109,7 @@ function openShortageForm(id, preset = {}) {
   $('#sf-qty').value = s ? s.qty : (preset.qty || '');
   $('#sf-note').value = s ? s.note : '';
   $('#sf-del').hidden = !s;
+  $('#sf-to-product').hidden = !(s && !linkedProduct(s));
   sfAuto = false; fillDatalists(); shortageLookup();
   openSheet('sheet-shortage');
 }
@@ -1743,6 +1781,10 @@ const A = {
   'lk-short-new': () => { const c = lookupRef.code; openShortageForm(null, { barcode: c }); closeSheet('sheet-lookup'); },
   'lk-rescan': () => openScanner('lookup'),
   'new-shortage': () => openShortageForm(null),
+  'pf-add-short': () => { const p = byId(editingProductId); if (p && quickShortage(p)) { save(); pfQuick(); renderCurrent(); toast(`أضيفت «${p.name}» لقائمة النقص ✓`); } },
+  'pf-edit-short': el => openShortageForm(el.dataset.id),
+  'short-to-product': el => { const s = getS(el.dataset.id); if (s) openProductForm(null, { barcode: s.barcode, name: s.name }); },
+  'sf-to-product': () => { const s = getS(editingShortageId); if (!s) return; openProductForm(null, { barcode: cleanCode($('#sf-code').value) || s.barcode, name: $('#sf-name').value.trim() || s.name }); closeSheet('sheet-shortage'); },
   'edit-shortage': el => openShortageForm(el.dataset.id),
   'delete-shortage': () => { const id = editingShortageId; closeSheet('sheet-shortage'); removeShortage(id, 'انحذفت من القائمة'); },
   resolve: el => resolveShortage(el.dataset.id),

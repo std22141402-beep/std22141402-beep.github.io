@@ -1,5 +1,5 @@
 /* سوبرماركت برو — Service Worker: يخلي التطبيق يشتغل بدون إنترنت */
-const VERSION = 'smpro-v1.2.0';
+const VERSION = 'smpro-v1.3.0';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable.png', './apple-touch-icon.png'];
 const RUNTIME_HOSTS = /(^|\.)(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|unpkg\.com)$/;
 
