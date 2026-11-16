@@ -263,18 +263,6 @@ export class MapView {
 
   setSky(sky) { try { this.map?.setSky?.(sky); } catch { /* ignore */ } }
 
-  setGlobe(on) { try { this.map?.setProjection?.({ type: on ? 'globe' : 'mercator' }); } catch { /* ignore */ } }
-
-  /** افتتاحية سينمائية: من الفضاء إلى موقعك */
-  intro(center, zoom, done) {
-    if (!this.map) { done?.(); return; }
-    let finished = false;
-    const finish = () => { if (finished) return; finished = true; done?.(); };
-    this.map.once('moveend', finish);
-    setTimeout(finish, 6000);
-    this.map.flyTo({ center, zoom, pitch: 50, bearing: -18, duration: 4200, curve: 1.6, essential: true });
-  }
-
   setReports(list) {
     if (!this.map) return;
     const keep = new Set();

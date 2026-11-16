@@ -181,8 +181,8 @@ async function main() {
   check('الخريطة: المسار تحت أسماء الشوارع', style.findIndex((l) => l.id === 'salka-route-line') < style.findIndex((l) => l.type === 'symbol'));
   check('GPS: وصل الموقع', await waitFor(() => page.evaluate(() => !!window.__salka.S.me)));
   const st2 = await page.evaluate(() => ({ proj: window.__map.getStyle().projection, sky: window.__map.getStyle().sky, fly: window.__mapCalls.lastFly, glow: !!window.__map.getLayer('salka-route-glow'), tr: !!window.__map.getLayer('salka-traffic') }));
-  check('الفخامة: الكرة الأرضية والسماء', st2.proj?.type === 'globe' && !!st2.sky?.['sky-color']);
-  check('الفخامة: افتتاحية الطيران من الفضاء', await waitFor(() => page.evaluate(() => window.__mapCalls.lastFly && window.__mapCalls.lastFly.duration >= 3000 && window.__mapCalls.lastFly.pitch > 0)));
+  check('الخريطة مسطحة مثل ويز (بدون كرة أرضية) مع سماء الأفق', st2.proj?.type === 'mercator' && !!st2.sky?.['sky-color']);
+  check('بدون افتتاحية من الفضاء: تفتح على الخريطة مباشرة', await page.evaluate(() => window.__map.getZoom() >= 11 && !(window.__mapCalls.lastFly && window.__mapCalls.lastFly.duration >= 3000)));
   check('الفخامة: طبقة توهج المسار وطبقة الازدحام', st2.glow && st2.tr);
   check('الازدحام: عينات السواق الثانين تظهر على الشوارع', await waitFor(() => page.evaluate(() => (window.__map.getSource('salka-traffic').data.features || []).length === 1)));
   check('البلاغات المشتركة: متصل بالخادم', await waitFor(() => page.evaluate(() => window.__salka.reports.status === 'live' && window.__salka.reports.mode === 'ntfy')));

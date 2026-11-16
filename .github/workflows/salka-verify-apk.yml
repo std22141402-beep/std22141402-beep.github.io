@@ -1,0 +1,39 @@
+name: Salka — verify signed APK (official apksigner)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: salka-android-signed
+
+      - name: apksigner verify — v2/v3 and the published key
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --verbose --print-certs salka.apk | tee v.txt
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" v.txt
+          grep -qi "certificate SHA-256 digest: $(jq -r .certHex expect.json)" v.txt
+
+      - name: zipalign check
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/zipalign" -c -P 16 4 salka.apk
+
+      - name: Package name, version and location components
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/aapt2" dump badging salka.apk > b.txt
+          head -3 b.txt
+          grep -q "package: name='$(jq -r .packageId expect.json)' versionCode='$(jq -r .versionCode expect.json)' versionName='$(jq -r .versionName expect.json)'" b.txt
+          grep -q "uses-permission: name='android.permission.ACCESS_FINE_LOCATION'" b.txt
+          "$BT/aapt2" dump xmltree --file AndroidManifest.xml salka.apk > m.txt
+          grep -q 'iq.salka.app.loc.LocationSetupActivity' m.txt
+          grep -q '"salka"' m.txt

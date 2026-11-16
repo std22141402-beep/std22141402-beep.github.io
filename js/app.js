@@ -112,11 +112,11 @@ async function boot() {
   } catch {
     return fatal('تعذر تحميل الخريطة. تأكد من الانترنت وحاول مرة ثانية.');
   }
-  const styled = transformStyle(style, S.night ? MAP_PALETTES.night : MAP_PALETTES.day, { buildings3d: S.settings.buildings3d, night: S.night, globe: S.settings.globe });
+  const styled = transformStyle(style, S.night ? MAP_PALETTES.night : MAP_PALETTES.day, { buildings3d: S.settings.buildings3d, night: S.night });
   const last = store.get('lastView');
   try {
-    S.introPending = wantIntro();
-    const view = S.introPending ? { center: [44.4, 30.5], zoom: 1.35 } : { center: last?.center || MAP.center, zoom: last?.zoom || MAP.zoom };
+    // خريطة عادية مسطحة مثل ويز: تفتح على آخر مكان شفته، وتروح لموقعك أول ما يتحدد
+    const view = { center: last?.center || MAP.center, zoom: last?.zoom || MAP.zoom };
     await mapView.init(styled, view);
   } catch (e) {
     console.error(e);
@@ -140,7 +140,6 @@ async function boot() {
   ensureHist();
   gps.start();
   traffic.connect(S.settings.showTraffic || S.settings.shareTraffic);
-  if (S.introPending) setTimeout(() => { if (S.introPending) runIntro(); }, 700);
   setTimeout(() => { handleLaunch(); handleHash(); }, 300);
   connectReports();
   onReportsChanged();
@@ -200,7 +199,6 @@ function handleHash() {
   const m = /^#l-([a-z0-9]{6,40})$/i.exec(h);
   if (!m || !estate) return;
   try { history.replaceState(history.state, '', location.pathname + location.search); } catch { /* ignore */ }
-  if (S.introPending) { S.introPending = false; try { sessionStorage.setItem('salka:intro', '1'); } catch { /* ignore */ } }
   estate.open(m[1], { fly: true });
 }
 
@@ -208,13 +206,16 @@ function handleHash() {
 function handleLaunch() {
   const q = new URLSearchParams(location.search);
   if (q.get('source') === 'twa' || document.referrer.startsWith('android-app://')) store.set('twa', 1);
+  if (q.get('apk')) store.set('twaApk', +q.get('apk') || 1);
+  else if (q.get('source') === 'twa') store.set('twaApk', 1);
   const go = q.get('go');
-  if (q.has('go') || q.has('source')) { try { history.replaceState(history.state, '', location.pathname + location.hash); } catch { /* ignore */ } }
+  if (q.has('go') || q.has('source') || q.has('apk')) { try { history.replaceState(history.state, '', location.pathname + location.hash); } catch { /* ignore */ } }
   if (!go || nav) return;
   if (go === 'estate') estate?.enter();
   else if (go === 'estate-add') estate?.startWizard();
   else if (go === 'search') openSearch();
   else if (go === 'home' || go === 'work') goSavedPlace(go);
+  else if (go === 'gpshelp') openGpsHelp(isAndroidApp() ? 'update' : (S.gpsState || 'denied'));
 }
 
 /** هل نعرض «نزّل تطبيق الأندرويد»؟ (أندرويد بالمتصفح بس، مو داخل التطبيق المثبت) */
@@ -222,31 +223,6 @@ function showApkOffer() {
   const ua = navigator.userAgent || '';
   if (!/Android/i.test(ua) || store.get('twa')) return false;
   return !window.matchMedia?.('(display-mode: standalone)')?.matches;
-}
-
-function wantIntro() {
-  if (/^#l-/.test(location.hash) || new URLSearchParams(location.search).has('go')) return false;
-  let done = false;
-  try { done = sessionStorage.getItem('salka:intro') === '1'; } catch { /* ignore */ }
-  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-  return !!(S.settings.intro && S.settings.globe && !done && !reduce);
-}
-
-/** افتتاحية من الفضاء إلى موقعك */
-function runIntro() {
-  S.introPending = false;
-  S.introRunning = true;
-  try { sessionStorage.setItem('salka:intro', '1'); } catch { /* ignore */ }
-  const go = () => {
-    const last = store.get('lastView');
-    const target = S.me?.pos || last?.center || MAP.center;
-    mapView.intro(target, S.me ? 15.6 : (last?.zoom || 12), () => {
-      S.introRunning = false;
-      if (S.me) { mapView.setMe(S.me.pos, S.me.heading, 'dot'); mapView.setAccuracy(S.me.pos, S.me.accuracy); }
-    });
-  };
-  // ننتظر شوية الـGPS حتى نطير لموقعك الحقيقي
-  if (S.me) go(); else { const t0 = Date.now(); const wait = () => (S.me || Date.now() - t0 > 1800 ? go() : setTimeout(wait, 150)); wait(); }
 }
 
 function setSplash(msg) { el.splashMsg.textContent = msg; }
@@ -301,7 +277,7 @@ function onFix(fix) {
   if (!S.firstFix) {
     S.firstFix = true;
     updateNight(false);
-    if (!nav && S.mode === 'browse' && mapView.map && !S.introRunning && !S.introPending) mapView.flyTo(fix.pos, 15.5, { duration: 1200 });
+    if (!nav && S.mode === 'browse' && mapView.map) mapView.flyTo(fix.pos, Math.max(15.5, mapView.map.getZoom()), { duration: 900 });
   }
   if (nav) { navFix(fix); return; }
   if (!mapView.map) return;
@@ -315,7 +291,7 @@ function onGpsError(e) {
   // أخطاء «غير متوفر» و«انتهى الوقت» يعالجها مصدر الـGPS بإعادة التشغيل تلقائياً — ما نزعج المستخدم
   if (e?.code === 1 && !S.gpsDeniedToast) {
     S.gpsDeniedToast = true;
-    toast('ما عندي صلاحية الموقع. اضغط زر موقعي 📍 حتى أشرحلك شلون تفعّلها', 4500);
+    toast(canNativeSetup() ? 'ما عندي صلاحية الموقع — اضغط زر موقعي 📍 وأفعّلها إلك' : 'ما عندي صلاحية الموقع — اضغط زر موقعي 📍', 4500);
   } else if (e?.code === 0) {
     toast('جهازك ما يدعم تحديد الموقع');
   }
@@ -338,15 +314,34 @@ function onGpsState(st) {
   }
   if ((st === 'off' || st === 'coarse') && !S.gpsHelpShown?.[st]) {
     S.gpsHelpShown = { ...(S.gpsHelpShown || {}), [st]: true };
-    if (st === 'off') toast('📍 الموقع (GPS) مطفي بالموبايل — اضغط زر موقعي حتى أشرحلك', 5000);
-    else toast('📍 مفعّل «الموقع التقريبي» — الملاحة تحتاج «الموقع الدقيق». اضغط زر موقعي', 5500);
+    const how = canNativeSetup() ? 'اضغط زر موقعي 📍 وأفعّله إلك' : 'اضغط زر موقعي 📍';
+    if (st === 'off') toast(`📍 الموقع مطفي بالموبايل — ${how}`, 5000);
+    else toast(`📍 الموقع «تقريبي» — الملاحة تحتاج «الدقيق». ${how}`, 5500);
   }
+}
+
+/** تطبيق الأندرويد الجديد (1.4+) يعرف يفتح الصلاحية/تشغيل الموقع بضغطة وحدة */
+function canNativeSetup() { return isAndroidApp() && (store.get('twaApk') || 0) >= 2; }
+
+function openNativeLocationSetup() {
+  const fallback = encodeURIComponent(`${location.origin}${location.pathname}?go=gpshelp`);
+  const url = `intent://location/setup#Intent;scheme=salka;package=iq.salka.app;S.browser_fallback_url=${fallback};end`;
+  S.nativeSetupAt = Date.now();
+  if (typeof window.__salkaNative === 'function') window.__salkaNative(url); else location.href = url;
 }
 
 function locateMe() {
   voice.unlock();
   const st = S.gpsState;
-  if (st === 'denied' || st === 'off' || st === 'coarse') { openGpsHelp(st); if (st !== 'coarse') gps.restart(); return; }
+  const problem = st === 'denied' || st === 'off' || st === 'coarse' || st === 'unsupported';
+  // التطبيق: ضغطة وحدة تفتح نافذة الصلاحية أو «تشغيل الموقع» مباشرة — بدون أي شرح
+  if (canNativeSetup() && (problem || !S.me || S.me.stale)) {
+    openNativeLocationSetup();
+    gps.restart();
+    if (S.me) mapView.flyTo(S.me.pos, Math.max(14, mapView.map.getZoom()), { bearing: 0 });
+    return;
+  }
+  if (problem) { openGpsHelp(isAndroidApp() ? 'update' : st); if (st !== 'coarse') gps.restart(); return; }
   if (S.me && !S.me.stale) {
     S.trackMe = true;
     el.btnLocate.classList.add('active');
@@ -820,7 +815,7 @@ async function previewRoutes(place, { origin = null, keepStops = false } = {}) {
     mapView.flyTo(place.pos, 15);
     openSheet('preview', `${header}<div class="note">ما عرفت موقعك بعد. فعّل الموقع (GPS) أو استخدم مركز الخريطة كنقطة بداية.</div>
       <div class="actions"><button class="btn primary" data-a="retry">حاول مرة ثانية</button><button class="btn" data-a="center">من مركز الخريطة</button></div>
-      <button class="link-btn" data-a="gpshelp">ليش ما يحدد موقعي؟</button>`, previewOpts());
+      <button class="link-btn" data-a="gpshelp">${canNativeSetup() ? '📍 فعّل الموقع' : 'ليش ما يحدد موقعي؟'}</button>`, previewOpts());
     return;
   }
   if (!previewBuried()) openSheet('preview', `${header}<div class="spinner"></div><p class="sub" style="text-align:center">دا أحسب أفضل الطرق…</p>`, previewOpts());
@@ -901,7 +896,7 @@ function bindPreviewSheet(b) {
     if (a === 'addstop') { openSearch({ forStop: true }); el.searchInput.placeholder = 'وين تريد توقف بالطريق؟'; setTimeout(() => el.searchInput.focus(), 50); }
     if (a === 'avoid') { S.settings.avoidMotorway = !S.settings.avoidMotorway; saveSettings(); previewRoutes(S.place, { origin: S.originOverride, keepStops: true }); }
     if (a === 'retry') { const pl = S.place; previewRoutes(pl); }
-    if (a === 'gpshelp') openGpsHelp(S.gpsState === 'denied' || S.gpsState === 'off' || S.gpsState === 'coarse' ? S.gpsState : 'tips');
+    if (a === 'gpshelp') { if (canNativeSetup()) { openNativeLocationSetup(); gps.restart(); } else openGpsHelp(isAndroidApp() ? 'update' : (['denied', 'off', 'coarse'].includes(S.gpsState) ? S.gpsState : 'tips')); }
     if (a === 'center') previewRoutes(S.place, { origin: mapView.center() });
     if (a === 'retry2') previewRoutes(S.place, { origin: S.originOverride, keepStops: true });
   };
@@ -1624,27 +1619,23 @@ function openAbout() {
 
 function isAndroidApp() { return !!store.get('twa') || (document.referrer || '').startsWith('android-app://'); }
 
-/** مساعدة الموقع حسب المشكلة: denied | off | coarse | tips */
+/** مساعدة مختصرة (للمتصفح أو نسخة التطبيق القديمة): denied | off | coarse | tips | update */
 function openGpsHelp(kind = 'denied') {
-  const app = isAndroidApp();
   const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-  const appPerm = 'إعدادات الموبايل ← التطبيقات ← <b>سالكة</b> ← الأذونات ← الموقع ← <b>«السماح أثناء استخدام التطبيق»</b> وفعّل <b>«استخدام الموقع الدقيق»</b>.';
-  const chromePerm = 'بكروم: اضغط على 🔒 جنب الرابط ← الأذونات ← <b>الموقع ← سماح</b>. وإذا ما طلعت: إعدادات الموبايل ← التطبيقات ← Chrome ← الأذونات ← الموقع ← «السماح أثناء الاستخدام» + «الموقع الدقيق».';
-  const iosPerm = 'الإعدادات ← الخصوصية والأمان ← خدمات الموقع ← <b>Safari</b> (أو سالكة) ← «أثناء استخدام التطبيق» وفعّل <b>«الموقع الدقيق»</b>.';
-  const perm = ios ? iosPerm : app ? appPerm : chromePerm;
-  const tips = `<div class="note"><b>حتى يكون الموقع أسرع وأدق بالسيارة:</b><br>
-    • شغّل <b>«دقة الموقع من Google»</b>: الإعدادات ← الموقع ← خدمات الموقع ← دقة الموقع من Google.<br>
-    • خلي الموبايل قريب من الزجاج الأمامي (حامل الموبايل)، مو بالجيب أو تحت الكرسي.<br>
-    • طفّي <b>«توفير البطارية»</b> أثناء السياقة، لأنه يبطّئ الـGPS.<br>
-    • أول مرة بعد تشغيل الموبايل الـGPS يحتاج 10–30 ثانية بمكان مفتوح.</div>`;
-  const body = {
-    denied: `<h2>📍 تفعيل الموقع</h2><p class="sub">${app ? 'التطبيق' : 'المتصفح'} ما عنده صلاحية الموقع. حتى تفعّلها:</p><div class="note">${perm}</div>`,
-    off: `<h2>📍 الموقع مطفي بالموبايل</h2><p class="sub">خدمة الموقع (GPS) مطفية من إعدادات الموبايل نفسه:</p><div class="note">اسحب من فوك الشاشة لجوه ← اضغط <b>«الموقع»</b> حتى يشتغل.<br>أو: الإعدادات ← الموقع ← شغّل.</div>`,
-    coarse: `<h2>📍 فعّل «الموقع الدقيق»</h2><p class="sub">هسه مفعّل «الموقع التقريبي» (يغلط لحد 2–3 كم)، والملاحة تحتاج الدقيق:</p><div class="note">${perm}</div>`,
-    tips: `<h2>📡 ليش يتأخر تحديد الموقع؟</h2><p class="sub">التطبيق يعيد المحاولة وحده كل ما تنقطع الإشارة. إذا بعده يتأخر:</p><div class="note">${perm}</div>`,
-  }[kind] || '';
-  openSheet('gpshelp', `${body}${tips}<div class="actions"><button class="btn primary" data-a="ok">تمام، جرّب هسه</button></div>`, {
-    onRender: (b) => b.onclick = (e) => { if (e.target.closest('[data-a]')) { closeSheet(); gps.restart(); toast('📡 دا أحدد موقعك…'); } },
+  const android = /Android/i.test(navigator.userAgent || '');
+  const steps = {
+    denied: ios ? 'الإعدادات ← خدمات الموقع ← Safari ← «أثناء الاستخدام» + «الموقع الدقيق»' : 'اضغط 🔒 جنب الرابط ← الأذونات ← الموقع ← سماح',
+    off: 'اسحب من فوك الشاشة لجوه ← شغّل «الموقع»',
+    coarse: ios ? 'الإعدادات ← خدمات الموقع ← Safari ← فعّل «الموقع الدقيق»' : 'إعدادات الموبايل ← التطبيقات ← Chrome ← الأذونات ← الموقع ← «الموقع الدقيق»',
+    tips: 'شغّل «دقة الموقع من Google» من إعدادات الموقع، وخلي الموبايل قرب الزجاج',
+  };
+  const titles = { denied: '📍 فعّل الموقع', off: '📍 شغّل الموقع', coarse: '📍 فعّل «الموقع الدقيق»', tips: '📡 الموقع يتأخر؟', update: '📲 حدّث تطبيق سالكة' };
+  const body = kind === 'update'
+    ? '<p class="sub">النسخة الجديدة تفعّل الموقع وتشغّل الـGPS بضغطة وحدة، وما يوكف أبداً أثناء السياقة.</p>'
+    : `<div class="note">${steps[kind] || steps.denied}</div>`;
+  const apkBtn = (kind === 'update' || (android && !isAndroidApp() && kind !== 'tips')) ? `<a class="btn primary" href="download/">📲 ${kind === 'update' ? 'تحديث التطبيق' : 'نزّل التطبيق — يفعّله بضغطة'}</a>` : '';
+  openSheet('gpshelp', `<h2>${titles[kind] || titles.denied}</h2>${body}<div class="actions">${apkBtn}<button class="btn ${apkBtn ? '' : 'primary'}" data-a="ok">جرّب هسه</button></div>`, {
+    onRender: (b) => b.onclick = (e) => { if (e.target.closest('[data-a="ok"]')) { closeSheet(); gps.restart(); toast('📡 دا أحدد موقعك…'); } },
   });
 }
 
@@ -1665,8 +1656,6 @@ function openSettings() {
     ${seg('mode', 'الخريطة', [['auto', 'تلقائي'], ['day', 'نهاري'], ['night', 'ليلي']])}
     ${seg('carIcon', 'شكل السيارة', [['arrow', 'سهم'], ['car', 'سيارة'], ['dot', 'نقطة']])}
     ${sw('tilt', 'منظور مائل ثلاثي الأبعاد', 'أثناء الملاحة')}
-    ${sw('globe', 'الكرة الأرضية والسماء', 'تبعّد الخريطة تشوف الأرض كاملة')}
-    ${sw('intro', 'افتتاحية الطيران من الفضاء', 'أول ما تفتح التطبيق')}
     ${sw('buildings3d', 'مباني ثلاثية الأبعاد')}
     <h3>الصوت</h3>
     ${sw('voice', 'التعليمات الصوتية', voiceNote)}
@@ -1753,7 +1742,6 @@ function applySetting(key) {
       traffic.connect(s.showTraffic || s.shareTraffic);
       mapView.setTraffic(s.showTraffic ? traffic.geojson() : null);
       break;
-    case 'globe': mapView.setGlobe(s.globe); break;
     default:
   }
 }

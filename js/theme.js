@@ -111,10 +111,10 @@ function usesName(tf) {
 export const AR_NAME = ['coalesce', ['get', 'name:ar'], ['get', 'name'], ['get', 'name_int'], ['get', 'name:latin']];
 
 /** تحويل ستايل الخريطة قبل أول رسم (بدون وميض) */
-export function transformStyle(style, P, { buildings3d = true, night = false, globe = true } = {}) {
+export function transformStyle(style, P, { buildings3d = true, night = false } = {}) {
   const s = JSON.parse(JSON.stringify(style));
   s.sky = skyFor(night);
-  if (globe) s.projection = { type: 'globe' };
+  s.projection = { type: 'mercator' }; // خريطة مسطحة (بدون كرة أرضية)
   for (const layer of s.layers || []) {
     const paint = paintFor(layer, P);
     if (Object.keys(paint).length) layer.paint = { ...(layer.paint || {}), ...paint };

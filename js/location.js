@@ -199,6 +199,13 @@ export class GpsSource {
       return;
     }
     if (code === 2) this.unavailable++;
+    // تطبيق الأندرويد يبلغ صراحة إذا الموقع مطفي بالموبايل
+    if (code === 2 && /disabled/i.test(e?.message || '')) {
+      this._scheduleRestart();
+      this._setState('off');
+      this.onError?.(e);
+      return;
+    }
     // أندرويد يوقف التحديثات بعد «الموقع غير متوفر» — لازم نعيد التشغيل
     if (code === 2 || this.now() - this.lastRecv > this.cfg.staleIdleMs) this._scheduleRestart();
     const noFixFor = this.now() - (this.lastRecv || this.startedAt);
@@ -240,9 +247,10 @@ export class GpsSource {
   _installHooks() {
     if (this._hooked) return;
     this._hooked = true;
+    // رجعنا للتطبيق (مثلاً من إعدادات الموقع): نعيد المحاولة فوراً حتى لو كانت مرفوضة
     const wake = () => {
-      if (!this.active || this._hidden() || this.state === 'denied') return;
-      if (this.now() - this.lastRecv > 3000) this.restart();
+      if (!this.active || this._hidden()) return;
+      if (this.state === 'denied' || this.state === 'off' || this.now() - this.lastRecv > 3000) this.restart();
     };
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', wake);
     if (typeof window !== 'undefined') {

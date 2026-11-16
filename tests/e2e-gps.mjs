@@ -28,6 +28,8 @@ const FAKE_GEO = () => {
     if (o.quick) { const q = G.quick.splice(0); q.forEach((x) => x.ok(pos)); }
   };
   G.unavailable = () => { const ws = [...G.watches.values()]; G.watches.clear(); ws.forEach((w) => w.err({ code: 2, message: 'Location not available.' })); };
+  G.disabled = () => { const ws = [...G.watches.values()]; G.watches.clear(); ws.forEach((w) => w.err({ code: 2, message: 'Location services disabled' })); };
+  window.__salkaNative = (u) => { (window.__nativeCalls ||= []).push(u); };
   G.deny = () => { G.mode = 'denied'; [...G.watches.values()].forEach((w) => w.err({ code: 1, message: 'User denied Geolocation' })); };
   const geo = {
     watchPosition(ok, err, opts) { G.watchCalls++; const id = ++G.id; if (G.mode === 'denied') { setTimeout(() => err({ code: 1, message: 'denied' }), 5); return id; } G.watches.set(id, { ok, err, opts }); return id; },
@@ -57,7 +59,7 @@ const check = (name, ok, info = '') => { results.push({ name, ok }); console.log
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function waitFor(fn, ms = 8000) { const t0 = Date.now(); while (Date.now() - t0 < ms) { try { if (await fn()) return true; } catch { /* retry */ } await sleep(80); } return false; }
 
-async function newPage(browser, base) {
+async function newPage(browser, base, suffix = '') {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'ar-IQ', serviceWorkers: 'block' });
   await ctx.addInitScript(FAKE_GEO);
   await ctx.route('**/*', async (route) => {
@@ -79,7 +81,7 @@ async function newPage(browser, base) {
   const page = await ctx.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
-  await page.goto(base + ENTRY);
+  await page.goto(base + ENTRY + suffix);
   await waitFor(() => page.evaluate(() => document.getElementById('splash').classList.contains('hidden') && !!window.__salka?.gps));
   // نسرّع المراقب للاختبار (نفس المنطق، أوقات أقصر)
   await page.evaluate(() => Object.assign(window.__salka.gps.cfg, { dogMs: 150, lostMs: 900, staleNavMs: 1500, staleIdleMs: 3000, retryMin: 150, retryMax: 600, offAfterMs: 1500, coarseAfterMs: 800 }));
@@ -158,14 +160,14 @@ async function main() {
   await D.page.evaluate(() => window.__geo.deny());
   check('الصلاحية المرفوضة: علامة حمرة على زر موقعي', await waitFor(() => D.page.evaluate(() => document.getElementById('btnLocate').classList.contains('gps-bad'))));
   await D.page.click('#btnLocate');
-  check('الصلاحية المرفوضة: شرح التفعيل خطوة بخطوة', await waitFor(() => D.page.evaluate(() => document.getElementById('sheet').dataset.name === 'gpshelp' && document.getElementById('sheetBody').textContent.includes('الموقع الدقيق'))));
+  check('المتصفح، الصلاحية مرفوضة: لوحة مختصرة بسطر واحد', await waitFor(() => D.page.evaluate(() => document.getElementById('sheet').dataset.name === 'gpshelp' && document.getElementById('sheetBody').textContent.includes('فعّل الموقع') && document.querySelectorAll('#sheetBody .note').length === 1)));
 
   // ===================================================== 6) الموقع مطفي بالموبايل
   const O = await newPage(browser, base);
   for (let i = 0; i < 10 && !(await O.page.evaluate(() => window.__salka.gps.state === 'off')); i++) { await O.page.evaluate(() => window.__geo.unavailable()); await sleep(250); }
   check('الموقع مطفي: يكتشفه ويشرح شلون يشغّله', await O.page.evaluate(() => window.__salka.gps.state === 'off' && document.getElementById('btnLocate').classList.contains('gps-bad')));
   await O.page.click('#btnLocate');
-  check('الموقع مطفي: لوحة «اسحب من فوك وشغّل الموقع»', await waitFor(() => O.page.evaluate(() => document.getElementById('sheetBody').textContent.includes('الموقع مطفي'))));
+  check('الموقع مطفي: لوحة «اسحب من فوك وشغّل الموقع»', await waitFor(() => O.page.evaluate(() => document.getElementById('sheetBody').textContent.includes('شغّل الموقع'))));
   await O.page.evaluate((b) => window.__geo.emit(b[0], b[1], { acc: 8 }), B);
   check('أول ما يشتغل الموقع يرجع طبيعي', await waitFor(() => O.page.evaluate(() => window.__salka.gps.state === 'ok' && !document.getElementById('btnLocate').classList.contains('gps-bad'))));
 
@@ -176,7 +178,37 @@ async function main() {
   await C.page.evaluate((b) => window.__geo.emit(b[0] + 0.001, b[1], { acc: 2200 }), B);
   check('الموقع التقريبي: يكتشفه وينبه', await waitFor(() => C.page.evaluate(() => window.__salka.gps.state === 'coarse' && document.getElementById('btnLocate').classList.contains('gps-weak'))));
 
-  const errs = [...D.page.errors, ...O.page.errors, ...C.page.errors];
+  // ===================================================== 8) تطبيق الأندرويد الجديد: ضغطة وحدة بدون أي شرح
+  const T = await newPage(browser, base, '?source=twa&apk=2');
+  check('التطبيق الجديد: يتعرف على النسخة وينظف الرابط', await T.page.evaluate(() => localStorage.getItem('salka:twaApk') === '2' && !location.search));
+  await T.page.evaluate(() => window.__geo.deny());
+  await waitFor(() => T.page.evaluate(() => window.__salka.gps.state === 'denied'));
+  await T.page.click('#btnLocate');
+  const nat = await T.page.evaluate(() => window.__nativeCalls || []);
+  check('التطبيق الجديد: زر موقعي يفتح نافذة التفعيل الأصلية مباشرة', nat.length === 1 && nat[0].startsWith('intent://location/setup#Intent;scheme=salka;package=iq.salka.app;S.browser_fallback_url='), nat[0] || 'ماكو');
+  check('التطبيق الجديد: بدون أي لوحة شرح', await T.page.evaluate(() => document.getElementById('sheet').classList.contains('hidden') || document.getElementById('sheet').dataset.name !== 'gpshelp'));
+  // رجع من الإعدادات وفعّلها: يعيد المحاولة وحده
+  const wcT = await T.page.evaluate(() => window.__geo.watchCalls);
+  await T.page.evaluate(() => { window.__geo.mode = 'normal'; document.dispatchEvent(new Event('visibilitychange')); });
+  check('بعد الرجوع من الإعدادات يعيد تشغيل الموقع فوراً', await waitFor(() => T.page.evaluate((w) => window.__geo.watchCalls > w, wcT), 2000));
+  await T.page.evaluate((b) => window.__geo.emit(b[0], b[1], { acc: 6 }), B);
+  check('والموقع يتحدد', await waitFor(() => T.page.evaluate(() => window.__salka.gps.state === 'ok' && !!window.__salka.S.me)));
+  // الموقع مطفي: التطبيق يبلغ صراحة → «مطفي» فوراً، والزر يطلع نافذة «تشغيل الموقع»
+  await T.page.evaluate(() => window.__geo.disabled());
+  check('التطبيق الجديد: «الموقع مطفي» ينكشف فوراً', await waitFor(() => T.page.evaluate(() => window.__salka.gps.state === 'off'), 1000));
+  await T.page.click('#btnLocate');
+  check('التطبيق الجديد: زر موقعي يطلع نافذة «تشغيل الموقع؟»', await T.page.evaluate(() => (window.__nativeCalls || []).length === 2));
+
+  // ===================================================== 9) نسخة التطبيق القديمة: تحديث
+  const Old = await newPage(browser, base, '?source=twa');
+  await Old.page.evaluate(() => window.__geo.deny());
+  await waitFor(() => Old.page.evaluate(() => window.__salka.gps.state === 'denied'));
+  await Old.page.click('#btnLocate');
+  check('النسخة القديمة: يطلب تحديث التطبيق برابط مباشر', await waitFor(() => Old.page.evaluate(() => document.getElementById('sheetBody').textContent.includes('حدّث تطبيق سالكة') && !!document.querySelector('#sheetBody a[href="download/"]'))));
+  const Fb = await newPage(browser, base, '?go=gpshelp&source=twa');
+  check('الرابط الاحتياطي (?go=gpshelp) يفتح لوحة التحديث', await waitFor(() => Fb.page.evaluate(() => document.getElementById('sheet').dataset.name === 'gpshelp' && document.getElementById('sheetBody').textContent.includes('حدّث'))));
+
+  const errs = [...D.page.errors, ...O.page.errors, ...C.page.errors, ...T.page.errors, ...Old.page.errors, ...Fb.page.errors];
   check('لا أخطاء جافاسكربت (الحالات الخاصة)', errs.length === 0, errs.slice(0, 2).join(' | '));
   await browser.close();
   srv.close();

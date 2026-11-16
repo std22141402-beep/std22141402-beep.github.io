@@ -6,7 +6,7 @@
 export const APP = {
   name: 'سالكة',
   nameEn: 'Salka',
-  version: '1.3.2',
+  version: '1.4.0',
 };
 
 export const MAP = {
@@ -161,8 +161,6 @@ export const DEFAULT_SETTINGS = {
   shareReports: true,    // مشاركة البلاغات مع باقي المستخدمين
   shareTraffic: true,    // مشاركة سرعتي (مجهولة) لحساب الازدحام
   showTraffic: true,     // عرض الازدحام على الخريطة
-  globe: true,           // الكرة الأرضية والسماء
-  intro: true,           // افتتاحية الطيران من الفضاء
   firebaseUrl: '',       // رابط قاعدة Firebase خاصة (اختياري — بدونه نستخدم الخادم المجاني)
   batterySaver: false,
   digits: 'latn',        // latn = 123 | arab = ١٢٣
