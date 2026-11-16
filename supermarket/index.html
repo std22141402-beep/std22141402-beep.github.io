@@ -304,13 +304,15 @@ input[type=search]{-webkit-appearance:none;appearance:none}
 .cam.lib{aspect-ratio:auto;max-height:none}
 .cam.lib .cam-frame{display:none}
 .cam-frame{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:2}
-.box{width:80%;height:44%;border-radius:6px;position:relative;box-shadow:0 0 0 100vmax rgba(0,0,0,.42);--c:var(--accent);background:linear-gradient(var(--c),var(--c)) top left/28px 3px,linear-gradient(var(--c),var(--c)) top left/3px 28px,linear-gradient(var(--c),var(--c)) top right/28px 3px,linear-gradient(var(--c),var(--c)) top right/3px 28px,linear-gradient(var(--c),var(--c)) bottom left/28px 3px,linear-gradient(var(--c),var(--c)) bottom left/3px 28px,linear-gradient(var(--c),var(--c)) bottom right/28px 3px,linear-gradient(var(--c),var(--c)) bottom right/3px 28px;background-repeat:no-repeat}
+.box{width:86%;height:34%;border-radius:6px;position:relative;box-shadow:0 0 0 100vmax rgba(0,0,0,.42);--c:var(--accent);background:linear-gradient(var(--c),var(--c)) top left/28px 3px,linear-gradient(var(--c),var(--c)) top left/3px 28px,linear-gradient(var(--c),var(--c)) top right/28px 3px,linear-gradient(var(--c),var(--c)) top right/3px 28px,linear-gradient(var(--c),var(--c)) bottom left/28px 3px,linear-gradient(var(--c),var(--c)) bottom left/3px 28px,linear-gradient(var(--c),var(--c)) bottom right/28px 3px,linear-gradient(var(--c),var(--c)) bottom right/3px 28px;background-repeat:no-repeat}
 .laser{position:absolute;left:5%;right:5%;top:50%;height:2px;background:var(--accent);box-shadow:0 0 12px var(--accent);animation:laser 1.6s ease-in-out infinite}
 .cam:not(.live) .laser{display:none}
-@keyframes laser{0%,100%{transform:translateY(-30px)}50%{transform:translateY(30px)}}
+@keyframes laser{0%,100%{transform:translateY(-26px)}50%{transform:translateY(26px)}}
 .cam-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;z-index:4;pointer-events:none}
 .cam-btn{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center;pointer-events:auto}
 .cam-btn.on{background:var(--accent);color:#1b1205}
+.cam-tools{display:flex;gap:8px}
+.cam-btn.zoom{width:auto;min-width:44px;padding:0 12px;border-radius:22px;font-weight:800;font-size:14.5px;direction:ltr}
 .cam-msg{position:absolute;left:12px;right:12px;bottom:12px;text-align:center;font-size:14px;background:rgba(0,0,0,.62);padding:10px 12px;border-radius:12px;z-index:4;line-height:1.6}
 .cam-msg.err{background:rgba(176,52,46,.94);font-weight:600}
 .scan-under{padding:14px 16px 2px}
@@ -374,6 +376,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
   <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h4l5-4v13l-5-4H4z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
   <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/></symbol>
   <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></symbol>
+  <symbol id="i-camswitch" viewBox="0 0 24 24"><path d="M3.5 8h3l1.5-2.5h8L17.5 8h3v11.5h-17z"/><path d="M9 13.2a3 3 0 0 1 5.3-1.7M15 13.8a3 3 0 0 1-5.3 1.7M14.6 9.6v2h-2M9.4 17.4v-2h2"/></symbol>
   <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></symbol>
 </svg>
 
@@ -469,7 +472,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 1.0<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 1.1<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -492,7 +495,11 @@ input[type=search]{-webkit-appearance:none;appearance:none}
       <div class="cam-frame"><div class="box"><span class="laser"></span></div></div>
       <div class="cam-top">
         <button class="cam-btn" data-act="close" aria-label="إغلاق"><svg class="i"><use href="#i-x"/></svg></button>
-        <button class="cam-btn" id="torch" data-act="torch" aria-label="الفلاش" hidden><svg class="i"><use href="#i-flash"/></svg></button>
+        <div class="cam-tools">
+          <button class="cam-btn" id="torch" data-act="torch" aria-label="الفلاش" hidden><svg class="i"><use href="#i-flash"/></svg></button>
+          <button class="cam-btn zoom" id="zoom" data-act="zoom" aria-label="تقريب" hidden>1.5×</button>
+          <button class="cam-btn" id="cam-switch" data-act="cam-switch" aria-label="تبديل الكاميرا" hidden><svg class="i"><use href="#i-camswitch"/></svg></button>
+        </div>
       </div>
       <div class="cam-msg" id="cam-msg">جاري تشغيل الكاميرا…</div>
     </div>
@@ -502,7 +509,7 @@ input[type=search]{-webkit-appearance:none;appearance:none}
         <input id="scan-manual" class="inp" inputmode="numeric" placeholder="أو اكتب الباركود هنا" enterkeyhint="go" autocomplete="off">
         <button class="btn pri" data-act="scan-confirm">تم</button>
       </div>
-      <p class="scan-hint">خلي الباركود داخل المربع، وقرّبه أو بعّده شوية لحد ما يوضح</p>
+      <p class="scan-hint">خلي الباركود بالعرض داخل المربع، وبعّد الموبايل بحدود شبر حتى يوضح</p>
     </div>
   </div>
 </div>
@@ -1339,11 +1346,22 @@ function loadDemo() {
   toast(n ? `تمت إضافة ${n} مادة تجريبية ✓` : 'البيانات التجريبية موجودة من قبل');
 }
 
-/* ================= Barcode scanner ================= */
-const WANTED = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'code_93', 'itf', 'codabar', 'qr_code'];
+/* ================= Barcode scanner =================
+   المحرك 1: قارئ الباركود المدمج بالمتصفح (أندرويد/كروم)
+   المحرك 2: ZXing (آيفون وباقي الأجهزة)
+   احتياطي: html5-qrcode
+   نقرأ فقط المنطقة داخل المربع وبدقة الكاميرا الكاملة، كل فريم، حتى تكون القراءة سريعة */
+const SHOP_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'];
+const ZX_URLS = ['https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js', 'https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js'];
 const LIB_URLS = ['https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js', 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'];
-const Scan = { target: 'lookup', session: 0, stream: null, track: null, timer: null, lib: null, torch: false, lastCode: '', lastAt: 0 };
-let nativeCache = null, libPromise = null;
+const MAX_W = 960;
+const VIDEO_BASE = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+const Scan = { target: 'lookup', session: 0, stream: null, track: null, lib: null, torch: false, zoom: 1, zoomCaps: null, lastCode: '', lastAt: 0, forceLib: false, engine: '' };
+let nativeCache = null, libPromise = null, zxPromise = null;
+const kv = {
+  get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } }
+};
 
 async function nativeOK() {
   if (nativeCache !== null) return nativeCache;
@@ -1354,23 +1372,176 @@ async function nativeOK() {
   return nativeCache;
 }
 const libGlobals = () => { const L = window.__Html5QrcodeLibrary__ || {}; return { H: window.Html5Qrcode || L.Html5Qrcode, F: window.Html5QrcodeSupportedFormats || L.Html5QrcodeSupportedFormats }; };
-function loadScript(src) {
+const zxReady = () => { const Z = window.ZXing; return !!(Z && Z.MultiFormatReader && Z.BinaryBitmap && Z.HybridBinarizer && Z.HTMLCanvasElementLuminanceSource && Z.DecodeHintType && Z.BarcodeFormat); };
+function loadScript(src, ok) {
   return new Promise((res, rej) => {
     const s = document.createElement('script'); s.src = src; s.async = true;
     const t = setTimeout(() => { s.remove(); rej(new Error('timeout')); }, 15000);
-    s.onload = () => { clearTimeout(t); libGlobals().H ? res() : rej(new Error('noglobal')); };
+    s.onload = () => { clearTimeout(t); ok() ? res() : rej(new Error('noglobal')); };
     s.onerror = () => { clearTimeout(t); s.remove(); rej(new Error('load')); };
     document.head.appendChild(s);
   });
 }
+const loadFrom = (urls, ok) => urls.reduce((p, u) => p.catch(() => loadScript(u, ok)), Promise.reject(new Error('start')));
 function loadLib() {
   if (libGlobals().H) return Promise.resolve();
-  if (libPromise) return libPromise;
-  libPromise = LIB_URLS.reduce((p, u) => p.catch(() => loadScript(u)), Promise.reject(new Error('start')))
-    .catch(() => { libPromise = null; const e = new Error('lib'); e.name = 'LibError'; throw e; });
+  if (!libPromise) libPromise = loadFrom(LIB_URLS, () => !!libGlobals().H).catch(() => { libPromise = null; const e = new Error('lib'); e.name = 'LibError'; throw e; });
   return libPromise;
 }
+function loadZX() {
+  if (zxReady()) return Promise.resolve();
+  if (!zxPromise) zxPromise = loadFrom(ZX_URLS, zxReady).catch(e => { zxPromise = null; throw e; });
+  return zxPromise;
+}
 function camMsg(text, kind) { const el = $('#cam-msg'); el.textContent = text || ''; el.className = 'cam-msg' + (kind ? ' ' + kind : ''); el.hidden = !text; }
+
+/* ---- decoding engines ---- */
+async function makeNativeEngine() {
+  const sup = await window.BarcodeDetector.getSupportedFormats();
+  const det = new window.BarcodeDetector({ formats: sup.filter(f => SHOP_FORMATS.includes(f)) });
+  let n = 0;
+  return {
+    name: 'native',
+    async decode(canvas, video) {
+      n++;
+      const r = await det.detect(n % 4 === 0 ? video : canvas); // كل رابع فريم نفحص الصورة كاملة احتياطاً
+      return r && r.length && r[0].rawValue ? r[0].rawValue : null;
+    }
+  };
+}
+function makeZXEngine() {
+  const Z = window.ZXing;
+  const formats = ['EAN_13', 'EAN_8', 'UPC_A', 'UPC_E', 'CODE_128', 'CODE_39'].map(k => Z.BarcodeFormat[k]).filter(x => x !== undefined);
+  const mk = hard => { const h = new Map(); h.set(Z.DecodeHintType.POSSIBLE_FORMATS, formats); if (hard) h.set(Z.DecodeHintType.TRY_HARDER, true); const r = new Z.MultiFormatReader(); r.setHints(h); return r; };
+  const fast = mk(false), hard = mk(true);
+  let n = 0, bad = 0;
+  return {
+    name: 'zxing',
+    decode(canvas) {
+      n++;
+      try {
+        const bmp = new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(canvas)));
+        const res = (n % 6 === 0 ? hard : fast).decodeWithState(bmp);
+        bad = 0;
+        return res && res.getText ? res.getText() : null;
+      } catch (e) {
+        // NotFound/Checksum = ما لقى باركود بهذا الفريم (طبيعي). أخطاء البرمجة = نرجع للمكتبة الاحتياطية
+        if (e instanceof TypeError || e instanceof ReferenceError) { if (++bad >= 3) { const f = new Error('zxing'); f.fatal = true; throw f; } }
+        return null;
+      }
+    }
+  };
+}
+
+/* ---- camera ---- */
+const gum = video => navigator.mediaDevices.getUserMedia({ audio: false, video });
+const stopStream = s => { if (s) s.getTracks().forEach(t => t.stop()); };
+const trackCaps = t => { try { return (t && t.getCapabilities && t.getCapabilities()) || {}; } catch (e) { return {}; } };
+const trackDev = t => { try { return (t && t.getSettings && t.getSettings().deviceId) || ''; } catch (e) { return ''; } };
+const hasAF = t => { const f = trackCaps(t).focusMode; return !f || !f.length || f.includes('continuous'); };
+const camIdx = l => { const m = /camera2 (\d+)/i.exec(l || ''); return m ? +m[1] : 50; };
+const isBack = l => /back|rear|environment|خلف/i.test(l || '');
+async function videoInputs() { try { return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput' && d.deviceId); } catch (e) { return []; } }
+
+async function openStream(token) {
+  const saved = kv.get('smpro.cam');
+  let stream = null;
+  if (saved) {
+    try { stream = await gum(Object.assign({ deviceId: { exact: saved } }, VIDEO_BASE)); }
+    catch (e) { if (/NotAllowed|Security/i.test(e && e.name)) throw e; kv.set('smpro.cam', null); }
+  }
+  if (!stream) stream = await gum(Object.assign({ facingMode: { ideal: 'environment' } }, VIDEO_BASE));
+  if (token !== Scan.session) { stopStream(stream); return null; }
+
+  // بعض موبايلات أندرويد تفتح العدسة العريضة اللي ما بيها تركيز تلقائي → الباركود يطلع مضبب.
+  // ندور على العدسة الرئيسية مرة وحدة ونحفظها للمرات الجاية
+  const first = stream.getVideoTracks()[0];
+  if (!saved && !hasAF(first)) {
+    const cur = trackDev(first);
+    const cands = (await videoInputs()).filter(d => d.deviceId !== cur && isBack(d.label)).sort((a, b) => camIdx(a.label) - camIdx(b.label)).slice(0, 4);
+    let found = false;
+    for (const d of cands) {
+      stopStream(stream); stream = null;
+      try { stream = await gum(Object.assign({ deviceId: { exact: d.deviceId } }, VIDEO_BASE)); } catch (e) { continue; }
+      if (token !== Scan.session) { stopStream(stream); return null; }
+      if (hasAF(stream.getVideoTracks()[0])) { found = true; kv.set('smpro.cam', d.deviceId); break; }
+    }
+    if (!found) {
+      stopStream(stream);
+      try { stream = await gum(Object.assign({ deviceId: { exact: cur } }, VIDEO_BASE)); }
+      catch (e) { stream = await gum(Object.assign({ facingMode: { ideal: 'environment' } }, VIDEO_BASE)); }
+      if (token !== Scan.session) { stopStream(stream); return null; }
+    }
+  }
+  return stream;
+}
+const clampZoom = z => Math.min(Scan.zoomCaps.max, Math.max(Scan.zoomCaps.min || 1, z));
+async function tuneTrack(track) {
+  const caps = trackCaps(track), adv = [];
+  if (caps.focusMode && caps.focusMode.includes('continuous')) adv.push({ focusMode: 'continuous' });
+  Scan.zoomCaps = (caps.zoom && caps.zoom.max >= 1.5) ? caps.zoom : null;
+  if (Scan.zoomCaps) { Scan.zoom = clampZoom(+kv.get('smpro.zoom') || 1.5); adv.push({ zoom: Scan.zoom }); }
+  for (const c of adv) { try { await track.applyConstraints({ advanced: [c] }); } catch (e) { } }
+  updateCamTools();
+}
+function updateCamTools() {
+  const zb = $('#zoom');
+  zb.hidden = !Scan.zoomCaps;
+  if (Scan.zoomCaps) zb.textContent = (Math.round(Scan.zoom * 10) / 10) + '×';
+  $('#torch').hidden = !trackCaps(Scan.track).torch;
+}
+async function cycleZoom() {
+  if (!Scan.zoomCaps || !Scan.track) return;
+  const steps = [1, 1.5, 2, 3].filter(z => z >= (Scan.zoomCaps.min || 1) - 0.01 && z <= Scan.zoomCaps.max + 0.01);
+  const i = steps.findIndex(z => Math.abs(z - Scan.zoom) < 0.05);
+  Scan.zoom = steps[(i + 1) % steps.length];
+  try { await Scan.track.applyConstraints({ advanced: [{ zoom: Scan.zoom }] }); } catch (e) { }
+  kv.set('smpro.zoom', String(Scan.zoom));
+  updateCamTools();
+}
+async function switchCamera() {
+  const devs = await videoInputs();
+  if (devs.length < 2) return;
+  devs.sort((a, b) => (isBack(b.label) - isBack(a.label)) || (camIdx(a.label) - camIdx(b.label)));
+  const i = devs.findIndex(d => d.deviceId === trackDev(Scan.track));
+  const next = devs[(i + 1) % devs.length];
+  kv.set('smpro.cam', next.deviceId);
+  toast('تم تبديل الكاميرا');
+  startCamera();
+}
+
+/* المنطقة داخل المربع بإحداثيات الكاميرا الحقيقية (مع هامش) */
+function cropRect(v) {
+  const vw = v.videoWidth, vh = v.videoHeight, vr = v.getBoundingClientRect(), br = $('#cam .box').getBoundingClientRect();
+  if (!vr.width || !vr.height || !br.width) return { x: 0, y: 0, w: vw, h: vh };
+  const s = Math.max(vr.width / vw, vr.height / vh), ox = (vw * s - vr.width) / 2, oy = (vh * s - vr.height) / 2;
+  const px = br.width * 0.08, py = br.height * 0.35;
+  let x = (br.left - vr.left - px + ox) / s, y = (br.top - vr.top - py + oy) / s, w = (br.width + 2 * px) / s, h = (br.height + 2 * py) / s;
+  x = Math.max(0, x); y = Math.max(0, y); w = Math.max(16, Math.min(vw - x, w)); h = Math.max(16, Math.min(vh - y, h));
+  return { x, y, w, h };
+}
+function runLoop(token, engine) {
+  const v = $('#scan-video'), cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+  const next = f => (v.requestVideoFrameCallback ? v.requestVideoFrameCallback(() => f()) : requestAnimationFrame(() => f()));
+  const step = async () => {
+    if (token !== Scan.session) return;
+    if (v.readyState >= 2 && v.videoWidth) {
+      try {
+        const r = cropRect(v), k = Math.min(1, MAX_W / r.w);
+        const w = Math.max(1, Math.round(r.w * k)), h = Math.max(1, Math.round(r.h * k));
+        if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+        cx.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, w, h);
+        const code = await engine.decode(cv, v);
+        if (token !== Scan.session) return;
+        if (code && onScanned(code)) return;
+      } catch (e) {
+        if (e && e.fatal) { if (token === Scan.session) { Scan.forceLib = true; startCamera(); } return; }
+      }
+    }
+    next(step);
+  };
+  next(step);
+}
 
 async function openScanner(target) {
   Scan.target = target || 'lookup';
@@ -1381,69 +1552,58 @@ async function openScanner(target) {
 }
 async function startCamera() {
   await stopCamera();
-  const token = Scan.session;
-  const cam = $('#cam');
+  const token = Scan.session, cam = $('#cam');
   cam.classList.remove('lib', 'live');
-  $('#cam-retry').hidden = true; $('#torch').hidden = true; $('#scan-video').hidden = false;
+  ['#cam-retry', '#torch', '#zoom', '#cam-switch'].forEach(s => { $(s).hidden = true; });
+  $('#scan-video').hidden = false;
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { camErr({ name: 'insecure' }); return; }
   camMsg('جاري تشغيل الكاميرا…');
   try {
-    if (await nativeOK()) await startNative(token); else await startLib(token);
+    const enginePromise = Scan.forceLib ? Promise.resolve(null)
+      : nativeOK().then(ok => ok ? makeNativeEngine() : loadZX().then(makeZXEngine)).catch(() => null);
+    // نفتح الكاميرا ونحمّل القارئ بنفس الوقت
+    const [engine, stream] = await Promise.all([enginePromise, Scan.forceLib ? null : openStream(token)]);
+    if (token !== Scan.session) { stopStream(stream); return; }
+    if (!engine) { stopStream(stream); await startLib(token); return; }
+    Scan.stream = stream; Scan.track = stream.getVideoTracks()[0]; Scan.engine = engine.name;
+    const v = $('#scan-video'); v.srcObject = stream;
+    try { await v.play(); } catch (e) { }
+    if (token !== Scan.session) return;
+    cam.classList.add('live'); camMsg('وجّه الكاميرا على الباركود');
+    await tuneTrack(Scan.track);
+    videoInputs().then(d => { if (token === Scan.session) $('#cam-switch').hidden = d.length < 2; });
+    runLoop(token, engine);
   } catch (e) {
     if (token === Scan.session) camErr(e);
   }
-}
-async function startNative(token) {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });
-  if (token !== Scan.session) { stream.getTracks().forEach(t => t.stop()); return; }
-  Scan.stream = stream; Scan.track = stream.getVideoTracks()[0];
-  const v = $('#scan-video'); v.srcObject = stream;
-  try { await v.play(); } catch (e) { }
-  $('#cam').classList.add('live'); camMsg('وجّه الكاميرا على الباركود');
-  setTimeout(setupTorch, 600);
-  const formats = (await window.BarcodeDetector.getSupportedFormats()).filter(f => WANTED.includes(f));
-  const det = new window.BarcodeDetector({ formats });
-  const tick = async () => {
-    if (token !== Scan.session) return;
-    if (v.readyState >= 2) {
-      try { const r = await det.detect(v); if (token !== Scan.session) return; if (r && r.length && r[0].rawValue) { onScanned(r[0].rawValue); return; } } catch (e) { }
-    }
-    Scan.timer = setTimeout(tick, 110);
-  };
-  tick();
 }
 async function startLib(token) {
   await loadLib();
   if (token !== Scan.session) return;
   const { H, F } = libGlobals();
   const cfg = { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } };
-  if (F) cfg.formatsToSupport = ['EAN_13', 'EAN_8', 'UPC_A', 'UPC_E', 'CODE_128', 'CODE_39', 'CODE_93', 'ITF', 'CODABAR', 'QR_CODE'].map(k => F[k]).filter(x => x !== undefined);
+  if (F) cfg.formatsToSupport = ['EAN_13', 'EAN_8', 'UPC_A', 'UPC_E', 'CODE_128', 'CODE_39'].map(k => F[k]).filter(x => x !== undefined);
   $('#scan-video').hidden = true; $('#cam').classList.add('lib');
   $('#scan-lib').innerHTML = '';
   const lib = new H('scan-lib', cfg);
-  Scan.lib = lib;
+  Scan.lib = lib; Scan.engine = 'html5-qrcode';
   await lib.start({ facingMode: 'environment' }, {
-    fps: 12, disableFlip: true,
-    qrbox: (w, h) => ({ width: Math.max(80, Math.floor(w * 0.86)), height: Math.max(60, Math.floor(Math.min(h * 0.5, w * 0.45))) })
+    fps: 20, disableFlip: true,
+    videoConstraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 }, advanced: [{ focusMode: 'continuous' }] },
+    qrbox: (w, h) => ({ width: Math.max(80, Math.floor(w * 0.9)), height: Math.max(60, Math.floor(Math.min(h * 0.4, w * 0.4))) })
   }, txt => { if (token === Scan.session) onScanned(txt); }, () => { });
   if (token !== Scan.session) { try { await lib.stop(); lib.clear(); } catch (e) { } return; }
   $('#cam').classList.add('live'); camMsg('وجّه الكاميرا على الباركود');
-  setTimeout(setupTorch, 600);
+  setTimeout(() => { if (token !== Scan.session || !Scan.lib) return; let c = null; try { c = Scan.lib.getRunningTrackCapabilities(); } catch (e) { } $('#torch').hidden = !(c && c.torch); }, 600);
 }
 async function stopCamera() {
   Scan.session++;
-  clearTimeout(Scan.timer);
-  if (Scan.stream) { Scan.stream.getTracks().forEach(t => t.stop()); Scan.stream = null; }
+  if (Scan.stream) { stopStream(Scan.stream); Scan.stream = null; }
   const v = $('#scan-video'); if (v) { try { v.pause(); } catch (e) { } v.srcObject = null; }
   if (Scan.lib) { const l = Scan.lib; Scan.lib = null; try { await l.stop(); } catch (e) { } try { l.clear(); } catch (e) { } }
-  Scan.track = null; Scan.torch = false;
+  Scan.track = null; Scan.torch = false; Scan.zoomCaps = null;
   const t = $('#torch'); if (t) t.classList.remove('on');
   const cam = $('#cam'); if (cam) cam.classList.remove('live');
-}
-function setupTorch() {
-  let caps = null;
-  try { caps = Scan.track ? (Scan.track.getCapabilities && Scan.track.getCapabilities()) : (Scan.lib && Scan.lib.getRunningTrackCapabilities && Scan.lib.getRunningTrackCapabilities()); } catch (e) { }
-  $('#torch').hidden = !(caps && caps.torch);
 }
 async function toggleTorch() {
   Scan.torch = !Scan.torch;
@@ -1477,12 +1637,13 @@ function beep() {
   try { navigator.vibrate && navigator.vibrate(60); } catch (e) { }
 }
 function onScanned(raw) {
-  const code = cleanCode(raw); if (!code) return;
+  const code = cleanCode(raw); if (!code) return false;
   const now = Date.now();
-  if (code === Scan.lastCode && now - Scan.lastAt < 1500) return;
+  if (code === Scan.lastCode && now - Scan.lastAt < 1500) return false;
   Scan.lastCode = code; Scan.lastAt = now;
   beep();
   handleCode(code, Scan.target);
+  return true;
 }
 function handleCode(code, target) {
   const p = byCode(code);
@@ -1560,6 +1721,8 @@ const A = {
       : '1. افتح الموقع من <b>Chrome</b>\n2. اضغط القائمة ⋮ فوق\n3. اختار <b>«تثبيت التطبيق»</b> أو «إضافة إلى الشاشة الرئيسية»\n4. وافق — وراح يصير عندك أيقونة مثل أي تطبيق');
   },
   torch: () => toggleTorch(),
+  zoom: () => cycleZoom(),
+  'cam-switch': () => switchCamera(),
   'cam-retry': () => startCamera(),
   'scan-confirm': () => { const c = cleanCode($('#scan-manual').value); if (!c) { toast('اكتب الباركود أول', { type: 'err' }); return; } handleCode(c, Scan.target); }
 };
@@ -1646,9 +1809,9 @@ window.addEventListener('storage', e => { if (e.key === KEY) { db = load(); appl
       }).catch(() => { });
     });
   }
-  // Preload the camera library in the background (only where the built-in detector is missing, e.g. iPhone)
+  // Preload the barcode decoder in the background (only where the built-in detector is missing, e.g. iPhone)
   const idle = window.requestIdleCallback || (fn => setTimeout(fn, 2500));
-  idle(() => { nativeOK().then(ok => { if (!ok && navigator.onLine !== false) loadLib().catch(() => { }); }); });
+  idle(() => { nativeOK().then(ok => { if (!ok && navigator.onLine !== false) loadZX().catch(() => { }); }); });
 })();
 </script>
 </body>
