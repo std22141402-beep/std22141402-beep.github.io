@@ -119,7 +119,7 @@
         t.textContent = 'تنزيل التطبيق';
         var mb = (b.size / 1048576).toFixed(1);
         var d = new Date(b.builtAt);
-        meta.textContent = 'الإصدار ' + arDigits(b.versionName) + ' • ' + mb + ' MB • أندرويد 5 وأحدث • ' + d.toLocaleDateString('ar-IQ-u-nu-latn');
+        meta.textContent = 'الإصدار ' + arDigits(b.versionName) + ' • ' + mb + ' MB • أندرويد 7 وأحدث • ' + d.toLocaleDateString('ar-IQ-u-nu-latn');
         if (b.sha256) document.getElementById('sha').innerHTML = 'بصمة الملف (SHA-256):<br><code>' + b.sha256 + '</code>';
       }).catch(function () {
         t.textContent = 'التطبيق قيد التجهيز — ارجع بعد شوية';

@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
 const ROOT = process.cwd();
@@ -38,6 +38,18 @@ function run(cmd, args, opts = {}) {
     const msg = `${cmd} ${args.map(clean).join(' ')}\n${clean(e.stdout || '').slice(-4000)}\n${clean(e.stderr || '').slice(-4000)}`;
     throw new Error(msg);
   }
+}
+/** يشغل أمر طويل ويحفظ كل مخرجاته بملف، وإذا فشل يطلع سبب الفشل */
+function runLogged(cmd, args, logFile, opts = {}) {
+  const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 256 << 20, ...opts });
+  const all = clean(`${r.stdout || ''}\n${r.stderr || ''}`);
+  fs.writeFileSync(logFile, all);
+  if (r.status !== 0) {
+    const i = all.indexOf('What went wrong');
+    const why = i >= 0 ? all.slice(i, i + 3000) : all.split('\n').filter((l) => /error|FAILED|Exception/i.test(l)).slice(0, 40).join('\n');
+    throw new Error(`${path.basename(cmd)} فشل (${r.status ?? r.signal}):\n${why}`);
+  }
+  return all;
 }
 const abs = (p) => (p.startsWith('http') ? p : cfg.origin + p);
 function walk(dir) {
@@ -77,17 +89,21 @@ function newKeystore(file) {
 }
 
 // --------------------------------------------------------------- 1) PWABuilder
-function shortcutsSuperset() {
-  // نفس الحقول بصيغتين (صيغة المانيفست + صيغة Bubblewrap) حتى تشتغل وية أي نسخة
-  return cfg.shortcuts.map((s) => ({
-    name: s.name, short_name: s.shortName, shortName: s.shortName, url: abs(s.url),
-    icons: [{ src: abs(s.icon), sizes: '192x192', type: 'image/png' }],
-    chosenIconUrl: abs(s.icon),
-  }));
+/** الاختصارات بصيغة المانيفست (مثل ما يرسلها موقع PWABuilder) */
+function manifestShortcuts() {
+  return cfg.shortcuts.map((s) => ({ name: s.name, short_name: s.shortName, url: abs(s.url), icons: [{ src: abs(s.icon), sizes: '192x192', type: 'image/png', purpose: 'any' }] }));
+}
+/** الاختصارات بصيغة Bubblewrap */
+function bubblewrapShortcuts() {
+  return cfg.shortcuts.map((s) => ({ name: s.name, shortName: s.shortName, url: abs(s.url), chosenIconUrl: abs(s.icon) }));
 }
 
-async function viaPwaBuilder(withShortcuts) {
-  const body = {
+const PWAB = 'https://pwabuilder-cloudapk.azurewebsites.net';
+
+function pwaBuilderBody(withShortcuts) {
+  // نفس الحقول اللي يرسلها موقع pwabuilder.com (createAndroidPackageOptionsFromManifest)
+  return {
+    analysisId: null,
     appVersion: req.versionName,
     appVersionCode: req.versionCode,
     backgroundColor: cfg.backgroundColor,
@@ -96,7 +112,7 @@ async function viaPwaBuilder(withShortcuts) {
     enableSiteSettingsShortcut: true,
     fallbackType: 'customtabs',
     features: { locationDelegation: { enabled: true }, playBilling: { enabled: false } },
-    host: cfg.origin,
+    host: new URL(cfg.origin).host,
     iconUrl: abs(cfg.icon),
     includeSourceCode: false,
     isChromeOSOnly: false,
@@ -111,9 +127,8 @@ async function viaPwaBuilder(withShortcuts) {
     navigationDividerColorDark: cfg.navigationDividerColorDark,
     orientation: 'default',
     packageId: cfg.packageId,
-    serviceAccountJsonFile: null,
-    shareTarget: null,
-    shortcuts: withShortcuts ? shortcutsSuperset() : [],
+    pwaUrl: cfg.origin + '/',
+    shortcuts: withShortcuts ? manifestShortcuts() : [],
     signing: {
       file: null, alias: cfg.keyAlias, fullName: 'Salka', organization: 'Salka', organizationalUnit: 'Mobile', countryCode: 'IQ',
       keyPassword: PASS, storePassword: PASS,
@@ -127,32 +142,67 @@ async function viaPwaBuilder(withShortcuts) {
     fullScopeUrl: cfg.origin + '/',
     minSdkVersion: cfg.minSdkVersion,
   };
-  const urls = ['https://pwabuilder-cloudapk.azurewebsites.net/generateAppPackage'];
-  let lastErr = null;
-  for (const url of urls) {
-    log(`PWABuilder → ${url} (shortcuts: ${withShortcuts})`);
-    try {
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(8 * 60 * 1000) });
-      const buf = Buffer.from(await res.arrayBuffer());
-      const isZip = buf.length > 4 && buf[0] === 0x50 && buf[1] === 0x4b;
-      log(`PWABuilder: HTTP ${res.status}, ${buf.length} bytes, zip=${isZip}`);
-      if (!res.ok || !isZip) throw new Error(`PWABuilder رد بخطأ: ${clean(buf.toString('utf8', 0, Math.min(buf.length, 1500)))}`);
-      const zip = path.join(WORK, 'pwabuilder.zip');
-      fs.writeFileSync(zip, buf);
-      const dir = path.join(WORK, 'pwabuilder');
-      fs.rmSync(dir, { recursive: true, force: true });
-      run('unzip', ['-q', '-o', zip, '-d', dir]);
-      const files = walk(dir);
-      log('محتويات الحزمة:', files.map((f) => path.relative(dir, f)).join(', '));
-      const apk = files.find((f) => /\.apk$/i.test(f) && !/unsigned/i.test(f));
-      const aab = files.find((f) => /\.aab$/i.test(f));
-      const ks = files.find((f) => /\.keystore$|\.jks$/i.test(f));
-      if (!apk || !ks) throw new Error('الحزمة ناقصة (APK أو المفتاح)');
-      fs.copyFileSync(zip, path.join(SEC, 'pwabuilder-package.zip'));
-      return { source: 'pwabuilder', apk, aab, keystore: ks };
-    } catch (e) { lastErr = e; log('فشل:', e.message.slice(0, 1500)); }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const isZip = (b) => b.length > 4 && b[0] === 0x50 && b[1] === 0x4b;
+const jobText = (j) => clean([].concat(j?.errors || [], j?.logs || []).map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('\n')).slice(-3000);
+
+/** طريقة موقع PWABuilder الحالية: طابور → متابعة → تنزيل */
+async function pwaBuilderQueue(body) {
+  log('PWABuilder (الطابور الرسمي) → enqueuePackageJob');
+  const res = await fetch(`${PWAB}/enqueuePackageJob`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(60000) });
+  const txt = await res.text();
+  if (!res.ok) throw new Error(`enqueue HTTP ${res.status}: ${clean(txt).slice(0, 1200)}`);
+  const receipt = JSON.parse(txt);
+  if (!receipt?.id || !/^[A-Za-z0-9_-]{43}$/.test(receipt.accessToken || '')) throw new Error('رد الطابور غير متوقع');
+  log('رقم المهمة:', receipt.id, '• مرجع الدعم:', receipt.supportReference);
+  const auth = { Authorization: `Bearer ${receipt.accessToken}` };
+  const t0 = Date.now();
+  let last = '';
+  while (Date.now() - t0 < 20 * 60 * 1000) {
+    await sleep(8000);
+    const jr = await fetch(`${PWAB}/getPackageJob?id=${encodeURIComponent(receipt.id)}`, { headers: auth, cache: 'no-store', signal: AbortSignal.timeout(30000) });
+    if (!jr.ok) { log(`getPackageJob HTTP ${jr.status}`); continue; }
+    const job = await jr.json();
+    if (job.status !== last) { last = job.status; log(`حالة المهمة: ${job.status} (${Math.round((Date.now() - t0) / 1000)}ث)`); }
+    if (job.status === 'Failed') throw new Error(`PWABuilder فشل:\n${jobText(job)}`);
+    if (job.status === 'Completed') {
+      const zr = await fetch(`${PWAB}/downloadPackageZip?id=${encodeURIComponent(receipt.id)}`, { headers: auth, signal: AbortSignal.timeout(5 * 60000) });
+      const buf = Buffer.from(await zr.arrayBuffer());
+      if (!zr.ok || !isZip(buf)) throw new Error(`تنزيل الحزمة HTTP ${zr.status}: ${clean(buf.toString('utf8', 0, 600))}`);
+      return buf;
+    }
   }
-  throw lastErr || new Error('PWABuilder');
+  throw new Error('PWABuilder طوّل أكثر من 20 دقيقة');
+}
+
+/** الطريق المباشر القديم */
+async function pwaBuilderDirect(body) {
+  log('PWABuilder (مباشر) → generateAppPackage');
+  const res = await fetch(`${PWAB}/generateAppPackage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10 * 60 * 1000) });
+  const buf = Buffer.from(await res.arrayBuffer());
+  log(`PWABuilder: HTTP ${res.status}, ${buf.length} bytes`);
+  if (!res.ok || !isZip(buf)) throw new Error(`PWABuilder رد بخطأ: ${clean(buf.toString('utf8', 0, Math.min(buf.length, 2500)))}`);
+  return buf;
+}
+
+async function viaPwaBuilder(mode, withShortcuts) {
+  const body = pwaBuilderBody(withShortcuts);
+  const buf = mode === 'queue' ? await pwaBuilderQueue(body) : await pwaBuilderDirect(body);
+  const zip = path.join(WORK, 'pwabuilder.zip');
+  fs.writeFileSync(zip, buf);
+  const dir = path.join(WORK, 'pwabuilder');
+  fs.rmSync(dir, { recursive: true, force: true });
+  run('unzip', ['-q', '-o', zip, '-d', dir]);
+  const files = walk(dir);
+  log('محتويات الحزمة:', files.map((f) => path.relative(dir, f)).join(', '));
+  const apk = files.find((f) => /\.apk$/i.test(f) && !/unsigned/i.test(f));
+  const aab = files.find((f) => /\.aab$/i.test(f));
+  const ks = files.find((f) => /\.keystore$|\.jks$/i.test(f));
+  if (!apk || !ks) throw new Error('الحزمة ناقصة (APK أو المفتاح)');
+  fs.copyFileSync(zip, path.join(SEC, 'pwabuilder-package.zip'));
+  return { source: `pwabuilder-${mode}`, apk, aab, keystore: ks };
 }
 
 // --------------------------------------------------------------- 2) Bubblewrap
@@ -191,7 +241,7 @@ async function viaBubblewrap() {
     appVersionName: req.versionName,
     appVersionCode: req.versionCode,
     appVersion: req.versionName,
-    shortcuts: shortcutsSuperset(),
+    shortcuts: bubblewrapShortcuts(),
     generatorApp: 'salka-ci',
     webManifestUrl: abs(cfg.manifest),
     fallbackType: 'customtabs',
@@ -214,7 +264,7 @@ async function viaBubblewrap() {
   log('Bubblewrap: انولد مشروع الأندرويد، هسه Gradle');
   const gradlew = path.join(proj, 'gradlew');
   fs.chmodSync(gradlew, 0o755);
-  run(gradlew, ['assembleRelease', 'bundleRelease', '--no-daemon', '--stacktrace', '-q'], { cwd: proj, timeout: 25 * 60 * 1000 });
+  runLogged(gradlew, ['assembleRelease', 'bundleRelease', '--no-daemon', '--stacktrace'], path.join(OUT, 'gradle.log'), { cwd: proj, timeout: 25 * 60 * 1000 });
   const files = walk(path.join(proj, 'app', 'build', 'outputs'));
   const unsigned = files.find((f) => /\.apk$/i.test(f));
   const aab = files.find((f) => /\.aab$/i.test(f));
@@ -283,8 +333,8 @@ async function main() {
   let pkg = null;
   const errors = [];
   if (req.method !== 'bubblewrap') {
-    for (const sc of [true, false]) {
-      try { pkg = await viaPwaBuilder(sc); break; } catch (e) { errors.push(e.message); }
+    for (const [mode, sc] of [['queue', true], ['direct', true], ['queue', false]]) {
+      try { pkg = await viaPwaBuilder(mode, sc); break; } catch (e) { errors.push(e.message); log('فشل:', e.message.slice(0, 2500)); }
     }
   }
   if (!pkg) {

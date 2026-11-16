@@ -1,7 +1,7 @@
 {
   "packageId": "iq.salka.app",
   "origin": "https://std22141402-beep.github.io",
-  "name": "سالكة — ملاحة العراق",
+  "name": "سالكة",
   "launcherName": "سالكة",
   "startUrl": "/?source=twa",
   "themeColor": "#0A1120",
@@ -15,13 +15,33 @@
   "maskableIcon": "/icons/icon-maskable-512.png",
   "monochromeIcon": "/icons/icon-monochrome-512.png",
   "manifest": "/manifest.webmanifest",
-  "minSdkVersion": 21,
+  "minSdkVersion": 24,
   "keyAlias": "salka",
   "certDname": "CN=Salka, OU=Mobile, O=Salka, L=Baghdad, C=IQ",
   "shortcuts": [
-    { "name": "بحث عن مكان", "shortName": "بحث", "url": "/?go=search", "icon": "/icons/sc-search-192.png" },
-    { "name": "عقارات على الخريطة", "shortName": "عقارات", "url": "/?go=estate", "icon": "/icons/sc-estate-192.png" },
-    { "name": "أضف عقارك", "shortName": "أضف عقار", "url": "/?go=estate-add", "icon": "/icons/sc-add-192.png" },
-    { "name": "روح للبيت", "shortName": "البيت", "url": "/?go=home", "icon": "/icons/sc-home-192.png" }
+    {
+      "name": "بحث عن مكان",
+      "shortName": "بحث",
+      "url": "/?go=search",
+      "icon": "/icons/sc-search-192.png"
+    },
+    {
+      "name": "عقارات على الخريطة",
+      "shortName": "عقارات",
+      "url": "/?go=estate",
+      "icon": "/icons/sc-estate-192.png"
+    },
+    {
+      "name": "أضف عقارك",
+      "shortName": "أضف عقار",
+      "url": "/?go=estate-add",
+      "icon": "/icons/sc-add-192.png"
+    },
+    {
+      "name": "روح للبيت",
+      "shortName": "البيت",
+      "url": "/?go=home",
+      "icon": "/icons/sc-home-192.png"
+    }
   ]
 }
