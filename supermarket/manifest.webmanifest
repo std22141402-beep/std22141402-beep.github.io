@@ -8,6 +8,10 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "portrait",
   "background_color": "#F4F2EC",
   "theme_color": "#0E6B4F",
@@ -87,5 +91,10 @@
       "form_factor": "narrow",
       "label": "قائمة النقص والإرسال بالواتساب"
     }
-  ]
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "handle_links": "preferred",
+  "prefer_related_applications": false
 }
