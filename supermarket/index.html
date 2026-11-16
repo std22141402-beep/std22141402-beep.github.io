@@ -13,6 +13,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="سوبرماركت">
+<link rel="apple-touch-startup-image" href="splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1080x2340.png" media="(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -515,7 +527,7 @@ body.kb-open .toast.show{transform:none}
     <div class="group">
       <button class="item dz" data-act="wipe"><svg class="i"><use href="#i-trash"/></svg><span class="t">حذف كل البيانات</span></button>
     </div>
-    <p class="foot">سوبرماركت برو · الإصدار 2.2<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
+    <p class="foot">سوبرماركت برو · الإصدار 2.3<br>بياناتك محفوظة على هذا الجهاز فقط — احفظ نسخة احتياطية بين فترة وثانية</p>
   </section>
 </main>
 
@@ -1441,6 +1453,12 @@ function applyTheme() {
 /* ---------- Files: backup / CSV ---------- */
 function download(name, content, type) {
   const blob = content instanceof Blob ? content : new Blob([content], { type });
+  if (isIOS() && navigator.canShare && navigator.share) {
+    try {
+      const file = new File([blob], name, { type: blob.type || type });
+      if (navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: name }).catch(() => { }); return; }
+    } catch (e) { }
+  }
   const url = URL.createObjectURL(blob), a = document.createElement('a');
   a.href = url; a.download = name; a.rel = 'noopener'; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 3000);
@@ -2384,8 +2402,10 @@ const A = {
   install: async () => {
     if (isStandalone()) { toast('التطبيق مثبت من قبل ✓'); return; }
     if (deferredPrompt) { deferredPrompt.prompt(); try { await deferredPrompt.userChoice; } catch (e) { } deferredPrompt = null; renderSettings(); return; }
-    info('تثبيت التطبيق', isIOS()
-      ? '1. افتح الموقع من <b>Safari</b>\n2. اضغط زر المشاركة (المربع والسهم ⬆️)\n3. اختار <b>«إضافة إلى الشاشة الرئيسية»</b>\n4. اضغط «إضافة» — وراح يصير عندك أيقونة مثل أي تطبيق'
+    const inApp = isIOS() && !/Safari\//.test(navigator.userAgent);
+    info('تثبيت التطبيق على الآيفون', isIOS()
+      ? (inApp ? '⚠️ أنت فاتح الرابط من داخل تطبيق ثاني (مثل واتساب). اضغط «فتح في Safari» أو أيقونة البوصلة أول.\n\n' : '')
+        + '1. بـ <b>Safari</b> اضغط زر المشاركة <b>⬆️</b> (المربع والسهم، تحت بنص الشاشة)\n2. نزّل للأسفل واختار <b>«إضافة إلى الشاشة الرئيسية»</b>\n3. اضغط <b>«إضافة»</b> فوق\n\nراح تطلع أيقونة «سوبرماركت» على الشاشة، تفتح بشاشة كاملة مثل أي تطبيق وتشتغل بدون نت.\n\nإذا عندك محل مشترك، ادخل من الإعدادات ← «الانضمام بكود» حتى تنزل كل المواد.'
       : '1. افتح الموقع من <b>Chrome</b>\n2. اضغط القائمة ⋮ فوق\n3. اختار <b>«تثبيت التطبيق»</b> أو «إضافة إلى الشاشة الرئيسية»\n4. وافق — وراح يصير عندك أيقونة مثل أي تطبيق');
   },
   torch: () => toggleTorch(),
