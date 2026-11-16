@@ -9,31 +9,57 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ORDER = ['config', 'storage', 'geo', 'instructions', 'routing', 'navengine', 'search',
-         'voice', 'theme', 'reports', 'traffic', 'location', 'mapview', 'app']
+         'voice', 'theme', 'reports', 'traffic', 'location', 'mapview',
+         'estate/shape', 'estate/model', 'estate/backend', 'estate/photos', 'estate/ui', 'app']
 
-IMPORT_RE = re.compile(r"^import \{([^}]*)\} from '\./(\w+)\.js';\s*$", re.M)
+IMPORT_RE = re.compile(r"^import \{([^}]*)\} from '(\.{1,2}/[\w/]+)\.js';\s*$", re.M)
 EXPORT_RE = re.compile(r"^export (?:async )?(?:function\*? |const |let |class )([A-Za-z_$][\w$]*)", re.M)
+
+
+def var(name):
+    return '__m_' + name.replace('/', '_')
+
+
+def resolve(importer, rel):
+    """'estate/ui' + '../config' → 'config' ، 'app' + './estate/ui' → 'estate/ui'"""
+    base = pathlib.PurePosixPath(importer).parent
+    parts = []
+    for seg in (base / rel).parts:
+        if seg == '..':
+            if not parts:
+                raise SystemExit(f'مسار خارج js/: {importer} → {rel}')
+            parts.pop()
+        elif seg != '.':
+            parts.append(seg)
+    return '/'.join(parts)
 
 
 def bundle_js():
     parts = []
+    seen = set()
     for name in ORDER:
         src = (ROOT / 'js' / f'{name}.js').read_text(encoding='utf-8')
 
         def imp(m):
             names = [n.strip() for n in m.group(1).split(',') if n.strip()]
             mapped = [f"{a.split(' as ')[0].strip()}: {a.split(' as ')[1].strip()}" if ' as ' in a else a for a in names]
-            dep = m.group(2)
-            if dep not in ORDER[:ORDER.index(name)]:
+            dep = resolve(name, m.group(2))
+            if dep not in seen:
                 raise SystemExit(f'ترتيب الملفات غلط: {name} يحتاج {dep}')
-            return f"const {{ {', '.join(mapped)} }} = __m_{dep};"
+            return f"const {{ {', '.join(mapped)} }} = {var(dep)};"
 
         src = IMPORT_RE.sub(imp, src)
-        if re.search(r'^\s*import\s', src, re.M):
+        if re.search(r'^\s*import\s', src, re.M) or re.search(r'\bimport\(', src):
             raise SystemExit(f'import غير مدعوم في {name}.js')
         exports = EXPORT_RE.findall(src)
         src = re.sub(r'^export ', '', src, flags=re.M)
-        parts.append(f"const __m_{name} = (() => {{\n{src}\nreturn {{ {', '.join(exports)} }};\n}})();")
+        parts.append(f"const {var(name)} = (() => {{\n{src}\nreturn {{ {', '.join(exports)} }};\n}})();")
+        seen.add(name)
+    # كل ملف JS لازم يكون بالقائمة
+    all_js = {str(p.relative_to(ROOT / 'js').with_suffix('')) for p in (ROOT / 'js').rglob('*.js')}
+    missing = all_js - set(ORDER)
+    if missing:
+        raise SystemExit(f'ملفات ناقصة من ORDER: {sorted(missing)}')
     js = '\n'.join(parts)
     if '</script' in js:
         raise SystemExit('النص </script موجود داخل الكود')

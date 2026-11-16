@@ -12,6 +12,7 @@ import { MapView } from './mapview.js';
 import { transformStyle, applyPalette, applyUiTheme, uiColors, isNight, MAP_PALETTES, setBuildings3d } from './theme.js';
 import { ReportStore, reportsOnRoute, TYPE as RTYPE } from './reports.js';
 import { TrafficStore, TrafficProbe, trafficDelay } from './traffic.js';
+import { EstateUI } from './estate/ui.js';
 import { GpsSource, SimSource } from './location.js';
 import { store, deviceId, escapeHtml as esc } from './storage.js';
 
@@ -38,6 +39,7 @@ let previewAbort = null;
 let searchAbort = null;
 let searchTimer = null;
 let wakeLock = null;
+let estate = null;
 
 const $ = (id) => document.getElementById(id);
 const el = {};
@@ -56,8 +58,9 @@ const mapView = new MapView(el.map, {
     el.compassNeedle.style.transform = `rotate(${-b}deg)`;
     el.btnCompass.classList.toggle('hidden', !!nav || Math.abs(b) < 2);
   },
-  onLongPress: (ll) => { if (!nav && S.mode !== 'preview') dropPin(ll); },
-  onMapClick: () => {
+  onLongPress: (ll) => { if (!nav && S.mode !== 'preview' && !estate?.active) dropPin(ll); },
+  onMapClick: (ll, point) => {
+    if (estate && estate.handleClick(ll, point)) return;
     if (S.searchOpen) closeSearch();
     else if (S.sheet?.name === 'pin' && !S.sheetStack.length) closeSheet();
   },
@@ -120,6 +123,14 @@ async function boot() {
     return fatal('صار خطأ بتحميل الخريطة. حاول مرة ثانية.');
   }
   mapView.setRouteColor(uiColors(S.settings).route);
+  estate = new EstateUI({
+    mapView, esc, toast, openSheet, closeSheet, closeAllSheets, ensureHist, reverseGeocode, shareText,
+    me: () => S.me?.pos || null,
+    isNavigating: () => !!nav,
+    sheetName: () => S.sheet?.name || null,
+    routeTo: (pl) => { S.stops = []; previewRoutes(pl); },
+  });
+  window.addEventListener('hashchange', handleHash);
   mapView.setCarStyle(S.settings.carIcon);
   mapView.map.on('moveend', () => {
     if (!nav) store.set('lastView', { center: mapView.center(), zoom: mapView.map.getZoom() });
@@ -130,6 +141,7 @@ async function boot() {
   gps.start();
   traffic.connect(S.settings.showTraffic || S.settings.shareTraffic);
   if (S.introPending) setTimeout(runIntro, 700);
+  setTimeout(handleHash, 300);
   connectReports();
   onReportsChanged();
   setInterval(() => updateNight(false), 5 * 60 * 1000);
@@ -180,6 +192,16 @@ function reportStatusText() {
   if (st === 'live') return `🟢 متصل ب${where} — بلاغك يوصل للكل فوراً`;
   if (st === 'error') return `🔴 تعذر الاتصال ب${where} — بلاغك ينحفظ وينرسل أول ما يرجع النت`;
   return `🟡 دا يتصل ب${where}…`;
+}
+
+/** روابط المشاركة: #l-رقم_الإعلان */
+function handleHash() {
+  const h = location.hash || '';
+  const m = /^#l-([a-z0-9]{6,40})$/i.exec(h);
+  if (!m || !estate) return;
+  try { history.replaceState(history.state, '', location.pathname + location.search); } catch { /* ignore */ }
+  if (S.introPending) { S.introPending = false; try { sessionStorage.setItem('salka:intro', '1'); } catch { /* ignore */ } }
+  estate.open(m[1], { fly: true });
 }
 
 function wantIntro() {
@@ -317,7 +339,7 @@ function toast(msg, ms = 2600) {
 S.sheetStack = [];
 S.histPushed = false;
 let lastBackT = 0;
-const anyOverlay = () => !!S.sheet || S.searchOpen;
+const anyOverlay = () => !!S.sheet || S.searchOpen || !!(estate && estate.active);
 function ensureHist() {
   if (S.histPushed) return;
   S.histPushed = true;
@@ -330,6 +352,7 @@ window.addEventListener('popstate', () => {
   if (S.sheet) closeSheet({ fromPop: true });
   else if (S.searchOpen) closeSearch({ fromPop: true });
   else if (nav) toast('حتى توقف الملاحة اضغط زر ✕');
+  else if (estate && (estate.active || estate.draw)) estate.back();
   else {
     lastBackT = Date.now();
     toast('اضغط رجوع مرة ثانية للخروج', 2400);
@@ -609,6 +632,11 @@ function onResultClick(e) {
     previewRoutes(S.place, { origin: S.originOverride, keepStops: true });
     return;
   }
+  if (estate?.active) {
+    closeSearch();
+    mapView.flyTo(pl.pos, 15.5, { pitch: 0 });
+    return;
+  }
   S.stops = [];
   closeSearch();
   previewRoutes(pl);
@@ -616,7 +644,7 @@ function onResultClick(e) {
 
 function renderChips() {
   const p = places();
-  let html = `<button class="chip" data-go="home">${icon('i-home')}البيت</button><button class="chip" data-go="work">${icon('i-work')}الشغل</button>`;
+  let html = `<button class="chip estate-chip" data-go="estate">🏡 عقارات</button><button class="chip" data-go="home">${icon('i-home')}البيت</button><button class="chip" data-go="work">${icon('i-work')}الشغل</button>`;
   html += CATEGORIES.slice(0, 5).map((c) => `<button class="chip" data-cat="${c.id}">${icon(c.icon)}${esc(c.label)}</button>`).join('');
   el.quickChips.innerHTML = html;
   el.quickChips.dataset.home = p.home ? '1' : '';
@@ -628,6 +656,7 @@ function onChipClick(e) {
   voice.unlock();
   if (c.dataset.cat) { searchCategory(c.dataset.cat); return; }
   const key = c.dataset.go;
+  if (key === 'estate') { estate?.enter(); return; }
   const p = places()[key];
   if (p) previewRoutes({ ...p, name: key === 'home' ? 'البيت' : 'الشغل', sub: p.name });
   else toast(`ابحث عن ${key === 'home' ? 'بيتك' : 'شغلك'} أو اضغط مطولاً على الخريطة، وبعدين احفظه بزر النجمة ⭐`, 4200);
@@ -845,6 +874,7 @@ function startNav(route, { sim: simulate = false } = {}) {
   voice.unlock();
   const dest = S.place;
   if (!dest) return;
+  if (estate?.active) estate.exit();
   closeAllSheets({ silent: true });
   hideAlert();
   previewAbort?.abort();
@@ -1470,7 +1500,10 @@ function openMenu() {
     <h3>خدمات سالكة</h3>
     <div class="menu-list">
       <button class="item" data-a="soon-taxi"><span class="item-ico">🚕</span><span class="item-main"><div class="item-name">تكسي سالكة</div><div class="item-sub">اطلب سيارة أو اشتغل سائق</div></span><span class="badge warn">قريباً</span></button>
-      <button class="item" data-a="soon-estate"><span class="item-ico">🏡</span><span class="item-main"><div class="item-name">عقارات على الخريطة</div><div class="item-sub">بيع وشراء القطع والبيوت بموقعها</div></span><span class="badge warn">قريباً</span></button>
+      <button class="item" data-a="estate"><span class="item-ico">🏡</span><span class="item-main"><div class="item-name">عقارات على الخريطة</div><div class="item-sub">بيوت، أراضي، بساتين، محلات، مزارع — بيع وإيجار</div></span></button>
+      <button class="item" data-a="estate-add"><span class="item-ico">＋</span><span class="item-main"><div class="item-name">أضف عقارك</div><div class="item-sub">ارسم قطعتك على الخريطة وانشرها بدقيقتين</div></span></button>
+      <button class="item" data-a="estate-mine"><span class="item-ico">📋</span><span class="item-main"><div class="item-name">إعلاناتي</div></span></button>
+      <button class="item" data-a="estate-favs"><span class="item-ico">❤</span><span class="item-main"><div class="item-name">العقارات المحفوظة</div></span></button>
     </div>`, {
     onRender: (b) => b.onclick = async (e) => {
       const a = e.target.closest('[data-a]')?.dataset.a;
@@ -1479,7 +1512,11 @@ function openMenu() {
       if (a === 'shareme') { if (S.me) sharePlace({ name: 'موقعي', pos: S.me.pos }); else toast('ما عندي موقعك بعد'); }
       if (a === 'settings') openSettings();
       if (a === 'about') openAbout();
-      if (a === 'soon-taxi' || a === 'soon-estate') toast(a === 'soon-taxi' ? '🚕 خدمة التكسي قيد التجهيز — بالتحديث الجاي' : '🏡 خدمة العقارات قيد التجهيز — بالتحديث الجاي', 3500);
+      if (a === 'soon-taxi') toast('🚕 خدمة التكسي قيد التجهيز — بالتحديث الجاي', 3500);
+      if (a === 'estate') { closeAllSheets({ silent: true }); estate?.enter(); }
+      if (a === 'estate-add') { closeAllSheets({ silent: true }); estate?.startWizard(); }
+      if (a === 'estate-mine') { closeAllSheets({ silent: true }); estate?.openMine(); }
+      if (a === 'estate-favs') { closeAllSheets({ silent: true }); estate?.openFavs(); }
       if (a === 'install' && S.installPrompt) { S.installPrompt.prompt(); try { await S.installPrompt.userChoice; } catch { /* ignore */ } S.installPrompt = null; closeSheet(); }
     },
   });
@@ -1661,6 +1698,6 @@ function offerResume() {
 }
 
 // للاختبارات والتطوير
-window.__salka = { S, get nav() { return nav; }, mapView, reports, traffic, probe, TRAFFIC, sim, gps, voice, startNav, endNav, previewRoutes, reroute };
+window.__salka = { S, get nav() { return nav; }, get estate() { return estate; }, mapView, reports, traffic, probe, TRAFFIC, sim, gps, voice, startNav, endNav, previewRoutes, reroute };
 
 boot().catch((e) => { console.error(e); fatal('صار خطأ غير متوقع. حاول مرة ثانية.'); });

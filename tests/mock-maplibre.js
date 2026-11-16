@@ -40,7 +40,7 @@
     addSource(id, src) {
       if (this._sources[id]) fail(`source exists ${id}`);
       const self = this;
-      this._sources[id] = { spec: src, data: src.data, setData(d) {
+      this._sources[id] = { spec: src, data: src.data, getClusterExpansionZoom() { return Promise.resolve(15); }, setData(d) {
         if (!d || !d.type) fail('setData invalid');
         if (d.type === 'Feature' && d.geometry?.type === 'LineString' && d.geometry.coordinates.length < 2) fail('line < 2 coords');
         this.data = d; calls.setData++; self._lastData = { id, d };
@@ -89,7 +89,25 @@
     getContainer() { return this._c; }
     setSky(sky) { if (!sky || !sky['sky-color']) fail('bad sky'); this._style.sky = sky; calls.sky = (calls.sky || 0) + 1; }
     setProjection(p) { if (!p || !['globe', 'mercator'].includes(p.type)) fail('bad projection'); this._style.projection = p; calls.projection = p.type; }
-    queryRenderedFeatures() { return []; }
+    queryRenderedFeatures(geom, opts) { return window.__qrf ? window.__qrf(geom, opts) : []; }
+    addImage(name, img, opts) {
+      if (!img || !(img.width > 0) || !img.data || img.data.length !== img.width * img.height * 4) fail(`bad image ${name}`);
+      if (opts?.content && (opts.content[2] > img.width || opts.content[3] > img.height)) fail('image content out of bounds');
+      (this._imgs ||= {})[name] = img;
+    }
+    hasImage(name) { return !!(this._imgs || {})[name]; }
+    getBounds() {
+      const dpp = 360 / (256 * 2 ** this.zoom);
+      const w = (this._c.clientWidth || 390) * dpp / 2, h = (this._c.clientHeight || 844) * dpp / 2 * Math.cos(this.center[1] * Math.PI / 180);
+      const [x, y] = this.center;
+      return { getWest: () => x - w, getEast: () => x + w, getSouth: () => y - h, getNorth: () => y + h };
+    }
+    project(ll) {
+      const W = this._c.clientWidth || 390, H = this._c.clientHeight || 844;
+      const p = Array.isArray(ll) ? ll : ll && 'lng' in ll ? [ll.lng, ll.lat] : this.center;
+      const b = this.getBounds();
+      return { x: ((p[0] - b.getWest()) / (b.getEast() - b.getWest())) * W, y: ((b.getNorth() - p[1]) / (b.getNorth() - b.getSouth())) * H };
+    }
     resize() {}
   }
 
@@ -101,6 +119,8 @@
     setRotation(r) { if (!Number.isFinite(r)) fail('bad rotation'); this._rot = r; return this; }
     getElement() { return this._el; }
     getLngLat() { return new LngLat(...this._ll); }
+    on(ev, fn) { (this._ev ||= {})[ev] = fn; return this; }
+    _drag(ll) { this.setLngLat(ll); this._ev?.drag?.(); }
   }
 
   window.maplibregl = { Map, Marker, LngLat, setRTLTextPlugin: () => Promise.resolve() };

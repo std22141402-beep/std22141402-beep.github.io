@@ -125,7 +125,7 @@ export class MapView {
       let fs = [];
       try { fs = map.getLayer('salka-alts-hit') ? map.queryRenderedFeatures(e.point, { layers: ['salka-alts-hit'] }) : []; } catch { fs = []; }
       if (fs.length) { this.h.onAltClick?.(fs[0].properties.idx); return; }
-      this.h.onMapClick?.(e.lngLat.toArray());
+      this.h.onMapClick?.(e.lngLat.toArray(), e.point);
     });
 
     // ضغطة مطولة
