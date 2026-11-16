@@ -6,7 +6,7 @@
 export const APP = {
   name: 'سالكة',
   nameEn: 'Salka',
-  version: '1.3.1',
+  version: '1.3.2',
 };
 
 export const MAP = {

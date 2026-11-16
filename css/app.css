@@ -526,3 +526,14 @@ body.night .re-cta { background: linear-gradient(transparent, #0B1222 30%); }
   .re-bar { right: auto; max-width: 460px; }
 }
 a.item { text-decoration: none; color: inherit; }
+
+/* مؤشر حالة الـGPS على زر موقعي */
+#btnLocate { position: relative; }
+#btnLocate.gps-searching::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2.5px solid var(--accent); opacity: .0; animation: gpsPulse 1.4s ease-out infinite; pointer-events: none; }
+#btnLocate.gps-searching svg { animation: gpsBlink 1.4s ease-in-out infinite; }
+#btnLocate.gps-weak::before, #btnLocate.gps-bad::before { content: ""; position: absolute; top: 5px; right: 5px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--card-solid, #fff); }
+#btnLocate.gps-weak::before { background: #F5A623; }
+#btnLocate.gps-bad::before { background: #E53935; }
+@keyframes gpsPulse { 0% { transform: scale(.85); opacity: .75; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes gpsBlink { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { #btnLocate.gps-searching::after, #btnLocate.gps-searching svg { animation: none; } }

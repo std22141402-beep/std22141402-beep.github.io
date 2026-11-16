@@ -276,25 +276,132 @@ export function sampleLine(coords, maxPoints = 10) {
 }
 
 /** فلتر كالمان مبسط للـGPS: ينعّم الارتجاج بدون ما يأخر الحركة السريعة */
+/**
+ * فلتر كالمان بنموذج «سرعة ثابتة» (موقع + سرعة لكل محور).
+ * - ما يتأخر ورا السيارة السريعة (النموذج يعرف السيارة ماشية).
+ * - يستخدم سرعة واتجاه الـGPS (دوبلر، دقيقة جداً) كقياس إضافي.
+ * - لما السيارة واكفة يثبتها (ما ترجف بالإشارة).
+ * - يرفض القفزة الوحدة الغلط، وإذا تكررت القفزة بنفس المكان يقبلها (خروج من نفق).
+ */
 export class GpsSmoother {
-  constructor() { this.v = -1; }
-  reset() { this.v = -1; }
-  process(pos, accuracy, t, speed) {
-    const acc = Math.max(accuracy || 10, 1);
-    if (this.v < 0 || (this.last && haversine(this.last, pos) > Math.max(250, acc * 4))) {
-      this.lng = pos[0]; this.lat = pos[1]; this.v = acc * acc; this.t = t;
-      this.last = [this.lng, this.lat];
-      return this.last;
+  constructor({ accelNoise = 2.5, resetAfterS = 30 } = {}) {
+    this.qa = accelNoise * accelNoise;
+    this.resetAfterS = resetAfterS;
+    this.reset();
+  }
+
+  reset() { this.ok = false; this.outlier = null; this.vel = [0, 0]; }
+
+  _init(pos, accuracy, t, speed = null, heading = null) {
+    this.lon0 = pos[0]; this.lat0 = pos[1];
+    this.kx = 111320 * Math.cos(this.lat0 * Math.PI / 180); this.ky = 110574;
+    const r = this._r(accuracy);
+    // السرعة الابتدائية من الجهاز إذا موجودة (أدق بداية بعد نفق أو أول قراءة)
+    const known = speed != null && Number.isFinite(speed) && heading != null && Number.isFinite(heading) && speed >= 1;
+    const h = known ? heading * Math.PI / 180 : 0;
+    const vx = known ? speed * Math.sin(h) : 0, vy = known ? speed * Math.cos(h) : 0;
+    const pv = known ? Math.pow(Math.max(0.6, speed * 0.08), 2) : (speed != null && speed < 0.4 ? 0.25 : 100);
+    // [موقع، سرعة، تباين الموقع، التباين المشترك، تباين السرعة] لكل محور
+    this.X = { p: 0, v: vx, P11: r, P12: 0, P22: pv };
+    this.Y = { p: 0, v: vy, P11: r, P12: 0, P22: pv };
+    this.t = t; this.ok = true; this.outlier = null;
+  }
+
+  _r(accuracy) { const a = Math.max(3, accuracy || 15) / 1.5; return a * a; } // دقة 68% ← انحراف لكل محور
+
+  _toLocal(pos) { return [(pos[0] - this.lon0) * this.kx, (pos[1] - this.lat0) * this.ky]; }
+  _toLonLat(x, y) { return [this.lon0 + x / this.kx, this.lat0 + y / this.ky]; }
+
+  _predict(a, dt) {
+    const q = this.qa, dt2 = dt * dt;
+    a.p += a.v * dt;
+    a.P11 += 2 * dt * a.P12 + dt2 * a.P22 + q * dt2 * dt2 / 4;
+    a.P12 += dt * a.P22 + q * dt2 * dt / 2;
+    a.P22 += q * dt2;
+  }
+
+  _updPos(a, z, r) {
+    const S = a.P11 + r, K1 = a.P11 / S, K2 = a.P12 / S, y = z - a.p;
+    a.p += K1 * y; a.v += K2 * y;
+    const P11 = a.P11, P12 = a.P12;
+    a.P11 = (1 - K1) * P11; a.P12 = (1 - K1) * P12; a.P22 -= K2 * P12;
+  }
+
+  _updVel(a, z, r) {
+    const S = a.P22 + r, K1 = a.P12 / S, K2 = a.P22 / S, y = z - a.v;
+    a.p += K1 * y; a.v += K2 * y;
+    const P12 = a.P12, P22 = a.P22;
+    a.P11 -= K1 * P12; a.P12 = (1 - K2) * P12; a.P22 = (1 - K2) * P22;
+  }
+
+  /**
+   * @param {[number,number]} pos  القراءة الخام
+   * @param {number} accuracy      دقة الـGPS بالمتر
+   * @param {number} t             وقت الاستلام (ملي ثانية)
+   * @param {number|null} speed    سرعة الجهاز م/ث (إذا موجودة)
+   * @param {number|null} heading  اتجاه الجهاز بالدرجات (إذا موجود)
+   * @returns {[number,number]} الموقع المنعّم
+   */
+  process(pos, accuracy, t, speed = null, heading = null) {
+    if (!this.ok || !Number.isFinite(this.t) || (t - this.t) / 1000 > this.resetAfterS || (t - this.t) < -5000) {
+      this._init(pos, accuracy, t, speed, heading);
+      return this._out();
     }
-    const dt = Math.max(0, (t - this.t) / 1000);
-    this.t = t;
-    const q = Math.max(3, speed || 0);
-    this.v += dt * q * q;
-    const k = this.v / (this.v + acc * acc);
-    this.lng += k * (pos[0] - this.lng);
-    this.lat += k * (pos[1] - this.lat);
-    this.v = (1 - k) * this.v;
-    this.last = [this.lng, this.lat];
+    const dt = Math.max(0, Math.min(10, (t - this.t) / 1000));
+    this.t = Math.max(this.t, t);
+    if (dt > 0) { this._predict(this.X, dt); this._predict(this.Y, dt); }
+    const [zx, zy] = this._toLocal(pos);
+    const r = this._r(accuracy);
+    // فحص القفزات: أكثر من 5 انحرافات وأكثر من 80 متر
+    const ix = zx - this.X.p, iy = zy - this.Y.p;
+    const jump = Math.hypot(ix, iy);
+    // بعد انقطاع طويل (نفق/جسر): القفزة الكبيرة = الموقع الحقيقي رجع، نبدأ منه
+    if (dt > 4 && jump > Math.max(80, 3 * (accuracy || 15))) {
+      this._init(pos, accuracy, t, speed, heading);
+      return this._out();
+    }
+    const sx = this.X.P11 + r, sy = this.Y.P11 + r;
+    if (jump > 80 && (ix * ix / sx + iy * iy / sy) > 50) {
+      const prev = this.outlier;
+      this.outlier = { pos, t };
+      // قفزتين متتاليتين بنفس المكان = الموقع فعلاً تغيّر (طلعنا من نفق مثلاً)
+      if (prev && haversine(prev.pos, pos) < Math.max(60, (accuracy || 20) * 2) + (Math.abs(t - prev.t) / 1000) * Math.max(speed || 0, 25)) {
+        this._init(pos, accuracy, t, speed, heading);
+        return this._out();
+      }
+      return this._out();
+    }
+    this.outlier = null;
+    this._updPos(this.X, zx, r);
+    this._updPos(this.Y, zy, r);
+    // سرعة الجهاز (دوبلر) قياس دقيق للسرعة
+    if (speed != null && Number.isFinite(speed) && speed >= 0) {
+      if (speed < 0.4) {
+        this._updVel(this.X, 0, 0.09); this._updVel(this.Y, 0, 0.09);
+      } else if (heading != null && Number.isFinite(heading) && speed >= 1) {
+        const h = heading * Math.PI / 180;
+        const rv = Math.pow(Math.max(0.6, speed * 0.08), 2);
+        this._updVel(this.X, speed * Math.sin(h), rv); this._updVel(this.Y, speed * Math.cos(h), rv);
+      }
+    }
+    return this._out();
+  }
+
+  _out() {
+    this.vel = [this.X.v, this.Y.v];
+    this.last = this._toLonLat(this.X.p, this.Y.p);
     return this.last;
   }
+
+  /** السرعة المحسوبة (م/ث) */
+  get speed() { return Math.hypot(this.vel[0], this.vel[1]); }
+
+  /** الاتجاه المحسوب من السرعة (درجات) أو null إذا واكف */
+  get heading() {
+    if (this.speed < 1.5) return null;
+    return (Math.atan2(this.vel[0], this.vel[1]) * 180 / Math.PI + 360) % 360;
+  }
+
+  /** نصف قطر عدم اليقين الحالي بالمتر */
+  get uncertainty() { return this.ok ? Math.sqrt((this.X.P11 + this.Y.P11) / 2) * 1.5 : Infinity; }
 }

@@ -547,6 +547,17 @@ body.night .re-cta { background: linear-gradient(transparent, #0B1222 30%); }
 }
 a.item { text-decoration: none; color: inherit; }
 
+/* مؤشر حالة الـGPS على زر موقعي */
+#btnLocate { position: relative; }
+#btnLocate.gps-searching::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2.5px solid var(--accent); opacity: .0; animation: gpsPulse 1.4s ease-out infinite; pointer-events: none; }
+#btnLocate.gps-searching svg { animation: gpsBlink 1.4s ease-in-out infinite; }
+#btnLocate.gps-weak::before, #btnLocate.gps-bad::before { content: ""; position: absolute; top: 5px; right: 5px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--card-solid, #fff); }
+#btnLocate.gps-weak::before { background: #F5A623; }
+#btnLocate.gps-bad::before { background: #E53935; }
+@keyframes gpsPulse { 0% { transform: scale(.85); opacity: .75; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes gpsBlink { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { #btnLocate.gps-searching::after, #btnLocate.gps-searching svg { animation: none; } }
+
 </style>
 </head>
 <body>
@@ -676,7 +687,7 @@ const __m_config = (() => {
 const APP = {
   name: 'سالكة',
   nameEn: 'Salka',
-  version: '1.3.1',
+  version: '1.3.2',
 };
 
 const MAP = {
@@ -1163,27 +1174,134 @@ function sampleLine(coords, maxPoints = 10) {
 }
 
 /** فلتر كالمان مبسط للـGPS: ينعّم الارتجاج بدون ما يأخر الحركة السريعة */
+/**
+ * فلتر كالمان بنموذج «سرعة ثابتة» (موقع + سرعة لكل محور).
+ * - ما يتأخر ورا السيارة السريعة (النموذج يعرف السيارة ماشية).
+ * - يستخدم سرعة واتجاه الـGPS (دوبلر، دقيقة جداً) كقياس إضافي.
+ * - لما السيارة واكفة يثبتها (ما ترجف بالإشارة).
+ * - يرفض القفزة الوحدة الغلط، وإذا تكررت القفزة بنفس المكان يقبلها (خروج من نفق).
+ */
 class GpsSmoother {
-  constructor() { this.v = -1; }
-  reset() { this.v = -1; }
-  process(pos, accuracy, t, speed) {
-    const acc = Math.max(accuracy || 10, 1);
-    if (this.v < 0 || (this.last && haversine(this.last, pos) > Math.max(250, acc * 4))) {
-      this.lng = pos[0]; this.lat = pos[1]; this.v = acc * acc; this.t = t;
-      this.last = [this.lng, this.lat];
-      return this.last;
+  constructor({ accelNoise = 2.5, resetAfterS = 30 } = {}) {
+    this.qa = accelNoise * accelNoise;
+    this.resetAfterS = resetAfterS;
+    this.reset();
+  }
+
+  reset() { this.ok = false; this.outlier = null; this.vel = [0, 0]; }
+
+  _init(pos, accuracy, t, speed = null, heading = null) {
+    this.lon0 = pos[0]; this.lat0 = pos[1];
+    this.kx = 111320 * Math.cos(this.lat0 * Math.PI / 180); this.ky = 110574;
+    const r = this._r(accuracy);
+    // السرعة الابتدائية من الجهاز إذا موجودة (أدق بداية بعد نفق أو أول قراءة)
+    const known = speed != null && Number.isFinite(speed) && heading != null && Number.isFinite(heading) && speed >= 1;
+    const h = known ? heading * Math.PI / 180 : 0;
+    const vx = known ? speed * Math.sin(h) : 0, vy = known ? speed * Math.cos(h) : 0;
+    const pv = known ? Math.pow(Math.max(0.6, speed * 0.08), 2) : (speed != null && speed < 0.4 ? 0.25 : 100);
+    // [موقع، سرعة، تباين الموقع، التباين المشترك، تباين السرعة] لكل محور
+    this.X = { p: 0, v: vx, P11: r, P12: 0, P22: pv };
+    this.Y = { p: 0, v: vy, P11: r, P12: 0, P22: pv };
+    this.t = t; this.ok = true; this.outlier = null;
+  }
+
+  _r(accuracy) { const a = Math.max(3, accuracy || 15) / 1.5; return a * a; } // دقة 68% ← انحراف لكل محور
+
+  _toLocal(pos) { return [(pos[0] - this.lon0) * this.kx, (pos[1] - this.lat0) * this.ky]; }
+  _toLonLat(x, y) { return [this.lon0 + x / this.kx, this.lat0 + y / this.ky]; }
+
+  _predict(a, dt) {
+    const q = this.qa, dt2 = dt * dt;
+    a.p += a.v * dt;
+    a.P11 += 2 * dt * a.P12 + dt2 * a.P22 + q * dt2 * dt2 / 4;
+    a.P12 += dt * a.P22 + q * dt2 * dt / 2;
+    a.P22 += q * dt2;
+  }
+
+  _updPos(a, z, r) {
+    const S = a.P11 + r, K1 = a.P11 / S, K2 = a.P12 / S, y = z - a.p;
+    a.p += K1 * y; a.v += K2 * y;
+    const P11 = a.P11, P12 = a.P12;
+    a.P11 = (1 - K1) * P11; a.P12 = (1 - K1) * P12; a.P22 -= K2 * P12;
+  }
+
+  _updVel(a, z, r) {
+    const S = a.P22 + r, K1 = a.P12 / S, K2 = a.P22 / S, y = z - a.v;
+    a.p += K1 * y; a.v += K2 * y;
+    const P12 = a.P12, P22 = a.P22;
+    a.P11 -= K1 * P12; a.P12 = (1 - K2) * P12; a.P22 = (1 - K2) * P22;
+  }
+
+  /**
+   * @param {[number,number]} pos  القراءة الخام
+   * @param {number} accuracy      دقة الـGPS بالمتر
+   * @param {number} t             وقت الاستلام (ملي ثانية)
+   * @param {number|null} speed    سرعة الجهاز م/ث (إذا موجودة)
+   * @param {number|null} heading  اتجاه الجهاز بالدرجات (إذا موجود)
+   * @returns {[number,number]} الموقع المنعّم
+   */
+  process(pos, accuracy, t, speed = null, heading = null) {
+    if (!this.ok || !Number.isFinite(this.t) || (t - this.t) / 1000 > this.resetAfterS || (t - this.t) < -5000) {
+      this._init(pos, accuracy, t, speed, heading);
+      return this._out();
     }
-    const dt = Math.max(0, (t - this.t) / 1000);
-    this.t = t;
-    const q = Math.max(3, speed || 0);
-    this.v += dt * q * q;
-    const k = this.v / (this.v + acc * acc);
-    this.lng += k * (pos[0] - this.lng);
-    this.lat += k * (pos[1] - this.lat);
-    this.v = (1 - k) * this.v;
-    this.last = [this.lng, this.lat];
+    const dt = Math.max(0, Math.min(10, (t - this.t) / 1000));
+    this.t = Math.max(this.t, t);
+    if (dt > 0) { this._predict(this.X, dt); this._predict(this.Y, dt); }
+    const [zx, zy] = this._toLocal(pos);
+    const r = this._r(accuracy);
+    // فحص القفزات: أكثر من 5 انحرافات وأكثر من 80 متر
+    const ix = zx - this.X.p, iy = zy - this.Y.p;
+    const jump = Math.hypot(ix, iy);
+    // بعد انقطاع طويل (نفق/جسر): القفزة الكبيرة = الموقع الحقيقي رجع، نبدأ منه
+    if (dt > 4 && jump > Math.max(80, 3 * (accuracy || 15))) {
+      this._init(pos, accuracy, t, speed, heading);
+      return this._out();
+    }
+    const sx = this.X.P11 + r, sy = this.Y.P11 + r;
+    if (jump > 80 && (ix * ix / sx + iy * iy / sy) > 50) {
+      const prev = this.outlier;
+      this.outlier = { pos, t };
+      // قفزتين متتاليتين بنفس المكان = الموقع فعلاً تغيّر (طلعنا من نفق مثلاً)
+      if (prev && haversine(prev.pos, pos) < Math.max(60, (accuracy || 20) * 2) + (Math.abs(t - prev.t) / 1000) * Math.max(speed || 0, 25)) {
+        this._init(pos, accuracy, t, speed, heading);
+        return this._out();
+      }
+      return this._out();
+    }
+    this.outlier = null;
+    this._updPos(this.X, zx, r);
+    this._updPos(this.Y, zy, r);
+    // سرعة الجهاز (دوبلر) قياس دقيق للسرعة
+    if (speed != null && Number.isFinite(speed) && speed >= 0) {
+      if (speed < 0.4) {
+        this._updVel(this.X, 0, 0.09); this._updVel(this.Y, 0, 0.09);
+      } else if (heading != null && Number.isFinite(heading) && speed >= 1) {
+        const h = heading * Math.PI / 180;
+        const rv = Math.pow(Math.max(0.6, speed * 0.08), 2);
+        this._updVel(this.X, speed * Math.sin(h), rv); this._updVel(this.Y, speed * Math.cos(h), rv);
+      }
+    }
+    return this._out();
+  }
+
+  _out() {
+    this.vel = [this.X.v, this.Y.v];
+    this.last = this._toLonLat(this.X.p, this.Y.p);
     return this.last;
   }
+
+  /** السرعة المحسوبة (م/ث) */
+  get speed() { return Math.hypot(this.vel[0], this.vel[1]); }
+
+  /** الاتجاه المحسوب من السرعة (درجات) أو null إذا واكف */
+  get heading() {
+    if (this.speed < 1.5) return null;
+    return (Math.atan2(this.vel[0], this.vel[1]) * 180 / Math.PI + 360) % 360;
+  }
+
+  /** نصف قطر عدم اليقين الحالي بالمتر */
+  get uncertainty() { return this.ok ? Math.sqrt((this.X.P11 + this.Y.P11) / 2) * 1.5 : Infinity; }
 }
 
 return { R, toRad, toDeg, clamp, haversine, bearing, destination, angleDiff, lerpAngle, normAngle, projectToSegment, buildLine, segmentAt, pointAt, mercFraction, snapToLine, sliceLine, bboxOf, inBBox, parseLatLon, buildSegIndex, nearestOnLine, sampleLine, GpsSmoother };
@@ -2980,59 +3098,268 @@ const __m_location = (() => {
 //  location.js — مصدر الموقع: GPS حقيقي أو محاكاة قيادة
 // =====================================================================
 const { haversine, bearing, destination, pointAt, clamp, GpsSmoother } = __m_geo;
+/**
+ * مصدر الـGPS الحقيقي — مصمم ما يوكف أبداً أثناء السياقة:
+ *  • إذا الإشارة انقطعت (جسر، بنايات، نفق) أندرويد يوقف التحديثات ويرسل خطأ
+ *    «Location not available» — هنا نعيد التشغيل تلقائياً بفواصل متزايدة.
+ *  • مراقب (watchdog): إذا ما وصلت قراءة خلال ثواني، نعيد تشغيل المتابعة.
+ *  • قراءة سريعة تقريبية (شبكة/واي فاي) لحد ما تقفل الأقمار الصناعية.
+ *  • نرتب القراءات بوقت الاستلام (ساعة الـGPS أحياناً تختلف عن ساعة الموبايل).
+ *  • نكتشف: الموقع مطفي بالموبايل، الصلاحية مرفوضة، الموقع «التقريبي» بدل الدقيق.
+ * الحالات (state): idle | searching | ok | weak | lost | off | denied | coarse | unsupported
+ */
 class GpsSource {
-  constructor(onFix, onError) {
+  constructor(onFix, onError, opts = {}) {
     this.onFix = onFix;
     this.onError = onError;
+    this.onState = opts.onState || null;
+    this.geo = opts.geo !== undefined ? opts.geo : (typeof navigator !== 'undefined' && navigator.geolocation) || null;
+    this.now = opts.now || (() => Date.now());
+    this.cfg = {
+      dogMs: 2000,          // كل كم نفحص
+      staleNavMs: 8000,     // أثناء الملاحة: بعد كم بدون قراءة نعيد التشغيل
+      staleIdleMs: 20000,   // بدون ملاحة
+      lostMs: 5000,         // بعد كم ثانية بدون قراءة (والسيارة ماشية) نكول «الإشارة ضعيفة»
+      retryMin: 800, retryMax: 8000,
+      offAfterMs: 20000,    // أخطاء متكررة وماكو ولا قراءة = الموقع مطفي بالموبايل
+      coarseAcc: 1000, coarseAfterMs: 25000,
+      maxStaleAgeMs: 5 * 60000,
+      ...opts.cfg,
+    };
     this.watchId = null;
     this.last = null;
+    this.lastRaw = null;
+    this.lastRecv = 0;
     this.lastGoodT = 0;
+    this.watchStart = 0;
+    this.startedAt = 0;
+    this.active = false;
+    this.navMode = false;
+    this.state = 'idle';
+    this.restarts = 0;
+    this.unavailable = 0;
+    this.coarseSince = 0;
+    this.retryT = null;
+    this.dog = null;
+    this.waiters = [];
+    this.prevAny = null;
+    this.skew = 0;
+    this.skewSet = false;
     this.smoother = new GpsSmoother();
+    this._hooked = false;
   }
 
-  get available() { return typeof navigator !== 'undefined' && 'geolocation' in navigator; }
+  get available() { return !!this.geo; }
+
+  /** أثناء الملاحة المراقب أسرع */
+  setNavMode(on) { this.navMode = !!on; }
 
   start() {
-    if (!this.available) { this.onError?.({ code: 0, message: 'no geolocation' }); return; }
-    if (this.watchId != null) return;
-    try {
-      this.watchId = navigator.geolocation.watchPosition(
-        (p) => this._handle(p),
-        (e) => this.onError?.(e),
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 },
-      );
-    } catch (e) { this.onError?.(e); }
+    if (!this.available) { this._setState('unsupported'); this.onError?.({ code: 0, message: 'no geolocation' }); return; }
+    if (this.active) return;
+    this.active = true;
+    this.startedAt = this.now();
+    this.unavailable = 0;
+    if (!this.last || this.last.stale) this._setState('searching');
+    this._watch();
+    this._quick();
+    this._installHooks();
+    clearInterval(this.dog);
+    this.dog = setInterval(() => this._watchdog(), this.cfg.dogMs);
   }
 
   stop() {
-    if (this.watchId != null) { try { navigator.geolocation.clearWatch(this.watchId); } catch { /* ignore */ } }
+    this.active = false;
+    this._clear();
+    clearInterval(this.dog); this.dog = null;
+    clearTimeout(this.retryT); this.retryT = null;
+  }
+
+  /** إعادة تشغيل فورية (زر «حاول مرة ثانية» أو رجعنا للتطبيق) */
+  restart() {
+    if (!this.available) return;
+    clearTimeout(this.retryT); this.retryT = null;
+    if (!this.active) { this.start(); return; }
+    this.restarts++;
+    this._watch();
+    this._quick();
+  }
+
+  /** ينتظر قراءة حديثة (مو قديمة محفوظة) — يرجع القراءة أو null */
+  waitForFix(timeoutMs = 10000) {
+    if (this.last && !this.last.stale && this.now() - this.lastRecv < 10000) return Promise.resolve(this.last);
+    return new Promise((resolve) => {
+      const w = { resolve, timer: setTimeout(() => { this.waiters = this.waiters.filter((x) => x !== w); resolve(null); }, timeoutMs) };
+      this.waiters.push(w);
+    });
+  }
+
+  // ------------------------------------------------------------------ داخلي
+  _watch() {
+    this._clear();
+    this.watchStart = this.now();
+    try {
+      this.watchId = this.geo.watchPosition(
+        (p) => this._handle(p, 'watch'),
+        (e) => this._err(e),
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 27000 },
+      );
+    } catch (e) { this._err({ code: 2, message: String(e?.message || e) }); }
+  }
+
+  _clear() {
+    if (this.watchId != null) { try { this.geo.clearWatch(this.watchId); } catch { /* ignore */ } }
     this.watchId = null;
   }
 
-  _handle(p) {
-    const c = p.coords;
-    if (c == null || !isFinite(c.latitude) || !isFinite(c.longitude)) return;
-    const t = p.timestamp || Date.now();
-    const pos = [c.longitude, c.latitude];
-    const accuracy = isFinite(c.accuracy) ? c.accuracy : 50;
-    // نتجاهل القراءات السيئة جداً إذا عدنا قراءة زينة حديثة
-    if (accuracy > 150 && this.last && t - this.lastGoodT < 15000) return;
-    if (this.last && t <= this.last.t) return;
-    let speed = c.speed != null && isFinite(c.speed) && c.speed >= 0 ? c.speed : null;
-    let heading = c.heading != null && isFinite(c.heading) ? c.heading : null;
-    if (this.last) {
-      const d = haversine(this.last.raw || this.last.pos, pos);
-      const dt = (t - this.last.t) / 1000;
-      if (speed == null && dt > 0) speed = d / dt;
-      if ((heading == null || (speed ?? 0) < 1.2) && d > Math.max(4, accuracy * 0.4)) heading = bearing(this.last.raw || this.last.pos, pos);
-      else if (heading == null) heading = this.last.heading;
+  /** قراءة سريعة تقريبية حتى ما ينتظر المستخدم قفل الأقمار */
+  _quick() {
+    if (this.lastRecv && this.now() - this.lastRecv < 4000) return;
+    try {
+      this.geo.getCurrentPosition((p) => this._handle(p, 'quick'), () => {}, { enableHighAccuracy: false, maximumAge: 15000, timeout: 12000 });
+    } catch { /* ignore */ }
+  }
+
+  _handle(p, src) {
+    if (!this.active) return;
+    const c = p && p.coords;
+    if (!c || !Number.isFinite(c.latitude) || !Number.isFinite(c.longitude)) return;
+    if (Math.abs(c.latitude) > 90 || Math.abs(c.longitude) > 180 || (c.latitude === 0 && c.longitude === 0)) return;
+    const recv = this.now();
+    const gpsT = Number.isFinite(p.timestamp) && p.timestamp > 0 ? p.timestamp : recv;
+    // نفس القراءة مكررة
+    if (this.lastRaw && this.lastRaw.gpsT === gpsT && this.lastRaw.lat === c.latitude && this.lastRaw.lon === c.longitude) return;
+    // فرق ساعة الموبايل عن ساعة الـGPS: من قراءات متتالية حية (فرق وقتها = فرق وصولها)
+    const prev = this.prevAny;
+    this.prevAny = { gpsT, recv };
+    if (prev && gpsT > prev.gpsT) {
+      const dg = gpsT - prev.gpsT, dr = recv - prev.recv;
+      if (dr >= 300 && Math.abs(dg - dr) < 3000) {
+        const sk = recv - gpsT;
+        this.skew = this.skewSet ? this.skew * 0.7 + sk * 0.3 : sk;
+        this.skewSet = true;
+      }
     }
-    if (accuracy <= 50) this.lastGoodT = t;
-    // تنعيم الموقع (فلتر كالمان): يشيل الارتجاج وما يأخر الحركة
-    const smooth = this.smoother.process(pos, accuracy, t, speed);
-    const fix = { pos: smooth, raw: pos, accuracy, speed, heading, t, sim: false };
+    const age = recv - gpsT - (this.skewSet ? this.skew : 0);
+    // قراءة قديمة محفوظة (مثل آخر موقع معروف عند إعادة التشغيل)
+    const stale = age > 20000;
+    if (stale && (age > this.cfg.maxStaleAgeMs || (this.last && !this.last.stale))) return;
+    // القراءة التقريبية السريعة ما تغطي على قراءة دقيقة حديثة
+    if (src === 'quick' && this.last && !this.last.stale && recv - this.lastRecv < 6000) return;
+    let accuracy = Number.isFinite(c.accuracy) && c.accuracy > 0 ? c.accuracy : 50;
+    // قراءة سيئة جداً وعدنا قراءة زينة قبل شوية
+    if (accuracy > 150 && this.lastGoodT && recv - this.lastGoodT < 10000) return;
+    if (stale) accuracy = Math.max(accuracy, 120);
+    this.lastRaw = { gpsT, lat: c.latitude, lon: c.longitude };
+
+    const devSpeed = c.speed != null && Number.isFinite(c.speed) && c.speed >= 0 ? c.speed : null;
+    const devHeading = c.heading != null && Number.isFinite(c.heading) && c.heading >= 0 ? c.heading % 360 : null;
+    const raw = [c.longitude, c.latitude];
+    if (stale) this.smoother.reset();
+    const pos = this.smoother.process(raw, accuracy, recv, devSpeed, devSpeed != null && devSpeed >= 1 ? devHeading : null);
+    const fSpeed = this.smoother.speed;
+    const speed = devSpeed != null ? devSpeed : (Number.isFinite(fSpeed) ? fSpeed : null);
+    let heading = null;
+    if (devHeading != null && (speed ?? 0) >= 1.5) heading = devHeading;
+    else if (this.smoother.heading != null) heading = this.smoother.heading;
+    else heading = this.last?.heading ?? null;
+
+    const fix = { pos, raw, accuracy, speed, heading, t: recv, gpsT, sim: false, stale, src };
+    if (!stale && accuracy <= 60) this.lastGoodT = recv;
     this.last = fix;
+    this.lastRecv = recv;
+    if (!stale) { this.restarts = 0; this.unavailable = 0; }
+    // الموقع التقريبي (صلاحية «تقريبي» بأندرويد 12+): دقة 1 كم أو أسوأ بشكل مستمر
+    if (accuracy >= this.cfg.coarseAcc && !stale) { if (!this.coarseSince) this.coarseSince = recv; } else if (!stale) this.coarseSince = 0;
+    let state;
+    if (stale) state = 'searching';
+    else if (this.coarseSince && recv - this.coarseSince >= this.cfg.coarseAfterMs) state = 'coarse';
+    else state = accuracy > 60 ? 'weak' : 'ok';
+    this._setState(state);
+    if (!stale && this.waiters.length) {
+      const ws = this.waiters; this.waiters = [];
+      for (const w of ws) { clearTimeout(w.timer); w.resolve(fix); }
+    }
     this.onFix(fix);
+  }
+
+  _err(e) {
+    if (!this.active) return;
+    const code = e?.code ?? 2;
+    if (code === 1) {
+      this._clear();
+      clearTimeout(this.retryT); this.retryT = null;
+      this._setState('denied');
+      this.onError?.(e);
+      return;
+    }
+    if (code === 2) this.unavailable++;
+    // أندرويد يوقف التحديثات بعد «الموقع غير متوفر» — لازم نعيد التشغيل
+    if (code === 2 || this.now() - this.lastRecv > this.cfg.staleIdleMs) this._scheduleRestart();
+    const noFixFor = this.now() - (this.lastRecv || this.startedAt);
+    if (code === 2 && this.unavailable >= 3 && noFixFor >= this.cfg.offAfterMs) this._setState('off');
+    else if (!this.last || this.last.stale) this._setState('searching');
+    this.onError?.(e);
+  }
+
+  _scheduleRestart() {
+    if (this.retryT || !this.active) return;
+    const delay = Math.min(this.cfg.retryMax, this.cfg.retryMin * Math.pow(2, Math.min(this.restarts, 4)));
+    this.retryT = setTimeout(() => {
+      this.retryT = null;
+      if (!this.active || this.state === 'denied') return;
+      this.restarts++;
+      this._watch();
+      this._quick();
+    }, delay);
+  }
+
+  _hidden() { return typeof document !== 'undefined' && document.visibilityState === 'hidden'; }
+
+  _watchdog() {
+    if (!this.active || this._hidden() || this.state === 'denied') return;
+    const now = this.now();
+    const since = now - (this.lastRecv || this.startedAt);
+    const moving = (this.last?.speed ?? 0) >= 1;
+    // الإشارة انقطعت والسيارة ماشية
+    if (this.last && !this.last.stale && moving && since >= this.cfg.lostMs && this.state !== 'off') this._setState('lost');
+    // ماكو قراءات: نعيد تشغيل المتابعة (أندرويد أحياناً يوقفها بدون أي خطأ)
+    const limit = this.navMode && (moving || !this.last) ? this.cfg.staleNavMs : this.cfg.staleIdleMs;
+    if (since >= limit && now - this.watchStart >= limit && !this.retryT) {
+      this.restarts++;
+      this._watch();
+      this._quick();
+    }
+  }
+
+  _installHooks() {
+    if (this._hooked) return;
+    this._hooked = true;
+    const wake = () => {
+      if (!this.active || this._hidden() || this.state === 'denied') return;
+      if (this.now() - this.lastRecv > 3000) this.restart();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', wake);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', wake);
+      window.addEventListener('pageshow', wake);
+    }
+    // تغيير الصلاحية من الإعدادات بدون ما يعيد فتح التطبيق
+    try {
+      navigator.permissions?.query({ name: 'geolocation' }).then((st) => {
+        if (st.state === 'denied' && !this.last) this._setState('denied');
+        st.onchange = () => {
+          if (st.state === 'granted' || st.state === 'prompt') { if (this.state === 'denied') this._setState('searching'); this.restart(); }
+          else if (st.state === 'denied') { this._clear(); this._setState('denied'); }
+        };
+      }).catch(() => {});
+    } catch { /* ignore */ }
+  }
+
+  _setState(s) {
+    if (s === this.state) return;
+    this.state = s;
+    this.onState?.(s);
   }
 }
 
@@ -5447,7 +5774,7 @@ const reports = new ReportStore({
 
 const traffic = new TrafficStore({ onChange: () => onTrafficChanged() });
 const probe = new TrafficProbe();
-const gps = new GpsSource(onFix, onGpsError);
+const gps = new GpsSource(onFix, onGpsError, { onState: onGpsState });
 const sim = new SimSource(onFix);
 
 // ================================================================== الإقلاع
@@ -5667,6 +5994,7 @@ function registerSW() {
 function onFix(fix) {
   if (nav && nav.sim !== !!fix.sim) return;      // أثناء المحاكاة نتجاهل الـGPS الحقيقي
   if (!nav && fix.sim) return;
+  if (fix.stale && S.me && !S.me.stale) return;  // موقع قديم محفوظ ما يغطي على الحديث
   S.me = fix;
   S.gpsError = null;
   if (!S.firstFix) {
@@ -5683,24 +6011,50 @@ function onFix(fix) {
 
 function onGpsError(e) {
   S.gpsError = e;
-  if (e?.code === 1) {
-    toast('ما عندي صلاحية الموقع. فعّلها حتى أوصلك 🙏', 4000);
+  // أخطاء «غير متوفر» و«انتهى الوقت» يعالجها مصدر الـGPS بإعادة التشغيل تلقائياً — ما نزعج المستخدم
+  if (e?.code === 1 && !S.gpsDeniedToast) {
+    S.gpsDeniedToast = true;
+    toast('ما عندي صلاحية الموقع. اضغط زر موقعي 📍 حتى أشرحلك شلون تفعّلها', 4500);
   } else if (e?.code === 0) {
     toast('جهازك ما يدعم تحديد الموقع');
   }
 }
 
+/** حالة الـGPS: مؤشر على زر موقعي + تنبيه أثناء الملاحة + مساعدة حسب المشكلة */
+function onGpsState(st) {
+  S.gpsState = st;
+  const b = el.btnLocate;
+  if (b) {
+    b.classList.toggle('gps-searching', st === 'searching' || st === 'lost');
+    b.classList.toggle('gps-bad', st === 'denied' || st === 'off' || st === 'unsupported');
+    b.classList.toggle('gps-weak', st === 'weak' || st === 'coarse');
+  }
+  if (nav && !nav.sim) {
+    if (st === 'lost') showNavStatus('📡 إشارة الـGPS انقطعت — أكمل بالتقدير لحد ما ترجع…', true);
+    else if (st === 'off') showNavStatus('📍 الموقع مطفي بالموبايل — شغّله من الإشعارات', false);
+    else if (st === 'denied') showNavStatus('📍 صلاحية الموقع مرفوضة', false);
+    else if ((st === 'ok' || st === 'weak' || st === 'coarse') && !nav.rerouting) hideNavStatus();
+  }
+  if ((st === 'off' || st === 'coarse') && !S.gpsHelpShown?.[st]) {
+    S.gpsHelpShown = { ...(S.gpsHelpShown || {}), [st]: true };
+    if (st === 'off') toast('📍 الموقع (GPS) مطفي بالموبايل — اضغط زر موقعي حتى أشرحلك', 5000);
+    else toast('📍 مفعّل «الموقع التقريبي» — الملاحة تحتاج «الموقع الدقيق». اضغط زر موقعي', 5500);
+  }
+}
+
 function locateMe() {
   voice.unlock();
-  if (S.me) {
+  const st = S.gpsState;
+  if (st === 'denied' || st === 'off' || st === 'coarse') { openGpsHelp(st); if (st !== 'coarse') gps.restart(); return; }
+  if (S.me && !S.me.stale) {
     S.trackMe = true;
     el.btnLocate.classList.add('active');
     mapView.flyTo(S.me.pos, Math.max(15.5, mapView.map.getZoom()), { bearing: 0 });
     return;
   }
-  if (S.gpsError?.code === 1) { openGpsHelp(); return; }
-  toast('دا أحدد موقعك…');
-  gps.stop(); gps.start();
+  if (S.me) mapView.flyTo(S.me.pos, Math.max(14, mapView.map.getZoom()), { bearing: 0 });
+  toast('📡 دا أحدد موقعك…');
+  gps.restart();
 }
 
 // ================================================================== الوضع الليلي
@@ -6150,13 +6504,22 @@ async function previewRoutes(place, { origin = null, keepStops = false } = {}) {
   S.originOverride = origin;
   mapView.setDestination(place.pos);
   mapView.setPin(null);
+  let header = previewHeader(place);
+  // ماكو موقع بعد (أو بس موقع قديم): ننتظر الـGPS شوية بدل ما نفشل فوراً
+  if (!origin && (!S.me || S.me.stale) && gps.available && S.gpsState !== 'denied' && S.gpsState !== 'off') {
+    openSheet('preview', `${header}<div class="spinner"></div><p class="sub" style="text-align:center">📡 دا أحدد موقعك حتى أحسب الطريق…</p>`, previewOpts());
+    gps.restart();
+    await gps.waitForFix(S.me ? 6000 : 12000);
+    if (S.mode !== 'preview' || S.place !== place) return;
+    header = previewHeader(place);
+  }
   const from = origin || S.me?.pos || null;
   S.origin = from;
-  const header = previewHeader(place);
   if (!from) {
     mapView.flyTo(place.pos, 15);
     openSheet('preview', `${header}<div class="note">ما عرفت موقعك بعد. فعّل الموقع (GPS) أو استخدم مركز الخريطة كنقطة بداية.</div>
-      <div class="actions"><button class="btn primary" data-a="retry">حاول مرة ثانية</button><button class="btn" data-a="center">من مركز الخريطة</button></div>`, previewOpts());
+      <div class="actions"><button class="btn primary" data-a="retry">حاول مرة ثانية</button><button class="btn" data-a="center">من مركز الخريطة</button></div>
+      <button class="link-btn" data-a="gpshelp">ليش ما يحدد موقعي؟</button>`, previewOpts());
     return;
   }
   if (!previewBuried()) openSheet('preview', `${header}<div class="spinner"></div><p class="sub" style="text-align:center">دا أحسب أفضل الطرق…</p>`, previewOpts());
@@ -6236,7 +6599,8 @@ function bindPreviewSheet(b) {
     if (a === 'share') sharePlace(S.place);
     if (a === 'addstop') { openSearch({ forStop: true }); el.searchInput.placeholder = 'وين تريد توقف بالطريق؟'; setTimeout(() => el.searchInput.focus(), 50); }
     if (a === 'avoid') { S.settings.avoidMotorway = !S.settings.avoidMotorway; saveSettings(); previewRoutes(S.place, { origin: S.originOverride, keepStops: true }); }
-    if (a === 'retry') { gps.stop(); gps.start(); toast('دا أحدد موقعك…'); const pl = S.place; setTimeout(() => { if (S.mode === 'preview' && S.place === pl) previewRoutes(pl); }, 2500); }
+    if (a === 'retry') { const pl = S.place; previewRoutes(pl); }
+    if (a === 'gpshelp') openGpsHelp(S.gpsState === 'denied' || S.gpsState === 'off' || S.gpsState === 'coarse' ? S.gpsState : 'tips');
     if (a === 'center') previewRoutes(S.place, { origin: mapView.center() });
     if (a === 'retry2') previewRoutes(S.place, { origin: S.originOverride, keepStops: true });
   };
@@ -6343,6 +6707,7 @@ function startNav(route, { sim: simulate = false } = {}) {
     showNavStatus('بانتظار إشارة الـGPS…', true);
   }
   requestWakeLock();
+  if (!simulate) gps.setNavMode(true);
   startLoop();
   store.set('activeTrip', { dest: { name: dest.name, sub: dest.sub, pos: dest.pos }, t: Date.now() });
 }
@@ -6466,7 +6831,8 @@ function frame(ts) {
   if (!tgt) return;
   const d = nav.display;
   const line = nav.route.line;
-  const elapsed = Math.min(1.6, (performance.now() - tgt.recv) / 1000);
+  // بين قراءات الـGPS نكمل بالتقدير: على الطريق لحد 8 ثواني (جسر/نفق)، خارجه ثانيتين
+  const elapsed = Math.min(tgt.onRoute ? 8 : 2, (performance.now() - tgt.recv) / 1000);
   let want = d.bearing ?? tgt.heading ?? 0;
   if (tgt.onRoute) {
     const pred = Math.min(line.total, tgt.along + tgt.speed * elapsed);
@@ -6746,6 +7112,7 @@ function stopNavInternal() {
 function endNav() {
   if (!nav) return;
   const wasSim = nav.sim;
+  gps.setNavMode(false);
   stopNavInternal();
   if (S.sheet && S.sheet.name !== 'arrived') closeAllSheets({ silent: true });
   voice.stop();
@@ -6954,12 +7321,29 @@ function openAbout() {
   });
 }
 
-function openGpsHelp() {
-  openSheet('gpshelp', `<h2>تفعيل الموقع</h2>
-    <p class="sub">المتصفح منع الوصول لموقعك. حتى تفعّله:</p>
-    <div class="note"><b>أندرويد (كروم):</b> اضغط على القفل 🔒 جنب الرابط ← الأذونات ← الموقع ← سماح.<br><br><b>آيفون:</b> الإعدادات ← الخصوصية ← خدمات الموقع ← Safari ← أثناء الاستخدام.</div>
-    <div class="actions"><button class="btn primary" data-a="ok">تمام، جرّب هسه</button></div>`, {
-    onRender: (b) => b.onclick = (e) => { if (e.target.closest('[data-a]')) { closeSheet(); gps.stop(); gps.start(); } },
+function isAndroidApp() { return !!store.get('twa') || (document.referrer || '').startsWith('android-app://'); }
+
+/** مساعدة الموقع حسب المشكلة: denied | off | coarse | tips */
+function openGpsHelp(kind = 'denied') {
+  const app = isAndroidApp();
+  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  const appPerm = 'إعدادات الموبايل ← التطبيقات ← <b>سالكة</b> ← الأذونات ← الموقع ← <b>«السماح أثناء استخدام التطبيق»</b> وفعّل <b>«استخدام الموقع الدقيق»</b>.';
+  const chromePerm = 'بكروم: اضغط على 🔒 جنب الرابط ← الأذونات ← <b>الموقع ← سماح</b>. وإذا ما طلعت: إعدادات الموبايل ← التطبيقات ← Chrome ← الأذونات ← الموقع ← «السماح أثناء الاستخدام» + «الموقع الدقيق».';
+  const iosPerm = 'الإعدادات ← الخصوصية والأمان ← خدمات الموقع ← <b>Safari</b> (أو سالكة) ← «أثناء استخدام التطبيق» وفعّل <b>«الموقع الدقيق»</b>.';
+  const perm = ios ? iosPerm : app ? appPerm : chromePerm;
+  const tips = `<div class="note"><b>حتى يكون الموقع أسرع وأدق بالسيارة:</b><br>
+    • شغّل <b>«دقة الموقع من Google»</b>: الإعدادات ← الموقع ← خدمات الموقع ← دقة الموقع من Google.<br>
+    • خلي الموبايل قريب من الزجاج الأمامي (حامل الموبايل)، مو بالجيب أو تحت الكرسي.<br>
+    • طفّي <b>«توفير البطارية»</b> أثناء السياقة، لأنه يبطّئ الـGPS.<br>
+    • أول مرة بعد تشغيل الموبايل الـGPS يحتاج 10–30 ثانية بمكان مفتوح.</div>`;
+  const body = {
+    denied: `<h2>📍 تفعيل الموقع</h2><p class="sub">${app ? 'التطبيق' : 'المتصفح'} ما عنده صلاحية الموقع. حتى تفعّلها:</p><div class="note">${perm}</div>`,
+    off: `<h2>📍 الموقع مطفي بالموبايل</h2><p class="sub">خدمة الموقع (GPS) مطفية من إعدادات الموبايل نفسه:</p><div class="note">اسحب من فوك الشاشة لجوه ← اضغط <b>«الموقع»</b> حتى يشتغل.<br>أو: الإعدادات ← الموقع ← شغّل.</div>`,
+    coarse: `<h2>📍 فعّل «الموقع الدقيق»</h2><p class="sub">هسه مفعّل «الموقع التقريبي» (يغلط لحد 2–3 كم)، والملاحة تحتاج الدقيق:</p><div class="note">${perm}</div>`,
+    tips: `<h2>📡 ليش يتأخر تحديد الموقع؟</h2><p class="sub">التطبيق يعيد المحاولة وحده كل ما تنقطع الإشارة. إذا بعده يتأخر:</p><div class="note">${perm}</div>`,
+  }[kind] || '';
+  openSheet('gpshelp', `${body}${tips}<div class="actions"><button class="btn primary" data-a="ok">تمام، جرّب هسه</button></div>`, {
+    onRender: (b) => b.onclick = (e) => { if (e.target.closest('[data-a]')) { closeSheet(); gps.restart(); toast('📡 دا أحدد موقعك…'); } },
   });
 }
 
