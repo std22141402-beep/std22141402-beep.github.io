@@ -1,5 +1,5 @@
 /* سوبرماركت برو — Service Worker: يخلي التطبيق يشتغل بدون إنترنت */
-const VERSION = 'smpro-v2.5.0';
+const VERSION = 'smpro-v2.5.1';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable.png', './apple-touch-icon.png'];
 const RUNTIME_HOSTS = /(^|\.)(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net|unpkg\.com)$/;
 
@@ -48,8 +48,9 @@ async function networkFirst(req) {
     const timer = setTimeout(() => ctrl.abort(), 4000);
     const res = await fetch(req, { signal: ctrl.signal });
     clearTimeout(timer);
-    if (res && res.ok) cache.put('./index.html', res.clone());
-    return res;
+    if (res && res.ok) { cache.put('./index.html', res.clone()); return res; }
+    // الموقع ما رد صح (انحذف أو عطلان): نفتح النسخة المحفوظة بالموبايل حتى يكمل الشغل
+    return (await cache.match('./index.html')) || (await cache.match('./')) || res;
   } catch (e) {
     return (await cache.match('./index.html')) || (await cache.match('./')) || Response.error();
   }
