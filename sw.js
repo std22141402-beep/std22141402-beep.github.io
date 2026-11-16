@@ -2,7 +2,7 @@
 //  Service Worker — يخلي التطبيق يفتح بسرعة وبدون نت، ويحفظ الخريطة اللي شفتها
 //  غيّر VERSION كل ما تحدّث ملفات التطبيق حتى توصل النسخة الجديدة للمستخدمين
 // =====================================================================
-const VERSION = 'salka-v1.2.0';
+const VERSION = 'salka-v1.2.1';
 const SHELL_CACHE = `${VERSION}-shell`;
 const LIB_CACHE = 'salka-libs-v1';
 const TILE_CACHE = 'salka-tiles-v1';
@@ -16,7 +16,11 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache: 'reload' = نجيب الملفات الجديدة من الخادم مباشرة، مو من ذاكرة المتصفح القديمة
+  event.waitUntil(caches.open(SHELL_CACHE)
+    .then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' }))))
+    .catch(() => {})
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
@@ -49,6 +53,25 @@ async function cacheFirst(req, cacheName, isTile) {
   return res;
 }
 
+/** ملفات التطبيق: الأحدث من الخادم دائماً (مع فحص سريع)، وإذا ماكو نت نستخدم المحفوظ */
+async function networkFirst(req, cacheName, timeoutMs = 5000) {
+  const cache = await caches.open(cacheName);
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const res = await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin', signal: ctrl.signal });
+    clearTimeout(timer);
+    if (res.ok) { cache.put(req, res.clone()); return res; }
+    const hit = await cache.match(req, { ignoreSearch: true });
+    return hit || res;
+  } catch {
+    const hit = await cache.match(req, { ignoreSearch: true });
+    if (hit) return hit;
+    if (req.mode === 'navigate') { const idx = await cache.match('./index.html'); if (idx) return idx; }
+    return new Response('offline', { status: 503 });
+  }
+}
+
 async function staleWhileRevalidate(req, cacheName) {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(req);
@@ -63,15 +86,7 @@ self.addEventListener('fetch', (event) => {
 
   // ملفات التطبيق نفسه
   if (url.origin === self.location.origin) {
-    if (req.mode === 'navigate') {
-      event.respondWith(fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(SHELL_CACHE).then((c) => c.put('./index.html', copy));
-        return res;
-      }).catch(() => caches.match('./index.html')));
-      return;
-    }
-    event.respondWith(staleWhileRevalidate(req, SHELL_CACHE));
+    event.respondWith(networkFirst(req, SHELL_CACHE));
     return;
   }
 
