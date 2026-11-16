@@ -1,0 +1,9 @@
+{
+  "packageId": "iq.salka.app",
+  "versionName": "1.4.1",
+  "versionCode": 3,
+  "unsigned": true,
+  "sha256": "4156c222d0ce035ea9c7f2144bde435e70186a854e108596c465a1e741e79b34",
+  "source": "custom",
+  "builtAt": "2026-11-16T15:23:04.016Z"
+}

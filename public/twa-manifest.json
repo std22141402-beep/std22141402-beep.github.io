@@ -1,0 +1,65 @@
+{
+  "packageId": "iq.salka.app",
+  "host": "std22141402-beep.github.io",
+  "name": "سالكة",
+  "launcherName": "سالكة",
+  "display": "standalone",
+  "orientation": "default",
+  "themeColor": "#0A1120",
+  "themeColorDark": "#070D1A",
+  "navigationColor": "#0A1120",
+  "navigationColorDark": "#070D1A",
+  "navigationDividerColor": "#0A1120",
+  "navigationDividerColorDark": "#070D1A",
+  "backgroundColor": "#0A1120",
+  "enableNotifications": false,
+  "startUrl": "/?source=twa&apk=3",
+  "iconUrl": "https://std22141402-beep.github.io/icons/icon-512.png",
+  "maskableIconUrl": "https://std22141402-beep.github.io/icons/icon-maskable-512.png",
+  "monochromeIconUrl": "https://std22141402-beep.github.io/icons/icon-monochrome-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "appVersionName": "1.4.1",
+  "appVersionCode": 3,
+  "appVersion": "1.4.1",
+  "shortcuts": [
+    {
+      "name": "بحث عن مكان",
+      "shortName": "بحث",
+      "url": "https://std22141402-beep.github.io/?go=search",
+      "chosenIconUrl": "https://std22141402-beep.github.io/icons/sc-search-192.png"
+    },
+    {
+      "name": "عقارات على الخريطة",
+      "shortName": "عقارات",
+      "url": "https://std22141402-beep.github.io/?go=estate",
+      "chosenIconUrl": "https://std22141402-beep.github.io/icons/sc-estate-192.png"
+    },
+    {
+      "name": "أضف عقارك",
+      "shortName": "أضف عقار",
+      "url": "https://std22141402-beep.github.io/?go=estate-add",
+      "chosenIconUrl": "https://std22141402-beep.github.io/icons/sc-add-192.png"
+    },
+    {
+      "name": "روح للبيت",
+      "shortName": "البيت",
+      "url": "https://std22141402-beep.github.io/?go=home",
+      "chosenIconUrl": "https://std22141402-beep.github.io/icons/sc-home-192.png"
+    }
+  ],
+  "generatorApp": "salka-ci",
+  "webManifestUrl": "https://std22141402-beep.github.io/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://std22141402-beep.github.io/",
+  "minSdkVersion": 24,
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": []
+}
