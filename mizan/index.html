@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-<script>window.MIZAN_MODE='device';window.MIZAN_VER='af17354233';
+<script>window.MIZAN_MODE='device';window.MIZAN_VER='e743d1d1b3';
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <title>ميزان للمحاسبة والمخازن</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -228,6 +228,8 @@ table.grid td.act { white-space: nowrap; text-align: left; }
   .userchip .nm { display: none; }
   .ratechip .lbl { display: none; }
   .tbl-wrap table.grid { min-width: 620px; }
+  .tbl-wrap table.grid.fit { min-width: 0; }
+  .kpis { grid-template-columns: 1fr 1fr; }
   .card-h h1 { font-size: 18px; }
   .ln, .ln.stk, .ln.jl { grid-template-columns: 1fr 1fr 1fr; grid-template-areas: none; row-gap: 6px; padding: 10px 8px; }
   .ln > .ix { display: none; }
@@ -1630,7 +1632,7 @@ table.grid td.act { white-space: nowrap; text-align: left; }
   const { E, DEF, $, $$, esc, uid, today, addDays, monthStart, money, moneyC, curChip, qtyF, signCls, rate100, P, amtIn, can, role, ROLES, toast, modal, confirmBox, write } = A;
 
   const NAV = [
-    ['', [['home', 'لوحة التحكم', '◧'], ['pos', 'الكاشير', '▣', 'pos']]],
+    ['', [['home', 'لوحة التحكم', '◧'], ['pos', 'الكاشير', '▣', 'pos'], ['debts', 'الديون', '⚖', 'sell']]],
     ['المبيعات', [['sale', 'فاتورة مبيعات', '↗', 'sell', 'F2'], ['sret', 'مرتجع مبيعات', '↩', 'sell'], ['quote', 'عروض الأسعار والطلبيات', '❏', 'sell'], ['customers', 'الزبائن', '☺', 'sell']]],
     ['المشتريات', [['purchase', 'فاتورة مشتريات', '↙', 'buy', 'F3'], ['pret', 'مرتجع مشتريات', '↪', 'buy'], ['suppliers', 'الموردون', '⚑', 'buy']]],
     ['الصندوق', [['receipt', 'سند قبض', '＋', 'cashIn', 'F4'], ['payment', 'سند صرف', '－', 'cash'], ['exchange', 'تصريف عملة', '⇄', 'cash'], ['journal', 'قيد يومية', '≡', 'journal']]],
@@ -1885,6 +1887,7 @@ table.grid td.act { white-space: nowrap; text-align: left; }
           ${can('pos') ? '<a href="#pos"><span>▣</span>الكاشير</a>' : ''}
           ${can('sell') ? '<a href="#sale"><span>↗</span>فاتورة بيع</a>' : ''}
           ${can('buy') ? '<a href="#purchase"><span>↙</span>فاتورة شراء</a>' : ''}
+          ${can('sell') ? '<a href="#debts"><span>⚖</span>الديون</a>' : ''}
           ${can('cashIn') ? '<a href="#receipt"><span>＋</span>سند قبض</a>' : ''}
           ${can('cash') ? '<a href="#payment"><span>－</span>سند صرف</a>' : ''}
           ${can('reports') ? '<a href="#reports"><span>▦</span>التقارير</a>' : ''}
@@ -1893,8 +1896,8 @@ table.grid td.act { white-space: nowrap; text-align: left; }
           <div class="kpi accent"><span class="k">مبيعات اليوم</span><span class="v n">${money(sToday)}</span><span class="s">${nToday} فاتورة${showCost ? ' · ربح ' + money(pToday) : ''}</span></div>
           <div class="kpi"><span class="k">مبيعات الشهر</span><span class="v n">${money(sMonth)}</span><span class="s">${showCost ? 'ربح إجمالي ' + money(pMonth) + ' د.ع' : 'بالدينار المكافئ'}</span></div>
           <div class="kpi"><span class="k">النقد بالصناديق</span><span class="v n">${money(cashI, 'IQD')}</span><span class="s">د.ع + <b class="n">${money(cashU, 'USD')}</b> $</span></div>
-          <div class="kpi"><span class="k">ديون الزبائن (لنا)</span><span class="v n">${money(sum(cs, 'IQD'))}</span><span class="s">د.ع + <b class="n">${money(sum(cs, 'USD'), 'USD')}</b> $</span></div>
-          <div class="kpi"><span class="k">ديون الموردين (علينا)</span><span class="v n">${money(-sum(ss, 'IQD'))}</span><span class="s">د.ع + <b class="n">${money(-sum(ss, 'USD'), 'USD')}</b> $</span></div>
+          <a class="kpi" href="#debts" style="text-decoration:none;color:inherit"><span class="k">ديون الزبائن (لنا)</span><span class="v n">${money(sum(cs, 'IQD'))}</span><span class="s">د.ع + <b class="n">${money(sum(cs, 'USD'), 'USD')}</b> $</span></a>
+          <a class="kpi" href="#debts" data-sup style="text-decoration:none;color:inherit"><span class="k">ديون الموردين (علينا)</span><span class="v n">${money(-sum(ss, 'IQD'))}</span><span class="s">د.ع + <b class="n">${money(-sum(ss, 'USD'), 'USD')}</b> $</span></a>
           ${showCost ? `<div class="kpi"><span class="k">قيمة المخزون بالكلفة</span><span class="v n">${money(invVal)}</span><span class="s">د.ع بالمتوسط المرجح</span></div>` : ''}
         </div>
         <div class="grid2">
@@ -1916,6 +1919,7 @@ table.grid td.act { white-space: nowrap; text-align: left; }
         </div></div>`;
       $$('[data-st]', el).forEach(r => r.onclick = () => A.openStatement(r.dataset.st));
       $$('[data-doc]', el).forEach(r => r.onclick = () => A.openDoc(r.dataset.doc));
+      $$('a.kpi[href="#debts"]', el).forEach(a => a.addEventListener('click', () => { A.vs.debtsF = Object.assign(A.vs.debtsF || { q: '', old: false }, { k: a.hasAttribute('data-sup') ? 's' : 'c' }); }));
     },
   };
   // تنبيهات التطبيق المستقل: التثبيت على الشاشة الرئيسية والنسخ الاحتياطي
@@ -3285,6 +3289,137 @@ table.grid td.act { white-space: nowrap; text-align: left; }
     const cnt = new Map(); (A.S ? A.S.lineRes : []).forEach(r => { if (r.type === 'sale') cnt.set(r.item, (cnt.get(r.item) || 0) + 1); });
     return A.data.items.filter(i => i.active !== false).sort((a, b) => (cnt.get(b.id) || 0) - (cnt.get(a.id) || 0) || String(a.code).localeCompare(String(b.code), 'en', { numeric: true }));
   }
+})();
+
+/* ميزان — قسم الديون: لنا وعلينا، بالدينار والدولار، مع التسديد والتذكير */
+(function () {
+  'use strict';
+  const { E, $, $$, esc, uid, today, money, curChip, signCls, rate100, P, amtIn, can, toast, modal, CUR_LBL, CUR_NAME } = A;
+  const st = () => A.data.settings;
+  const daysSince = d => d && d !== '0000-00-00' ? Math.max(0, Math.floor((new Date(today() + 'T00:00:00Z') - new Date(d + 'T00:00:00Z')) / 86400000)) : null;
+
+  A.VIEWS.debts = {
+    render(el) {
+      const f = A.vs.debtsF = A.vs.debtsF || { k: 'c', q: '', old: false };
+      const isC = f.k === 'c'; const sg = isC ? 1 : -1;
+      const sumOf = (list, cur) => list.reduce((s, a) => s + A.balOf(a.id)[cur], 0);
+      const cs = A.customers(), ss = A.suppliers();
+      const cI = sumOf(cs, 'IQD'), cU = sumOf(cs, 'USD'), sI = -sumOf(ss, 'IQD'), sU = -sumOf(ss, 'USD');
+      let list = (isC ? cs : ss).map(a => {
+        const b = A.balOf(a.id); const main = b.USD && !b.IQD ? 'USD' : 'IQD';
+        const ag = E.aging(A.S, a.id, main, today());
+        return { a, b, main, days: sg * ag.total > 0 ? daysSince(ag.oldest) : null, oldest: ag.oldest };
+      }).filter(x => x.b.IQD || x.b.USD);
+      if (f.q) { const q = A.norm(f.q); list = list.filter(x => A.match(q, x.a.name, x.a.phone, x.a.code)); }
+      if (f.old) list = list.filter(x => x.days != null && x.days > 30);
+      list.sort((x, y) => sg * y.b.base - sg * x.b.base);
+      const debtors = (isC ? cs : ss).filter(a => sg * A.balOf(a.id).base > 0).length;
+      const company = (st().company || {}).name || '';
+      const rows = list.map(x => {
+        const vI = sg * x.b.IQD, vU = sg * x.b.USD;
+        const ph = x.a.phone ? String(x.a.phone).replace(/\D/g, '').replace(/^0/, '964') : '';
+        const parts = []; if (vI > 0) parts.push(money(vI, 'IQD') + ' دينار'); if (vU > 0) parts.push(money(vU, 'USD') + ' دولار');
+        const msg = `مرحباً ${x.a.name}، نذكّركم بالمبلغ المتبقي بذمتكم: ${parts.join(' و ')}. شكراً لتعاملكم معنا — ${company}`;
+        const ageChip = x.days == null ? '' : x.days > 60 ? `<span class="chip bad">من ${x.days} يوم</span>` : x.days > 30 ? `<span class="chip warn">من ${x.days} يوم</span>` : `<span class="chip">من ${x.days} يوم</span>`;
+        return `<tr class="click" data-st="${x.a.id}"><td><b>${esc(x.a.name)}</b><br><span class="small muted n">${esc(x.a.phone || '')}</span> ${ageChip}
+          <div class="row" style="gap:6px;margin-top:6px">${can(isC ? 'cashIn' : 'cash') ? `<button class="btn sm pri" data-pay="${x.a.id}" data-cur="${x.main}">تسديد</button>` : ''}<button class="btn sm" data-stm="${x.a.id}">كشف</button>${isC && ph && (vI > 0 || vU > 0) ? `<a class="btn sm" href="https://wa.me/${ph}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">تذكير واتساب</a>` : ''}</div></td>
+          <td class="n ${signCls(vI)}">${x.b.IQD ? `<b>${money(vI, 'IQD')}</b>` : '<span class="muted">—</span>'}</td>
+          <td class="n ${signCls(vU)}">${x.b.USD ? `<b>${money(vU, 'USD')}</b>` : '<span class="muted">—</span>'}</td></tr>`;
+      }).join('');
+      el.innerHTML = `<div class="page">
+        <div class="kpis">
+          <a class="kpi ${isC ? 'accent' : ''}" href="#" data-k="c" style="text-decoration:none;color:inherit"><span class="k">ديون لنا (على الزبائن)</span><span class="v n">${money(cI, 'IQD')} <small class="muted">د.ع</small></span><span class="s n">${money(cU, 'USD')} $</span></a>
+          <a class="kpi ${!isC ? 'accent' : ''}" href="#" data-k="s" style="text-decoration:none;color:inherit"><span class="k">ديون علينا (للموردين)</span><span class="v n">${money(sI, 'IQD')} <small class="muted">د.ع</small></span><span class="s n">${money(sU, 'USD')} $</span></a>
+          <div class="kpi"><span class="k">${isC ? 'عدد المدينين' : 'عدد الدائنين'}</span><span class="v n">${debtors}</span><span class="s">${isC ? 'زبون عليه دين' : 'مورد إله فلوس'}</span></div>
+        </div>
+        <div class="card"><div class="card-h"><div class="seg">${[['c', 'ديون الزبائن'], ['s', 'ديون الموردين']].map(([k, n]) => `<button type="button" data-k="${k}" class="${f.k === k ? 'on' : ''}">${n}</button>`).join('')}</div><span class="sp"></span>
+          ${can(isC ? 'cashIn' : 'cash') ? `<button class="btn pri" id="db-new">＋ تسجيل دين أو تسديد</button>` : ''}</div>
+          <div class="row"><div class="f"><input class="in" id="db-q" placeholder="ابحث بالاسم أو الهاتف" value="${esc(f.q)}"></div>
+            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="db-old" ${f.old ? 'checked' : ''}> المتأخرة أكثر من 30 يوم</label>
+            ${can('reports') ? '<button class="btn" id="db-aging">تقرير أعمار الديون</button>' : ''}</div></div>
+        <div class="card pad0"><div class="tbl-wrap"><table class="grid fit"><thead><tr><th>${isC ? 'الزبون' : 'المورد'}</th><th class="n">${isC ? 'عليه' : 'إله'} دينار</th><th class="n">${isC ? 'عليه' : 'إله'} دولار</th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="3" class="empty">${f.q || f.old ? 'ماكو نتائج' : isC ? 'ماكو ديون على الزبائن ✓' : 'ماكو ديون للموردين ✓'}</td></tr>`}</tbody></table></div></div>
+        <p class="muted small">الرقم السالب يعني العكس: ${isC ? 'الزبون دافع زيادة وإله رصيد عدنا' : 'إحنا دافعين زيادة للمورد'}. الدين ينسجل تلقائياً من فاتورة البيع أو الشراء إذا الواصل أقل من المجموع.</p>
+      </div>`;
+      const re = () => this.render(el);
+      $$('[data-k]', el).forEach(b => b.onclick = e => { e.preventDefault(); f.k = b.dataset.k; re(); });
+      let qt; $('#db-q', el).oninput = e => { clearTimeout(qt); qt = setTimeout(() => { f.q = e.target.value; re(); const n = $('#db-q', el); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 200); };
+      $('#db-old', el).onchange = e => { f.old = e.target.checked; re(); };
+      if ($('#db-aging', el)) $('#db-aging', el).onclick = () => { A.vs.rep = { key: 'debts', kind: isC ? 'customer' : 'supplier' }; A.go('reports'); };
+      $$('[data-st]', el).forEach(r => r.onclick = e => { if (e.target.closest('button,a')) return; A.openStatement(r.dataset.st); });
+      $$('[data-stm]', el).forEach(b => b.onclick = () => A.openStatement(b.dataset.stm));
+      $$('[data-pay]', el).forEach(b => b.onclick = () => debtModal(isC ? 'c' : 's', b.dataset.pay, 'pay', b.dataset.cur));
+      if ($('#db-new', el)) $('#db-new', el).onclick = () => debtModal(isC ? 'c' : 's', '', 'debt');
+    },
+  };
+
+  // نافذة سريعة: دين جديد أو تسديد
+  async function debtModal(k, partyId, mode, cur) {
+    const isC = k === 'c'; cur = cur || 'IQD';
+    const st0 = { party: partyId || '', mode: mode || 'debt', cur, src: 'none', amt: 0, date: today(), note: '' };
+    const lbl = {
+      debt: isC ? 'دين عليه (أخذ مني)' : 'دين إله (أخذت منه)',
+      pay: isC ? 'تسديد (دفعلي)' : 'تسديد (دفعتله)',
+    };
+    await modal({
+      title: isC ? 'دين أو تسديد زبون' : 'دين أو تسديد مورد', sticky: true,
+      body: `<div class="f"><label for="dm-p">${isC ? 'الزبون' : 'المورد'}</label><div style="display:flex;gap:6px"><input class="in" id="dm-p" data-id="${esc(st0.party)}" placeholder="ابحث بالاسم أو الهاتف"><button class="btn" id="dm-newp" type="button">＋ جديد</button></div></div>
+        <div id="dm-bal" class="small"></div>
+        <div class="seg" id="dm-mode">${Object.entries(lbl).map(([m, n]) => `<button type="button" data-m="${m}" class="${st0.mode === m ? 'on' : ''}">${n}</button>`).join('')}</div>
+        <div class="row"><div class="f"><label for="dm-amt">المبلغ</label><input class="in n" id="dm-amt" inputmode="decimal" style="font-size:18px;font-weight:600"></div>
+          <div class="f" style="flex:0 0 auto"><label>العملة</label><div class="seg" id="dm-cur">${['IQD', 'USD'].map(c => `<button type="button" data-c="${c}" class="${st0.cur === c ? 'on' : ''}">${CUR_NAME[c]}</button>`).join('')}</div></div></div>
+        <div class="f" id="dm-srcf"><label>${isC ? 'شنو أخذ؟' : 'شنو أخذت؟'}</label><div class="seg" id="dm-src">${[['none', isC ? 'دين سابق / بضاعة بدون فاتورة' : 'دين سابق / بضاعة بدون فاتورة'], ['cash', isC ? 'فلوس من الصندوق (سلفة)' : 'فلوس دخلت الصندوق']].map(([s, n]) => `<button type="button" data-s="${s}" class="${st0.src === s ? 'on' : ''}">${n}</button>`).join('')}</div></div>
+        <div class="row"><div class="f"><label for="dm-date">التاريخ</label><input class="in" type="date" id="dm-date" value="${today()}"></div><div class="f"><label for="dm-note">ملاحظة</label><input class="in" id="dm-note" placeholder="اختياري"></div></div>
+        <p class="muted small" id="dm-hint"></p>`,
+      onOpen: bg => {
+        const pIn = $('#dm-p', bg);
+        const pred = a => isC ? A.isCustomer(a.id) : A.isSupplier(a.id);
+        const showBal = () => {
+          const box = $('#dm-bal', bg); if (!st0.party) { box.innerHTML = ''; return; }
+          const b = A.balOf(st0.party); const sg = isC ? 1 : -1;
+          box.innerHTML = `الرصيد الحالي: ${b.IQD || !b.USD ? `<b class="n ${signCls(sg * b.IQD)}">${money(sg * b.IQD, 'IQD')}</b> ${curChip('IQD')}` : ''} ${b.USD ? `<b class="n ${signCls(sg * b.USD)}">${money(sg * b.USD, 'USD')}</b> ${curChip('USD')}` : ''}`;
+        };
+        const hint = () => {
+          $('#dm-srcf', bg).style.display = st0.mode === 'debt' ? '' : 'none';
+          const box = st0.cur === 'USD' ? 'صندوق الدولار' : 'صندوق الدينار';
+          $('#dm-hint', bg).textContent = st0.mode === 'pay'
+            ? (isC ? `ينقص دين الزبون وتدخل الفلوس ${box}.` : `ينقص دينك للمورد وتطلع الفلوس من ${box}.`)
+            : st0.src === 'cash' ? (isC ? `يزيد دين الزبون وتطلع الفلوس من ${box}.` : `يزيد دينك للمورد وتدخل الفلوس ${box}.`)
+              : (isC ? 'يزيد دين الزبون بدون أي حركة بالصندوق.' : 'يزيد دينك للمورد بدون أي حركة بالصندوق.');
+        };
+        A.accPicker(pIn, pred, id => { st0.party = id; showBal(); });
+        $('#dm-newp', bg).onclick = async () => { const id = await A.partyModal(isC ? 'customer' : 'supplier'); if (id) { st0.party = id; pIn.dataset.id = id; setTimeout(() => { pIn.value = A.accName(id); showBal(); }, 300); } };
+        $$('#dm-mode button', bg).forEach(b => b.onclick = () => { st0.mode = b.dataset.m; $$('#dm-mode button', bg).forEach(x => x.classList.toggle('on', x === b)); hint(); });
+        $$('#dm-cur button', bg).forEach(b => b.onclick = () => { st0.cur = b.dataset.c; $$('#dm-cur button', bg).forEach(x => x.classList.toggle('on', x === b)); hint(); });
+        $$('#dm-src button', bg).forEach(b => b.onclick = () => { st0.src = b.dataset.s; $$('#dm-src button', bg).forEach(x => x.classList.toggle('on', x === b)); hint(); });
+        $('#dm-amt', bg).oninput = e => { const v = P(e.target.value); st0.amt = Number.isFinite(v) && v > 0 ? v : 0; e.target.classList.toggle('err', !Number.isFinite(v) || v < 0); };
+        $('#dm-date', bg).onchange = e => { st0.date = e.target.value || today(); };
+        $('#dm-note', bg).oninput = e => { st0.note = e.target.value; };
+        showBal(); hint();
+        if (st0.party) setTimeout(() => $('#dm-amt', bg).focus(), 60);
+      },
+      actions: [{ label: 'إلغاء', value: null }, {
+        label: 'حفظ', cls: 'pri', onClick: async () => {
+          if (!st0.party) { toast('اختر ' + (isC ? 'الزبون' : 'المورد'), 'bad'); return false; }
+          if (!(st0.amt > 0)) { toast('اكتب المبلغ', 'bad'); return false; }
+          const s = A.sys(); const cash = st0.cur === 'USD' ? s.cashUSD : s.cashIQD;
+          const base = { id: uid(), date: st0.date, rate100: rate100() };
+          let d;
+          if (st0.mode === 'debt' && st0.src === 'none') {
+            d = Object.assign(base, { type: 'obal', num: A.nextNum('obal'), lines: [{ acc: st0.party, cur: st0.cur, [isC ? 'dr' : 'cr']: st0.amt, note: st0.note || 'دين' }], note: st0.note || (isC ? 'دين على الزبون' : 'دين للمورد') });
+          } else {
+            // تسديد الزبون أو دين المورد النقدي = قبض، والعكس = صرف
+            const type = (isC && st0.mode === 'pay') || (!isC && st0.mode === 'debt') ? 'receipt' : 'payment';
+            d = Object.assign(base, { type, num: A.nextNum(type), acc: cash, cur: st0.cur, amt: st0.amt, party: st0.party, pcur: st0.cur, note: st0.note || (st0.mode === 'pay' ? 'تسديد دين' : isC ? 'سلفة نقدية' : 'دين نقدي') });
+          }
+          const ck = A.checkDoc(d); if (ck.error) { toast(ck.error, 'bad'); return false; }
+          const saved = await A.saveDoc(d).catch(() => null); if (!saved) return false;
+          toast('انحفظ ✓', 'good');
+        },
+      }],
+    });
+  }
+  A.debtModal = debtModal;
 })();
 
 /* ميزان — التقارير والطباعة */

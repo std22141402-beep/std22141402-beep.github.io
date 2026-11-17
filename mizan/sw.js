@@ -1,5 +1,5 @@
 /* ميزان — يشغّل التطبيق بدون انترنت */
-const V = 'mizan-af17354233';
+const V = 'mizan-e743d1d1b3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
