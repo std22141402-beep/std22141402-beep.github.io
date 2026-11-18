@@ -119,6 +119,11 @@ const tmS=h=>h?`<small class="mut" style="display:block">${tm(h)}</small>`:'';
 let S;try{S=JSON.parse(localStorage.getItem('daftar:acc'))}catch(e){}
 S=S||{};Object.assign(S,{items:S.items||[],parties:S.parties||[],inv:S.inv||[],vou:S.vou||[],exp:S.exp||[],chq:S.chq||[],users:S.users||[],wh:S.wh||[{id:0,name:'المخزن الرئيسي'}],co:S.co||'اسم شركتك',rates:S.rates||{USD:1310,EUR:1502,GBP:1773},sh:S.sh||{},cats:S.cats||[]});
 S.items.forEach(i=>{if(!i.w)i.w={0:i.qty}});
+/* وقت العمليات القديمة: رقم كل عملية بيه لحظة تسجيلها، فنطلع منه الوقت إذا ما محفوظ */
+{const pd=n=>String(n).padStart(2,'0');let ch=0;const at=r=>{const ms=Math.floor((+r.id||0)/100);return ms>1.5e12&&ms<Date.now()+864e5?new Date(ms):null};
+ [...S.inv,...S.vou,...S.exp].forEach(r=>{const t=at(r);if(!t)return;if(!r.h){r.h=pd(t.getHours())+':'+pd(t.getMinutes());ch=1}const u=t.toISOString().slice(0,10),l=ld(t);if(r.d===u&&u!==l){r.d=l;ch=1}});
+ S.chq.forEach(r=>{const t=at(r);if(!t||r.h)return;r.h=pd(t.getHours())+':'+pd(t.getMinutes());if(!r.d)r.d=ld(t);ch=1});
+ if(ch)try{localStorage.setItem('daftar:acc',JSON.stringify(S))}catch(e){}}
 let me=null,_c=0;Object.defineProperty(S,'n',{get(){return Date.now()*100+(_c++%100)},set(){}});
 let DB=null,last={},ready=false;const G=['items','parties','inv','vou','exp','chq'];
 const save=()=>{try{localStorage.setItem('daftar:acc',JSON.stringify(S))}catch(e){}push()};
@@ -224,7 +229,7 @@ const cres=()=>{const t=tab=='sale'?'c':'s',pp=P(cp);if(pp)return `<div class="c
 function pickP(id){cp=id;cq='';$('cart').innerHTML=cartV()}
 function setQty(id,el){const it=S.items.find(x=>x.id==id);fx(el);const n=+el.value;if(isNaN(n))return;const d=n-it.qty,w=S.wh[0].id;it.qty=n;it.w[w]=(it.w[w]||0)+d;save();render();T('تم تعديل العدد')}
 const debtV=()=>{const A=S.parties.map(p=>pmv(p.id).reduce((s,e)=>s+e.x,0)),us=A.reduce((s,b)=>b>0?s+b:s,0),them=A.reduce((s,b)=>b<0?s-b:s,0);
- return card('سجل الديون الشهري واليومي',`<p class="mut" style="margin-top:0">اكتب اسم الزبون أو رقم هاتفه واضغط عليه، يطلع سجله الشهري واليومي وحده.</p><input id="dsi" autocomplete="off" placeholder="🔍 اسم الزبون أو رقم هاتفه..." value="${esc(dsq)}" oninput="dsq=this.value;$('dmt').innerHTML=dlist()" onkeydown="if(event.key=='Enter'){event.preventDefault();const b=document.querySelector('#dmt [data-o]');if(b)b.click()}" style="margin-bottom:10px"><div id="dmt" class="dbt dl">${dlist()}</div><p class="mut">الإجمالي الآن: ديون لنا <b class="r">${f(us)}</b> ، ديون علينا <b class="g">${f(them)}</b></p>`)};
+ return card('سجل الديون الشهري واليومي',`<p class="mut" style="margin-top:0">اكتب اسم الزبون أو رقم هاتفه واضغط عليه، يطلع سجله الشهري واليومي وحده: كل بيع وشراء ودين وتسديد بتاريخه ووقته.</p><input id="dsi" autocomplete="off" placeholder="🔍 اسم الزبون أو رقم هاتفه..." value="${esc(dsq)}" oninput="dsq=this.value;$('dmt').innerHTML=dlist()" onkeydown="if(event.key=='Enter'){event.preventDefault();const b=document.querySelector('#dmt [data-o]');if(b)b.click()}" style="margin-bottom:10px"><div id="dmt" class="dbt dl">${dlist()}</div><p class="mut">الإجمالي الآن: ديون لنا <b class="r">${f(us)}</b> ، ديون علينا <b class="g">${f(them)}</b></p>`)};
 const an=t=>String(t||'').toLowerCase().replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[ً-ْـ]/g,'');
 function dlist(){const q=an(dsq.trim()),dg=dsq.replace(/[٠-٩]/g,c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/\D/g,'');
  let R=S.parties.map(p=>{const L=pmv(p.id),z=L[L.length-1];return {p,b:L.reduce((s,e)=>s+e.x,0),l:z?z.d:'',lh:z?z.h:'',n:L.length}});
@@ -238,7 +243,7 @@ const MN=['كانون الثاني','شباط','آذار','نيسان','أيار
 const VL={'d+':'دين عليه','d-':'تسديد / دين له','in':'سند قبض','out':'سند دفع'};
 let drp=null,dfo=false;
 /* كل حركات الزبون (فواتير آجلة + ديون + تسديدات + سندات) بالترتيب */
-const pmv=pid=>{const L=[];S.inv.forEach(i=>{if(i.p!=pid)return;const r=i.total-i.paid;if(r)L.push({k:'inv',id:i.id,d:i.d,h:i.h||'',x:i.type=='sale'?r:-r,n:i.type=='sale'?'فاتورة بيع آجلة':'فاتورة شراء آجلة',sr:ser(i)})});S.vou.forEach(v=>{if(v.p!=pid)return;const x=v.type=='in'||v.type=='d-'?-v.a:+v.a;if(!x)return;L.push({k:'vou',id:v.id,d:v.d,h:v.h||'',x,t:v.type,n:v.n||''})});return L.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.h<b.h?-1:a.h>b.h?1:a.id-b.id)};
+const pmv=pid=>{const L=[];S.inv.forEach(i=>{if(i.p!=pid)return;const r=i.total-i.paid;L.push({k:'inv',id:i.id,d:i.d,h:i.h||'',x:i.type=='sale'?r:-r,n:(i.type=='sale'?'فاتورة بيع':'فاتورة شراء')+(r?' آجلة':' نقداً'),sr:ser(i),tot:i.total,pd:i.paid})});S.vou.forEach(v=>{if(v.p!=pid)return;const x=v.type=='in'||v.type=='d-'?-v.a:+v.a;if(!x)return;L.push({k:'vou',id:v.id,d:v.d,h:v.h||'',x,t:v.type,n:v.n||''})});return L.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.h<b.h?-1:a.h>b.h?1:a.id-b.id)};
 function openDebt(id,g){if(g)go('dash');drp=id;dmo=today().slice(0,7);render();scrollTo(0,0)}
 function dmoS(k){const [y,m]=dmo.split('-').map(Number),t=new Date(y,m-1+k,1);dmo=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0');render()}
 /* جداول سجل الزبون: الشهري (كل الأشهر) واليومي (الشهر المختار) مع الرصيد بعد كل حركة */
@@ -250,10 +255,10 @@ function debtTabs(p,pl){const L=pmv(p.id),st=dmo+'-01',en=dmo+'-31',M={};
  const drows=[row(pl?'':'',`<b>رصيد أول الشهر</b>`,'','',balTxt(open))];
  if(!ML.length)drows.push(row('',sm('ماكو حركات بهذا الشهر'),'','',''));
  Object.keys(D).forEach(d=>{let sa=0,sc=0;D[d].forEach(e=>{rb+=e.x;if(e.x>0)sa+=e.x;else sc-=e.x;const lb=e.k=='vou'?VL[e.t]||'':'',up=e.x>0,amt=f(Math.abs(e.x)),v=!pl&&e.k=='vou'&&S.vou.find(x=>x.id==e.id);
-   if(pl){drows.push([d+(e.h?' '+tm(e.h):''),he(e.k=='vou'?lb+(e.n?' — '+e.n:''):e.n+' '+e.sr),up?amt:'',up?'':amt,balTxt(rb)]);return}
+   if(pl){drows.push([d+(e.h?' '+tm(e.h):''),he(e.k=='vou'?lb+(e.n?' — '+e.n:''):e.n+' '+e.sr+' (المجموع '+f(e.tot)+'، المدفوع '+f(e.pd)+')'),e.x>0?amt:'',e.x<0?amt:'',balTxt(rb)]);return}
    const day=`<span style="white-space:nowrap">${d.slice(5).split('-').reverse().join('/')}</span>${e.h?'<br>'+sm(tm(e.h)):''}`,
-    desc=(e.k=='vou'?lb:he(e.n)+` <span dir="ltr" style="white-space:nowrap">${e.sr}</span>`)+(e.k=='vou'&&e.n?'<br>'+sm(he(e.n)):'')+'<br>'+(e.k=='vou'?X('vou',e.id):`<button class="pb" style="padding:0" onclick="invDlg(${e.id})">عرض الفاتورة</button>`),
-    am=(v?ni('vou',v,'a',74):`<b class="${up?'r':'g'}">${amt}</b>`)+`<br><small class="${up?'r':'g'}">${up?'عليه':'له'}</small>`;
+    desc=(e.k=='vou'?lb:he(e.n)+` <span dir="ltr" style="white-space:nowrap">${e.sr}</span><br>`+sm(`المجموع ${f(e.tot)}<br>المدفوع ${f(e.pd)}`))+(e.k=='vou'&&e.n?'<br>'+sm(he(e.n)):'')+'<br>'+(e.k=='vou'?X('vou',e.id):`<button class="pb" style="padding:0" onclick="invDlg(${e.id})">عرض الفاتورة</button>`),
+    am=!e.x?sm('مدفوعة كاملة'):(v?ni('vou',v,'a',74):`<b class="${up?'r':'g'}">${amt}</b>`)+`<br><small class="${up?'r':'g'}">${up?'عليه':'له'}</small>`;
    drows.push([day,desc,am,balTxt(rb)])});
   if(D[d].length>1)drows.push(row('',sm('مجموع اليوم'),pl?(sa?f(sa):''):`<small>${sa?`<span class="r">عليه ${f(sa)}</span>`:''}${sa&&sc?'<br>':''}${sc?`<span class="g">له ${f(sc)}</span>`:''}</small>`,pl?(sc?f(sc):''):'',''))});
  drows.push(row('','<b>رصيد آخر الشهر</b>','','',balTxt(rb)));
