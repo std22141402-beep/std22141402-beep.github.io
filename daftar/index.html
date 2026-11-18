@@ -104,7 +104,7 @@ html{-webkit-text-size-adjust:100%}body{-webkit-tap-highlight-color:transparent}
 #upd p{margin:0;flex:1}#upd button{background:var(--gold);color:#3a2a00;border:0;border-radius:9px;padding:8px 12px;font:inherit;font-weight:700;cursor:pointer}
 .camv .cmsg{color:#fff;margin:0;text-align:center;min-height:1.5em}
 @media print{.note,#upd{display:none!important}}
-.dbt td{white-space:normal;padding:9px 4px;font-size:14px;vertical-align:top}.dbt th{padding:8px 4px}.dbt td:first-child{white-space:nowrap}.dbt.dl td:first-child{white-space:normal}.dbt td b,.dbt td span{word-break:keep-all}
+.dbt td{white-space:normal;padding:9px 4px;font-size:14px;vertical-align:top}.dbt th{padding:8px 4px}.dbt td:first-child{white-space:nowrap}.dbt.dl td:first-child{white-space:normal}.dadd>summary{list-style:none;text-align:center}.dadd>summary::-webkit-details-marker{display:none}.dadd[open]>summary{background:var(--card)}.dbt td b,.dbt td span{word-break:keep-all}
 </style>
 </head>
 <body>
@@ -140,16 +140,17 @@ const X=(k,id)=>`<button class="x" onclick="del('${k}',${id})">حذف</button>`;
 const NAV=[['dash','📊','الرئيسية'],['sale','🛒','بيع'],['buy','📥','شراء'],['items','📦','المواد'],['stock','🗂️','المخزون'],['parties','👥','العملاء'],['vou','🧾','السندات'],['chq','🏦','الشيكات'],['exp','💸','المصروفات'],['rep','📈','التقارير'],['calc','🧮','الحاسبة'],['usr','⚙️','الإعدادات']];
 const tabs=()=>me&&me.role=='cashier'?NAV.filter(t=>['sale','items','parties','calc'].includes(t[0])):NAV;
 let tab='dash',cart=[],cp='',cpaid='',q='',stmt='',cw=0;
-const go=t=>{tab=t;cart=[];cp='';cpaid='';q='';cq='';isq='';stmt='';dsq='';dlq='';drp=null;render();scrollTo(0,0)};
+const go=t=>{tab=t;cart=[];cp='';cpaid='';q='';cq='';isq='';stmt='';dsq='';dlq='';drp=null;dfo=false;render();scrollTo(0,0)};
 function render(){
  const lo=S.users.length&&!me;$('app').className=lo?'lo':'';
  if(lo){$('nav').innerHTML='';$('main').innerHTML=loginV();return}
  if(!tabs().some(t=>t[0]==tab))tab=tabs()[0][0];
  $('nav').innerHTML='<b>دفتر</b>'+tabs().map(t=>`<button class="${t[0]==tab?'on':''}" onclick="go('${t[0]}')"><i>${t[1]}</i>${t[2]}</button>`).join('');
- $('main').innerHTML=V[tab]();if(tab=='calc')cvr();if(tab=='items'||tab=='stock')fi(isq);if(tab=='stock')fc(csq);if(tab=='dash'){fdt('dmt',dsq);fdt('dlt',dlq)}}
+ $('main').innerHTML=V[tab]();if(tab=='calc')cvr();if(tab=='items'||tab=='stock')fi(isq);if(tab=='stock')fc(csq);}
 const recent=n=>tbl(['#','التاريخ','النوع','الطرف','الإجمالي','المدفوع',''],S.inv.slice().reverse().slice(0,n).map(i=>[ser(i),ti('inv',i,'d',130,'date'),i.type=='sale'?'بيع':'شراء',si('inv',i,'p',[['','نقدي'],...S.parties.map(p=>[p.id,p.name])]),f(i.total),ni('inv',i,'paid'),`<button class="pb" onclick="printInv(${i.id})">طباعة</button><button class="x" onclick="delInv(${i.id})">حذف</button>`]),'لا توجد فواتير بعد');
 const V={
 dash(){
+ if(drp&&P(drp))return debtRec(P(drp));drp=null;
  const days=[...Array(30)].map((_,i)=>{const d=new Date(Date.now()-(29-i)*864e5).toISOString().slice(0,10);return S.inv.filter(v=>v.type=='sale'&&v.d==d).reduce((a,v)=>a+v.total,0)}),mx=Math.max(...days,1);
  const bars=days.map((v,i)=>`<rect x="${i*9.4}" y="${58-v/mx*54}" width="7" height="${v/mx*54+2}" rx="2" fill="currentColor" opacity="${i==29?1:.45}"/>`).join('');
  const dm=S.parties.reduce((a,p)=>{const b=bal(p);return b>0?a+b:a},0),dd=S.parties.reduce((a,p)=>{const b=bal(p);return b<0?a-b:a},0),low=S.items.filter(i=>i.qty<=2);
@@ -217,19 +218,24 @@ const gprofit=()=>S.inv.filter(i=>i.type=='sale').reduce((a,i)=>a+i.lines.reduce
 const cres=()=>{const t=tab=='sale'?'c':'s',pp=P(cp);if(pp)return `<div class="card" style="margin:0 0 10px;padding:10px;display:flex;justify-content:space-between;align-items:center"><span><b>${pp.name}</b> <span dir="ltr" class="mut">${pp.phone||''}</span><br><small>${balTxt(bal(pp))}</small></span><button class="x" onclick="pickP('')">✕</button></div>`;const k=cq.trim().toLowerCase(),d=k.replace(/\D/g,'');if(!k)return '';const m=S.parties.filter(p=>p.t==t&&(p.name.toLowerCase().includes(k)||(d&&String(p.phone||'').replace(/\D/g,'').includes(d)))).slice(0,6);return m.map(p=>`<button class="tile" style="width:100%;margin-bottom:6px;flex-direction:row;justify-content:space-between" onclick="pickP(${p.id})"><b>${p.name}</b><span dir="ltr">${p.phone||''}</span></button>`).join('')||'<p class="mut">غير موجود: تُسجَّل الفاتورة نقداً. أضفه من تبويب العملاء</p>'};
 function pickP(id){cp=id;cq='';$('cart').innerHTML=cartV()}
 function setQty(id,el){const it=S.items.find(x=>x.id==id);fx(el);const n=+el.value;if(isNaN(n))return;const d=n-it.qty,w=S.wh[0].id;it.qty=n;it.w[w]=(it.w[w]||0)+d;save();render();T('تم تعديل العدد')}
-const debtV=()=>{return card('تسجيل دين',`<label>الطرف (ابحث بالاسم أو الهاتف)<input value="${dq}" placeholder="اكتب اسماً أو رقم هاتف" oninput="dq=this.value;$('dres').innerHTML=dres()"></label><div id="dres">${dres()}</div><small class="mut">التاريخ: ${today()} (تلقائي)</small><div class="row">${sel('dk','النوع','<option value="d+">دين عليه</option><option value="d-">دين له / تسديد</option>')}${inp('da','المبلغ (يقبل معادلات =)','number')}</div>${inp('dn','ملاحظة')}<button class="btn" onclick="addDebt()">تسجيل في السجل</button>`)+mdebt()};
+const debtV=()=>{const A=S.parties.map(p=>pmv(p.id).reduce((s,e)=>s+e.x,0)),us=A.reduce((s,b)=>b>0?s+b:s,0),them=A.reduce((s,b)=>b<0?s-b:s,0);
+ return card('سجل الديون الشهري واليومي',`<p class="mut" style="margin-top:0">اكتب اسم الزبون أو رقم هاتفه واضغط عليه، يطلع سجله الشهري واليومي وحده.</p><input id="dsi" autocomplete="off" placeholder="🔍 اسم الزبون أو رقم هاتفه..." value="${esc(dsq)}" oninput="dsq=this.value;$('dmt').innerHTML=dlist()" onkeydown="if(event.key=='Enter'){event.preventDefault();const b=document.querySelector('#dmt [data-o]');if(b)b.click()}" style="margin-bottom:10px"><div id="dmt" class="dbt dl">${dlist()}</div><p class="mut">الإجمالي الآن: ديون لنا <b class="r">${f(us)}</b> ، ديون علينا <b class="g">${f(them)}</b></p>`)};
+const an=t=>String(t||'').toLowerCase().replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[ً-ْـ]/g,'');
+function dlist(){const q=an(dsq.trim()),dg=dsq.replace(/[٠-٩]/g,c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/\D/g,'');
+ let R=S.parties.map(p=>{const L=pmv(p.id);return {p,b:L.reduce((s,e)=>s+e.x,0),l:L.length?L[L.length-1].d:'',n:L.length}});
+ R=q?R.filter(r=>an(r.p.name).includes(q)||(dg.length>=3&&String(r.p.phone||'').replace(/\D/g,'').includes(dg))):R.filter(r=>r.n);
+ if(!R.length)return q?`<p class="mut" style="margin:4px 0 10px">ماكو زبون بهذا الاسم أو الرقم.</p><button class="btn g" onclick="newDebtParty()">➕ إضافة «${he(dsq.trim())}» كزبون جديد وفتح سجله</button>`:'<p class="mut">ماكو ديون مسجلة بعد. ابحث عن زبون وافتح سجله حتى تسجل أول دين.</p>';
+ return tbl(['الزبون','الرصيد','آخر حركة',''],R.map((r,k)=>[`<button class="pb" style="padding:0;text-align:start" onclick="openDebt(${r.p.id})"><b>${he(r.p.name)}</b></button><br><small class="mut" dir="ltr">${he(r.p.phone||'')}</small>`,r.n?balTxt(r.b):'<small class="mut">ماكو حركات</small>',r.l?`<span style="white-space:nowrap">${r.l.slice(5).split('-').reverse().join('/')}</span>${r.l.slice(0,4)!=today().slice(0,4)?'<br><small class="mut">'+r.l.slice(0,4)+'</small>':''}`:'',`<button class="btn" ${k?'':'data-o'} style="width:auto;padding:7px 10px;font-size:14px;white-space:nowrap" onclick="openDebt(${r.p.id})">📒 فتح</button>`]))}
+function newDebtParty(){const n=dsq.trim();if(!n)return;const ph=/^\+?[\d٠-٩\s-]{6,}$/.test(n),p={id:S.n,name:ph?'زبون '+n:n,phone:ph?n:'',t:'c'};S.parties.push(p);save();dsq='';openDebt(p.id);T('تمت إضافة الزبون: أكمل بياناته من صفحة العملاء')}
+function backDebt(){drp=null;render();setTimeout(()=>{const e=$('dsi');if(e)e.closest('section').scrollIntoView({block:'start'})},30)}
 let dmo=today().slice(0,7);
 const MN=['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'],mN=m=>MN[+m.slice(5,7)-1]+' '+m.slice(0,4);
 const VL={'d+':'دين عليه','d-':'تسديد / دين له','in':'سند قبض','out':'سند دفع'};
-let drp=null;
+let drp=null,dfo=false;
 /* كل حركات الزبون (فواتير آجلة + ديون + تسديدات + سندات) بالترتيب */
 const pmv=pid=>{const L=[];S.inv.forEach(i=>{if(i.p!=pid)return;const r=i.total-i.paid;if(r)L.push({k:'inv',id:i.id,d:i.d,h:i.h||'',x:i.type=='sale'?r:-r,n:i.type=='sale'?'فاتورة بيع آجلة':'فاتورة شراء آجلة',sr:ser(i)})});S.vou.forEach(v=>{if(v.p!=pid)return;const x=v.type=='in'||v.type=='d-'?-v.a:+v.a;if(!x)return;L.push({k:'vou',id:v.id,d:v.d,h:v.h||'',x,t:v.type,n:v.n||''})});return L.sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.h<b.h?-1:a.h>b.h?1:a.id-b.id)};
-function openDebt(id,g){if(g)go('dash');drp=id;dmo=today().slice(0,7);render();setTimeout(()=>{const e=$('dbr');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})},40)}
+function openDebt(id,g){if(g)go('dash');drp=id;dmo=today().slice(0,7);render();scrollTo(0,0)}
 function dmoS(k){const [y,m]=dmo.split('-').map(Number),t=new Date(y,m-1+k,1);dmo=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0');render()}
-/* قائمة الزبائن: كل زبون يفتح سجله الخاص */
-const mdebt=()=>{const p=drp&&P(drp);if(p)return debtRec(p);drp=null;
- const R=S.parties.map(p=>{const L=pmv(p.id);return L.length?{p,b:L.reduce((s,e)=>s+e.x,0),l:L[L.length-1].d}:null}).filter(Boolean),us=R.reduce((s,r)=>r.b>0?s+r.b:s,0),them=R.reduce((s,r)=>r.b<0?s-r.b:s,0);
- return card('سجلات ديون الزبائن',`<p class="mut" style="margin-top:0">لكل زبون سجل ديون خاص بيه: شهري ويومي. اضغط على الزبون حتى يفتح سجله.</p><input placeholder="🔍 ابحث عن زبون بالاسم أو الهاتف..." value="${esc(dsq)}" oninput="dsq=this.value;fdt('dmt',this.value)" style="margin-bottom:10px"><div id="dmt" class="dbt dl">`+tbl(['الزبون','الرصيد','آخر حركة',''],R.map(r=>[`<button class="pb" style="padding:0;text-align:start" onclick="openDebt(${r.p.id})"><b>${he(r.p.name)}</b></button><br><small class="mut" dir="ltr">${he(r.p.phone||'')}</small>`,balTxt(r.b),`<span style="white-space:nowrap">${r.l.slice(5).split('-').reverse().join('/')}</span>${r.l.slice(0,4)!=today().slice(0,4)?'<br><small class="mut">'+r.l.slice(0,4)+'</small>':''}`,`<button class="btn" style="width:auto;padding:7px 10px;font-size:14px;white-space:nowrap" onclick="openDebt(${r.p.id})">📒 فتح</button>`]),'لا توجد ديون مسجلة بعد')+`</div><p class="mut">الإجمالي الآن: ديون لنا <b class="r">${f(us)}</b> ، ديون علينا <b class="g">${f(them)}</b></p>`)};
 /* جداول سجل الزبون: الشهري (كل الأشهر) واليومي (الشهر المختار) مع الرصيد بعد كل حركة */
 function debtTabs(p,pl){const L=pmv(p.id),st=dmo+'-01',en=dmo+'-31',M={};
  L.forEach(e=>{const k=e.d.slice(0,7);M[k]=M[k]||{a:0,c:0};if(e.x>0)M[k].a+=e.x;else M[k].c-=e.x});
@@ -250,8 +256,8 @@ function debtTabs(p,pl){const L=pmv(p.id),st=dmo+'-01',en=dmo+'-31',M={};
   d:pl?tbl(['التاريخ','البيان','عليه','له','الرصيد'],drows):tbl(['اليوم','البيان','المبلغ','الرصيد'],drows)}}
 /* سجل الزبون الخاص */
 function debtRec(p){const tb=debtTabs(p),btn='class="btn g" style="width:auto;padding:7px 13px;font-size:14px"';
- return `<section class="card" id="dbr"><div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:12px"><button ${btn} onclick="drp=null;render()">→ كل الزبائن</button><button ${btn} onclick="printDebt(${p.id})">🖨️ طباعة السجل</button></div><h2 style="margin-bottom:2px">📒 سجل ديون: ${he(p.name)}</h2><p class="mut" style="margin:0 0 4px"><span dir="ltr">${he(p.phone||'')}</span>${p.phone?' · ':''}${p.t=='s'?'مورد':'عميل'}</p><div style="font:700 24px 'Reem Kufi',sans-serif;margin:2px 0 4px">الرصيد الحالي: ${balTxt(bal(p))}</div>
- <h3 style="margin:16px 0 8px">تسجيل حركة بسجله</h3><div class="row">${sel('rk','النوع','<option value="d+">دين عليه</option><option value="d-">تسديد / دين له</option>')}${inp('ra','المبلغ (يقبل معادلات =)','number')}</div>${inp('rn','ملاحظة')}<button class="btn" onclick="addDebtTo(${p.id})">تسجيل</button>
+ return `<section class="card" id="dbr"><div style="display:flex;gap:8px;justify-content:space-between;align-items:center;margin-bottom:12px"><button ${btn} onclick="backDebt()">→ رجوع للزبائن</button><button ${btn} onclick="printDebt(${p.id})">🖨️ طباعة السجل</button></div><h2 style="margin-bottom:2px">📒 سجل ديون: ${he(p.name)}</h2><p class="mut" style="margin:0 0 4px"><span dir="ltr">${he(p.phone||'')}</span>${p.phone?' · ':''}${p.t=='s'?'مورد':'عميل'}</p><div style="font:700 24px 'Reem Kufi',sans-serif;margin:2px 0 4px">الرصيد الحالي: ${balTxt(bal(p))}</div>
+ <details class="dadd" ${dfo?'open':''} ontoggle="dfo=this.open" style="margin:14px 0 4px"><summary class="btn g">➕ تسجيل دين أو تسديد</summary><div style="margin-top:12px"><div class="row">${sel('rk','النوع','<option value="d+">دين عليه</option><option value="d-">تسديد / دين له</option>')}${inp('ra','المبلغ (يقبل معادلات =)','number')}</div>${inp('rn','ملاحظة')}<button class="btn" onclick="addDebtTo(${p.id})">تسجيل</button></div></details>
  <h3 style="margin:20px 0 8px">السجل الشهري</h3><div class="dbt">${tb.m}</div>
  <div style="display:flex;align-items:center;gap:6px;margin:20px 0 8px"><h3 style="flex:1">السجل اليومي — ${mN(dmo)}</h3><button ${btn} onclick="dmoS(-1)">السابق</button><button ${btn} onclick="dmoS(1)">التالي</button></div><div class="dbt">${tb.d}</div></section>`}
 function addDebtTo(id){const a=val($('ra').value)||0;if(!a)return T('أدخل المبلغ',1);S.vou.push({id:S.n,type:$('rk').value,p:id,a,d:today(),h:new Date().toTimeString().slice(0,5),n:$('rn').value.trim()});dmo=today().slice(0,7);save();render();T('تم التسجيل بسجل الزبون ✓')}
