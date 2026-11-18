@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-j/ah5yisH3HI3SY5cHcbdREtWOBBfy9gQ5s4ffPcK4g='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'">
+<title>طباعة — دفتر</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Reem+Kufi:wght@500;700&display=swap" rel="stylesheet">
+<style id="appcss"></style>
+<style>
+/* صفحة الطباعة لتطبيق دفتر: تطبيق الآيفون ما يسمح بالطباعة من داخله، فيفتح هاي الصفحة بسفاري */
+body{background:#fff!important;color:#000!important;margin:0}
+#pv{display:block!important;color:#000;background:#fff;padding:20px}
+#app{padding:0!important}main{padding:16px!important;max-width:none!important}
+.pbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 14px calc(10px);padding-top:calc(10px + env(safe-area-inset-top,0px));background:#10243a;color:#fff;font:14px/1.5 -apple-system,system-ui,Tahoma,sans-serif}
+.pbar button{border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer}
+#pp{background:#f2b134;color:#3a2a00}#bk{background:rgba(255,255,255,.14);color:#fff}
+#hint{flex-basis:100%;opacity:.85}#hint.hl{opacity:1;color:#f2b134;font-weight:700}
+@media print{.pbar{display:none!important}}
+</style>
+</head>
+<body>
+<div class="pbar"><button id="pp" type="button">🖨️ طباعة</button><button id="bk" type="button">رجوع</button><span id="hint">إذا ما طلعت نافذة الطباعة: اضغط زر المشاركة ثم «طباعة» (أو «حفظ PDF»). للرجوع للتطبيق اضغط «تم».</span></div>
+<div id="out"></div>
+<script>const he=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const EL=['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'],ER=EL.map(s=>s.replace(/./g,c=>c=='1'?'0':'1')),EG=ER.map(s=>[...s].reverse().join('')),EP=['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
+const eck=s=>{let t=0;for(let k=0;k<12;k++)t+=(+s[k])*(k%2?3:1);return (10-t%10)%10},isEAN=s=>/^\d{13}$/.test(s)&&eck(s)==+s[12];
+const C128='212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 112232 122132 122231 113222 123122 123221 223211 221132 221231 213212 223112 312131 311222 321122 321221 312212 322112 322211 212123 212321 232121 111323 131123 131321 112313 132113 132311 211313 231113 231311 112133 112331 132131 113123 113321 133121 313121 211331 231131 213113 213311 213131 311123 311321 331121 312113 312311 332111 314111 221411 431111 111224 111422 121124 121421 141122 141221 112214 112412 122114 122411 142112 142211 241211 221114 413111 241112 134111 111242 121142 121241 114212 124112 124211 411212 421112 421211 212141 214121 412121 111143 111341 131141 114113 114311 411113 411311 113141 114131 311141 411131 211412 211214 211232 2331112'.split(' ');
+const c128=s=>{const v=/^(\d\d){2,}$/.test(s)?[105,...s.match(/\d\d/g).map(Number)]:[104,...[...s].map(ch=>{const c=ch.charCodeAt(0);return c>=32&&c<128?c-32:31})];let ck=v[0];for(let k=1;k<v.length;k++)ck+=v[k]*k;v.push(ck%103,106);return v.map(x=>C128[x]).join('')};
+function bcSVG(code,o={}){code=String(code);const h=o.h||50,t=3,e=isEAN(code)?code:/^\d{12}$/.test(code)&&isEAN('0'+code)?'0'+code:null;let b='',ql=10,qz=10;
+ if(e){const p=EP[+e[0]];b='101';for(let k=1;k<7;k++)b+=(p[k-1]=='L'?EL:EG)[+e[k]];b+='01010';for(let k=7;k<13;k++)b+=ER[+e[k]];b+='101';ql=11;qz=7}
+ else[...c128(code)].forEach((x,k)=>{b+=(k%2?'0':'1').repeat(+x)});
+ const fs=e?9:8,W=ql+b.length+qz,H=t+h+fs+3;let d='';
+ for(let k=0;k<b.length;){if(b[k]!='1'){k++;continue}let j=k;while(b[j]=='1')j++;const g=e&&(k<3||(k>=45&&k<50)||k>=92);d+=`M${ql+k} ${t}h${j-k}v${g?+(h+fs*.6).toFixed(1):h}h-${j-k}z`;k=j}
+ const y=+(t+h+fs*.92).toFixed(1),tx=e?`<text x="${ql-1.5}" y="${y}" text-anchor="end">${e[0]}</text>`+[...e.slice(1)].map((c,k)=>`<text x="${ql+(k<6?3+k*7:50+(k-6)*7)+3.5}" y="${y}" text-anchor="middle">${c}</text>`).join(''):`<text x="${W/2}" y="${t+h+fs+.5}" text-anchor="middle">${he(code)}</text>`;
+ return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" ${o.w?`width="${o.w}"`:'width="100%"'} style="display:block;direction:ltr;max-width:100%;margin:auto" role="img" aria-label="${he(code)}"><rect width="${W}" height="${H}" fill="#fff"/><path d="${d}" fill="#000" shape-rendering="crispEdges"/><g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,'Courier New',monospace" font-size="${fs}" fill="#000">${tx}</g></svg>`}
+
+(function(){
+var TAGS=new Set('div p h1 h2 h3 h4 b strong small span em i u br hr section table thead tbody tfoot tr th td caption code ul ol li label details summary svg g path rect text line circle main header footer'.split(' '));
+var ATTRS=new Set('class style dir colspan rowspan viewbox width height d fill x y x1 y1 x2 y2 r cx cy text-anchor font-family font-size font-weight letter-spacing transform xmlns role aria-label shape-rendering stroke stroke-width open lang'.split(' '));
+function clean(html){var doc=new DOMParser().parseFromString('<!DOCTYPE html><html><body>'+html+'</body></html>','text/html');
+ (function walk(n){Array.prototype.slice.call(n.children).forEach(function(c){var t=c.tagName.toLowerCase();
+  if(!TAGS.has(t)){if(t=='input'||t=='select'||t=='textarea'){var s=doc.createElement('span');s.textContent=t=='select'?((c.options[c.selectedIndex]||{}).text||''):(c.value||c.getAttribute('value')||'');c.replaceWith(s)}else c.remove();return}
+  Array.prototype.slice.call(c.attributes).forEach(function(a){if(!ATTRS.has(a.name.toLowerCase())||/url\s*\(|expression|javascript:|@import/i.test(a.value))c.removeAttribute(a.name)});walk(c)})})(doc.body);
+ return doc.body.innerHTML}
+var o=null;try{var bin=atob(decodeURIComponent(location.hash.slice(1)));o=JSON.parse(new TextDecoder().decode(Uint8Array.from(bin,function(c){return c.charCodeAt(0)})))}catch(e){}
+var out=document.getElementById('out');
+if(!o||typeof o!='object'){out.innerHTML='<p style="padding:24px">ماكو شي للطباعة. ارجع للتطبيق واضغط «طباعة» مرة ثانية.</p>';return}
+document.getElementById('appcss').textContent=String(o.css||'').replace(/@import[^;]*;/gi,'');
+document.title='طباعة — '+String(o.co||'دفتر');
+if(o.t=='l'&&Array.isArray(o.L)){out.innerHTML='<div id="pv">'+clean('<div class="lbls">'+o.L.map(function(x){var one='<div class="lbl"><b>'+he(x[0])+'</b>'+bcSVG(String(x[2]||''),{h:40})+(x[1]?'<div class="lp">'+he(x[1])+'</div>':'')+'</div>';return one.repeat(Math.max(0,Math.min(500,parseInt(x[3])||0)))}).join('')+'</div>')+'</div>'}
+else if(o.t=='pv')out.innerHTML='<div id="pv">'+clean(String(o.h||''))+'</div>';
+else out.innerHTML='<div id="app"><main id="main">'+clean(String(o.h||''))+'</main></div>';
+var printed=false;window.addEventListener('beforeprint',function(){printed=true});
+document.getElementById('pp').addEventListener('click',function(){window.print()});
+document.getElementById('bk').addEventListener('click',function(){if(history.length>1)history.back();else window.close()});
+setTimeout(function(){try{window.print()}catch(e){}},700);
+setTimeout(function(){if(!printed)document.getElementById('hint').classList.add('hl')},2500);
+})();</script>
+</body>
+</html>
