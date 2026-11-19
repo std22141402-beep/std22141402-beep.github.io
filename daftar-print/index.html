@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-j/ah5yisH3HI3SY5cHcbdREtWOBBfy9gQ5s4ffPcK4g='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-r98gglAD+b+gpkfWi3/nPtpFdq8WuqhGpBWyBlph3gY='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'">
 <title>طباعة — دفتر</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Reem+Kufi:wght@500;700&display=swap" rel="stylesheet">
 <style id="appcss"></style>
@@ -48,6 +48,8 @@ var o=null;try{var bin=atob(decodeURIComponent(location.hash.slice(1)));o=JSON.p
 var out=document.getElementById('out');
 if(!o||typeof o!='object'){out.innerHTML='<p style="padding:24px">ماكو شي للطباعة. ارجع للتطبيق واضغط «طباعة» مرة ثانية.</p>';return}
 document.getElementById('appcss').textContent=String(o.css||'').replace(/@import[^;]*;/gi,'');
+var PGM={a4:'@page{size:A4;margin:12mm}',a5:'@page{size:A5;margin:8mm}',r80:'@page{size:80mm auto;margin:3mm}',r58:'@page{size:58mm auto;margin:2mm}'};
+if(o.pg&&PGM[o.pg]){var ps=document.createElement('style');ps.textContent=PGM[o.pg];document.head.appendChild(ps);document.body.classList.add('pg-'+o.pg)}
 document.title='طباعة — '+String(o.co||'دفتر');
 if(o.t=='l'&&Array.isArray(o.L)){out.innerHTML='<div id="pv">'+clean('<div class="lbls">'+o.L.map(function(x){var one='<div class="lbl"><b>'+he(x[0])+'</b>'+bcSVG(String(x[2]||''),{h:40})+(x[1]?'<div class="lp">'+he(x[1])+'</div>':'')+'</div>';return one.repeat(Math.max(0,Math.min(500,parseInt(x[3])||0)))}).join('')+'</div>')+'</div>'}
 else if(o.t=='pv')out.innerHTML='<div id="pv">'+clean(String(o.h||''))+'</div>';
