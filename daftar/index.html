@@ -134,7 +134,7 @@ td>.bcb{display:flex;width:max-content;margin:2px 0}.bcb small{font:400 10.5px s
 .tile small.npf{display:block;color:var(--tx);font-weight:700}.tile small.npf.neg{color:var(--red)}
 .whd{border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;overflow:hidden}.whd>summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;padding:10px 12px;cursor:pointer;background:var(--bg)}.whd>summary b{flex:1}.whd>summary small{flex-basis:100%}.whd .whn{color:var(--pri);font-weight:700}.whd .tw{max-height:300px;overflow:auto}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-#pv .ivb2{display:flex;flex-direction:column;gap:3px;width:142px}#pv .ivb2>div{display:flex;align-items:center;gap:3px}#pv .ivb2 small{font-size:8px;width:26px;flex:none;color:#333}#pv .ivb2 svg{width:112px!important;margin:0!important}#pv td.ivbcc{padding:2px 4px}
+#pv .ivb2{display:flex;flex-direction:row;gap:6px;align-items:flex-start;justify-content:center;width:max-content}#pv .ivb2>div{display:flex;flex-direction:column;align-items:center;gap:1px}#pv .ivb2 small{font-size:7.5px;line-height:1;color:#333}#pv .ivb2 svg{width:78px!important;margin:0!important}#pv td.ivbcc{padding:2px 4px}
 .pg-r80 #pv .ivbcc,.pg-r58 #pv .ivbcc{display:none}
 @media print{.imb,.tim{display:none!important}}
 .t1.nq{display:block;width:100%;text-align:right;font:inherit;color:inherit;cursor:pointer;border-inline-start:4px solid var(--red)}.t1.nq.ok{border-inline-start-color:var(--grn)}.nq .nqn{display:block;font-size:12px;color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -619,7 +619,7 @@ async function imRestore(o){await itx('readwrite',(t,fs)=>{t.clear();fs.clear()}
 /* ===== باركودين لكل مادة بسطر الفاتورة وبالطباعة ===== */
 const bc2L=(l,it)=>{if(!it)return l.nw?`<small class="lbc">🏷️ كارتون ${l.bc?`<b dir="ltr">${he(l.bc)}</b>`:'تلقائي'} · قطعة ${l.bcp?`<b dir="ltr">${he(l.bcp)}</b>`:'تلقائي'}${l.bc&&l.bcp?'':' (يُنشأ عند الحفظ)'}</small>`:'';return `<small class="lbc">🏷️ كارتون <b dir="ltr">${icode(it)}</b> · قطعة <b dir="ltr">${pcode(it)}</b></small>`};
 const bc2T=l=>{const it=S.items.find(x=>x.id==l.id);return it?`<small class="lbc">كارتون <b dir="ltr">${icode(it)}</b><br>قطعة <b dir="ltr">${pcode(it)}</b></small>`:''};
-const bc2P=l=>{const it=S.items.find(x=>x.id==l.id);return it?`<div class="ivb2"><div><small>كارتون</small>${bcSVG(icode(it),{h:24})}</div><div><small>قطعة</small>${bcSVG(pcode(it),{h:24})}</div></div>`:''};
+const bc2P=l=>{const it=S.items.find(x=>x.id==l.id);return it?`<div class="ivb2"><div><small>كارتون</small>${bcSVG(icode(it),{h:18})}</div><div><small>قطعة</small>${bcSVG(pcode(it),{h:18})}</div></div>`:''};
 /* سطر الشراء: سعر بيع الكارتون وسعر بيع القطعة الواحدة (فارغ = يبقى نفس السعر) */
 function lspV(l,k,it){const u=+(l.u||(it&&it.u)||1),cp=it?+it.price||0:0,sp=l.sp!=null&&l.sp!==''?+l.sp:null,base=sp!=null?sp:cp,pph=sp==null&&it&&+it.pp>0?+it.pp:Math.round(base/u*100)/100,ky=`onfocus="this.select()" onkeydown="if(event.key=='Enter'){event.preventDefault();this.blur()}"`;
  return `<div class="lpc lsp">بيع الكارتون <input inputmode="decimal" value="${sp!=null?sp:''}" placeholder="${f(cp)}" ${ky} onchange="setLS(${k},'sp',this)">${u>1?` · بيع القطعة الواحدة <input inputmode="decimal" data-pp value="${l.pp||''}" placeholder="${f(pph)}" ${ky} onchange="setLS(${k},'pp',this)">`:''}</div>`}
