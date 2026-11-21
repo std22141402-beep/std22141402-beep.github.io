@@ -1,0 +1,20 @@
+{
+  "name": "نطّة — اصعد لأعلى ما تكدر",
+  "short_name": "نطّة",
+  "description": "لعبة قفز بسيطة: اصعد لأعلى ما تكدر، اجمع العملات وافتح شخصيات جديدة.",
+  "lang": "ar",
+  "dir": "rtl",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#6EC6FF",
+  "theme_color": "#6EC6FF",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

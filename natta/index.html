@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#6EC6FF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="نطّة">
+<meta name="application-name" content="نطّة">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="نطّة — لعبة قفز بسيطة: اصعد لأعلى ما تكدر، اجمع العملات وافتح شخصيات جديدة.">
+<meta property="og:title" content="نطّة 🚀 — تكدر تغلبني؟">
+<meta property="og:description" content="لعبة قفز بسيطة تنلعب من المتصفح. اصعد لأعلى ما تكدر!">
+<meta property="og:image" content="icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>نطّة — اصعد لأعلى ما تكدر</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#22377d,#0a1030);font-family:-apple-system,BlinkMacSystemFont,"SF Arabic","Geeza Pro","Segoe UI",Tahoma,sans-serif;color:#1f2a55}
+[hidden]{display:none!important}
+#app{position:absolute;top:0;left:50%;width:var(--app-w,100vw);height:var(--app-h,100vh);transform:translateX(-50%);overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,.45)}
+#game{display:block;width:100%;height:100%;touch-action:none}
+
+/* ---------- عناصر عامة ---------- */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 18px)}
+.out{--o:#24305e;color:#fff;text-shadow:3px 0 0 var(--o),-3px 0 0 var(--o),0 3px 0 var(--o),0 -3px 0 var(--o),2px 2px 0 var(--o),-2px -2px 0 var(--o),2px -2px 0 var(--o),-2px 2px 0 var(--o),0 6px 0 var(--o),0 10px 18px rgba(0,0,0,.25)}
+.btn{font:inherit;font-weight:800;font-size:17px;border:0;border-radius:16px;padding:12px 16px;background:#fff;color:#24305e;cursor:pointer;
+  touch-action:manipulation;box-shadow:0 4px 0 #c3c9e4,0 8px 18px rgba(0,0,0,.18);transition:transform .08s,box-shadow .08s;white-space:nowrap}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #c3c9e4,0 4px 10px rgba(0,0,0,.18)}
+.btn:disabled{opacity:.55}
+.btn.primary{background:linear-gradient(#ffcf3f,#ff9d1b);color:#fff;text-shadow:0 2px 0 rgba(160,70,0,.45);box-shadow:0 5px 0 #d4700c,0 10px 22px rgba(255,140,0,.35)}
+.btn.primary:active{box-shadow:0 2px 0 #d4700c,0 5px 12px rgba(255,140,0,.35)}
+.btn.big{font-size:28px;padding:16px 54px;border-radius:24px;animation:pulse 1.6s ease-in-out infinite}
+.btn.icon{min-width:52px}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.card{background:rgba(255,255,255,.95);border-radius:28px;padding:22px 20px;width:min(100%,360px);text-align:center;box-shadow:0 22px 50px rgba(0,0,0,.28);animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ---------- الرئيسية ---------- */
+#home{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 9vh)}
+.logo{font-size:96px;font-weight:900;line-height:1.15;animation:bob 2.6s ease-in-out infinite}
+.tag{font-size:20px;font-weight:800;margin-top:-6px}
+.stats{display:flex;gap:10px;margin:4px 0 8px}
+.chip{background:rgba(255,255,255,.88);border-radius:999px;padding:7px 14px;font-weight:800;font-size:16px;box-shadow:0 3px 0 rgba(36,48,94,.18)}
+.how{font-size:14px;font-weight:700;color:#24305e;background:rgba(255,255,255,.75);border-radius:14px;padding:8px 12px;text-align:center;max-width:320px}
+#a2hs{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 12px);left:12px;right:12px;margin:auto;max-width:340px;background:#24305e;color:#fff;
+  border-radius:16px;padding:10px 40px 10px 12px;font-size:13px;font-weight:700;line-height:1.5;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+#a2hs button{position:absolute;top:6px;right:8px;background:none;border:0;color:#fff;font-size:20px;line-height:1;padding:4px}
+
+/* ---------- أثناء اللعب ---------- */
+#hud{position:absolute;inset:0 0 auto 0;pointer-events:none;padding:calc(env(safe-area-inset-top) + 8px) 14px 0}
+.hud-top{display:flex;align-items:center;gap:10px}
+#score{font-size:42px;font-weight:900;line-height:1;flex:1;font-variant-numeric:tabular-nums}
+#runCoins{font-size:18px}
+.hud-btn{pointer-events:auto;width:46px;height:46px;border-radius:14px;border:0;background:rgba(255,255,255,.85);font-size:18px;font-weight:900;color:#24305e;box-shadow:0 3px 0 rgba(36,48,94,.25);touch-action:manipulation}
+#pbar{height:8px;border-radius:9px;background:rgba(255,255,255,.4);margin-top:8px;width:140px;overflow:hidden}
+#pbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff5d5d,#ffb13b);border-radius:9px;transform-origin:right}
+#tut{direction:ltr;position:absolute;inset:auto 0 calc(env(safe-area-inset-bottom) + 90px);display:flex;justify-content:space-between;padding:0 16px;pointer-events:none;transition:opacity .5s}
+#tut div{direction:rtl;background:rgba(36,48,94,.85);color:#fff;font-weight:800;font-size:16px;border-radius:16px;padding:12px 14px;animation:pulse 1.2s infinite}
+#toast{z-index:10;position:absolute;top:calc(env(safe-area-inset-top) + 110px);left:0;right:0;text-align:center;font-size:30px;font-weight:900;pointer-events:none;opacity:0;transform:scale(.6);transition:opacity .25s,transform .35s cubic-bezier(.2,1.6,.4,1)}
+#toast.show{opacity:1;transform:scale(1)}
+
+/* ---------- نهاية الجولة ---------- */
+.over-title{font-size:30px;font-weight:900}
+.badge{display:inline-block;margin-top:8px;background:linear-gradient(#ffe066,#ffb703);color:#7a3d00;border-radius:999px;padding:6px 14px;font-weight:900;animation:pulse 1s infinite}
+.big-score{font-size:72px;font-weight:900;line-height:1;margin-top:10px;color:#24305e;font-variant-numeric:tabular-nums}
+.lbl{font-size:14px;font-weight:700;color:#6b7399}
+.boxes{display:flex;gap:10px;margin:16px 0 12px}
+.boxes div{flex:1;background:#eef1fb;border-radius:16px;padding:10px 6px;font-weight:700;font-size:13px;color:#6b7399}
+.boxes b{display:block;font-size:22px;color:#24305e;margin-top:2px}
+.next{cursor:pointer;font-size:14px;font-weight:800;color:#24305e;background:#fff5d6;border-radius:14px;padding:9px 10px;margin-bottom:14px}
+.next .bar{height:8px;background:#f1e3b4;border-radius:9px;margin-top:6px;overflow:hidden}
+.next .bar i{display:block;height:100%;background:linear-gradient(90deg,#ffb703,#ffd166);border-radius:9px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.stack .row .btn{flex:1}
+
+/* ---------- الشخصيات ---------- */
+.shop-card{display:flex;flex-direction:column;max-height:100%;padding:18px 14px}
+.shop-head{display:flex;justify-content:space-between;align-items:center;font-size:22px;font-weight:900;padding:0 6px 12px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px;margin-bottom:14px;touch-action:pan-y}
+.skin{background:#eef1fb;border-radius:18px;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:4px;border:3px solid transparent;font:inherit;color:inherit;touch-action:manipulation}
+.skin.sel{border-color:#ffb703;background:#fff8e1}
+.skin canvas{width:72px;height:72px}
+.skin .nm{font-weight:900;font-size:14px}
+.skin .st{font-size:12px;font-weight:800;color:#6b7399;min-height:16px}
+.skin.locked canvas{filter:grayscale(1) brightness(.75);opacity:.7}
+.skin .buy{font-size:13px;color:#fff;background:#2fb760;border-radius:10px;padding:3px 10px}
+.skin .buy.no{background:#b9bfd6}
+
+@media (max-height:640px){.logo{font-size:72px}#home{padding-top:calc(env(safe-area-inset-top) + 4vh)}.big-score{font-size:56px}}
+</style>
+<script>
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="game" aria-label="ساحة اللعب"></canvas>
+
+  <!-- الرئيسية -->
+  <section id="home" class="screen">
+    <h1 class="logo out">نطّة</h1>
+    <div class="tag out" style="--o:#24305e">اصعد لأعلى ما تكدر! ☁️</div>
+    <div class="stats"><span class="chip">🏆 <b id="hBest">0</b></span><span class="chip">🪙 <b id="hCoins">0</b></span></div>
+    <button class="btn primary big" id="play">العب ▶</button>
+    <div class="row">
+      <button class="btn" id="openShop">🎨 الشخصيات</button>
+      <button class="btn" id="ctrl">👆 لمس</button>
+      <button class="btn icon" id="snd" aria-label="الصوت">🔊</button>
+    </div>
+    <div class="how" id="how">اضغط يمين أو يسار الشاشة حتى تتحرك — القفز تلقائي 🦘</div>
+    <div id="a2hs" hidden>📲 حتى تلعب بملء الشاشة: اضغط زر المشاركة <b>⬆︎</b> بسفاري، بعدين «إضافة إلى الشاشة الرئيسية»<button id="a2hsX" aria-label="إغلاق">×</button></div>
+  </section>
+
+  <!-- أثناء اللعب -->
+  <div id="hud" hidden>
+    <div class="hud-top">
+      <div id="score" class="out">0</div>
+      <div class="chip">🪙 <b id="runCoins">0</b></div>
+      <button class="hud-btn" id="pauseBtn" aria-label="إيقاف">II</button>
+    </div>
+    <div id="pbar" hidden><i></i></div>
+  </div>
+  <div id="tut" hidden><div>اضغط هنا ⬅️</div><div>➡️ اضغط هنا</div></div>
+  <div id="toast" class="out"></div>
+
+  <!-- إيقاف مؤقت -->
+  <section id="pause" class="screen" hidden>
+    <div class="card stack">
+      <div class="over-title">متوقفة ⏸</div>
+      <button class="btn primary" id="resume">كمّل ▶</button>
+      <button class="btn" id="quit">الرئيسية</button>
+    </div>
+  </section>
+
+  <!-- نهاية الجولة -->
+  <section id="over" class="screen" hidden>
+    <div class="card">
+      <div class="over-title" id="oTitle">وكعت! 😵</div>
+      <div class="badge" id="oRecord" hidden>🏆 رقم قياسي جديد</div>
+      <div class="big-score" id="oScore">0</div>
+      <div class="lbl">النتيجة</div>
+      <div class="boxes">
+        <div>أفضل نتيجة<b id="oBest">0</b></div>
+        <div>عملات هالجولة<b id="oCoins">0</b></div>
+      </div>
+      <div class="next" id="oNext" hidden></div>
+      <div class="stack">
+        <button class="btn primary" id="again" style="font-size:22px">مرة ثانية ↻</button>
+        <div class="row"><button class="btn" id="toHome">الرئيسية</button><button class="btn" id="share">شارك 📤</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- الشخصيات -->
+  <section id="shop" class="screen" hidden>
+    <div class="card shop-card">
+      <div class="shop-head"><span>🎨 الشخصيات</span><span class="chip">🪙 <b id="sCoins">0</b></span></div>
+      <div class="grid" id="grid"></div>
+      <button class="btn primary" id="shopBack">رجوع</button>
+    </div>
+  </section>
+</div>
+<script src="core.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
