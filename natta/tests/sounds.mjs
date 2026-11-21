@@ -1,0 +1,101 @@
+// فحص أصوات الشخصيات: كل صوت مسموع، ما يتشوه (clipping)، وطوله معقول
+// ويسجّل عيّنة لكل الشخصيات بـ /tmp/natta-sounds.wav حتى تنسمع
+// التشغيل: node natta/tests/sounds.mjs
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const { chromium } = require('/opt/npm-tools/node_modules/playwright');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const server = http.createServer((req, res) => {
+  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  if (p.endsWith('/')) p += 'index.html';
+  const f = path.join(ROOT, p);
+  if (!f.startsWith(ROOT) || !fs.existsSync(f)) { res.writeHead(404); res.end(); return; }
+  res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' });
+  fs.createReadStream(f).pipe(res);
+});
+await new Promise((r) => server.listen(0, r));
+const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--no-sandbox'] });
+const page = await browser.newPage();
+const errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+await page.goto(`http://localhost:${server.address().port}/natta/`);
+await page.waitForFunction(() => window.__natta);
+
+let fails = 0;
+const ok = (c, m) => { console.log((c ? '  ✓ ' : '  ✗ ') + m); if (!c) fails++; };
+
+// 1) كل صوت لوحده
+const stats = await page.evaluate(async () => {
+  const N = window.__natta, out = [];
+  for (const sk of N.SKINS) {
+    for (const kind of ['jump', 'boost', 'lose', 'hello']) {
+      const d = await N.renderSounds([[sk.id, kind, 0]], 3);
+      let peak = 0;
+      for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+      // الطول = لحد ما ينزل الصوت تحت 3% من أعلى نقطة، والعلو = متوسط القوة (RMS) بهالفترة
+      let last = 0, sum = 0, zc = 0;
+      for (let i = 0; i < d.length; i++) if (Math.abs(d[i]) > peak * 0.03) last = i;
+      for (let i = 1; i <= last; i++) { sum += d[i] * d[i]; if ((d[i - 1] < 0) !== (d[i] < 0)) zc++; }
+      const n = Math.max(1, last);
+      out.push({ id: sk.id, name: sk.name, kind, peak: +peak.toFixed(3), rms: +Math.sqrt(sum / n).toFixed(4), dur: +(last / 44100).toFixed(2), bright: Math.round((zc / n) * 44100 / 2) });
+    }
+  }
+  return out;
+});
+const LIMIT = { jump: 1.0, boost: 1.6, lose: 2.6, hello: 1.8 }; // الشبح عنده صدى فقفزته أطول
+console.log('\n  الشخصية   الصوت   أعلى  متوسط  الطول  حدّة(Hz)');
+for (const s of stats) {
+  console.log(`  ${s.name.padEnd(8)} ${s.kind.padEnd(6)} ${String(s.peak).padEnd(5)} ${String(s.rms).padEnd(6)} ${String(s.dur).padEnd(5)} ${s.bright}`);
+}
+console.log('');
+const kinds = ['jump', 'boost', 'lose', 'hello'];
+const median = (a) => { const b = [...a].sort((x, y) => x - y); return b[b.length >> 1]; };
+const spread = {};
+for (const k of kinds) {
+  const r = stats.filter((s) => s.kind === k).map((s) => s.rms);
+  spread[k] = 20 * Math.log10(Math.max(...r) / Math.min(...r));
+  const m = median(r);
+  if (process.env.SUGGEST) console.log(k, stats.filter((s) => s.kind === k).map((s) => `${s.id}:${(m / s.rms).toFixed(2)}`).join(' '));
+}
+for (const k of kinds) ok(spread[k] < 7, `علو أصوات «${k}» متقارب بين الشخصيات (الفرق ${spread[k].toFixed(1)} dB)`);
+for (const s of stats) {
+  const bad = !(s.peak > 0.05) ? 'ما ينسمع' : s.peak > 0.99 ? 'يتشوه' : s.dur > LIMIT[s.kind] ? `طويل (${s.dur}s)` : '';
+  if (bad) ok(false, `${s.name} / ${s.kind}: ${bad}`);
+}
+ok(stats.every((s) => s.peak > 0.05 && s.peak <= 0.99 && s.dur <= LIMIT[s.kind]), `كل الـ ${stats.length} صوت مسموعة، بلا تشويه، وبطول مناسب`);
+// كل شخصية لازم صوت قفزتها يختلف عن الباقين
+const jumps = stats.filter((s) => s.kind === 'jump').map((s) => `${s.bright}-${s.dur}-${s.rms}`);
+ok(new Set(jumps).size === jumps.length, 'صوت القفزة يختلف بين كل الشخصيات');
+
+// 2) عيّنة وحدة فيها كل الشخصيات ورا بعض
+const plan = await page.evaluate(() => {
+  const list = []; let t = 0.3; const marks = [];
+  for (const sk of window.__natta.SKINS) {
+    marks.push([sk.name, +t.toFixed(2)]);
+    list.push([sk.id, 'hello', t]); t += 1.0;
+    [2, 3, 1, 4, 2].forEach((n) => { list.push([sk.id, 'jump', t, n]); t += 0.42; });
+    t += 0.15; list.push([sk.id, 'boost', t]); t += 1.0;
+    list.push([sk.id, 'lose', t]); t += 2.0;
+  }
+  return { list, total: t + 0.5, marks };
+});
+const pcm = await page.evaluate(async ({ list, total }) => Array.from(await window.__natta.renderSounds(list, total)), plan);
+const sr = 44100, buf = Buffer.alloc(44 + pcm.length * 2);
+buf.write('RIFF', 0); buf.writeUInt32LE(36 + pcm.length * 2, 4); buf.write('WAVE', 8); buf.write('fmt ', 12);
+buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(sr, 24);
+buf.writeUInt32LE(sr * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34); buf.write('data', 36); buf.writeUInt32LE(pcm.length * 2, 40);
+pcm.forEach((v, i) => buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 32767), 44 + i * 2));
+fs.writeFileSync('/tmp/natta-sounds.wav', buf);
+console.log('  العيّنة: /tmp/natta-sounds.wav  —', plan.marks.map(([n, t]) => `${n} ${t}s`).join(' | '));
+
+ok(errors.length === 0, 'ماكو أخطاء' + (errors.length ? ': ' + errors.join(' / ') : ''));
+await browser.close(); server.close();
+console.log(fails ? `\n${fails} فشل` : '\nكلشي تمام ✅');
+process.exit(fails ? 1 : 0);

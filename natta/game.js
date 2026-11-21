@@ -35,8 +35,188 @@
   const skinById = (id) => SKINS.find((s) => s.id === id) || SKINS[0];
 
   // ---------------------------------------------------------------- الصوت (كله مولّد، بدون ملفات)
+  const mf = (m) => 440 * Math.pow(2, (m - 69) / 12); // رقم النوتة ← تردد
+
+  /** مُركّب أصوات صغير: يشتغل على الصوت الحقيقي، أو على OfflineAudioContext للفحص وتسجيل العينات */
+  function createSynth(ac) {
+    const out = ac.createGain(); out.gain.value = 1.1;
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -12; comp.knee.value = 12; comp.ratio.value = 4;
+    out.connect(comp); comp.connect(ac.destination);
+    // صدى غرفة خفيف (reverb) يخلي الأصوات أنعم وأحلى
+    const len = Math.floor(ac.sampleRate * 1.4), ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    const conv = ac.createConvolver(); conv.buffer = ir;
+    const revIn = ac.createGain(); revIn.gain.value = 0.5; revIn.connect(conv); conv.connect(comp);
+    // صدى يتكرر (echo) — للشبح
+    const echoIn = ac.createGain(), dl = ac.createDelay(1), fb = ac.createGain(), lp = ac.createBiquadFilter();
+    dl.delayTime.value = 0.21; fb.gain.value = 0.38; lp.type = 'lowpass'; lp.frequency.value = 2200;
+    echoIn.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(comp);
+    const noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    { const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+
+    const D = { rev: 0.12, echo: 0, t0: 0, gain: 1 };
+    const at = (o) => ac.currentTime + D.t0 + (o.t || 0);
+    function route(g, o) {
+      g.connect(out);
+      const r = o.rev != null ? o.rev : D.rev, e = o.echo != null ? o.echo : D.echo;
+      if (r > 0) { const s = ac.createGain(); s.gain.value = r; g.connect(s); s.connect(revIn); }
+      if (e > 0) { const s = ac.createGain(); s.gain.value = e; g.connect(s); s.connect(echoIn); }
+    }
+    function env(g, t, a, v, dur) {
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(v, t + a);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(dur, a + 0.01));
+    }
+    function voice(o) {
+      const t = at(o), dur = o.dur, osc = ac.createOscillator();
+      osc.type = o.type || 'sine';
+      osc.frequency.setValueAtTime(o.f, t);
+      if (o.f1 && o.f1 !== o.f) osc.frequency.exponentialRampToValueAtTime(o.f1, t + (o.glide || dur));
+      if (o.detune) osc.detune.value = o.detune;
+      let node = osc;
+      if (o.vib) {
+        const l = ac.createOscillator(), lg = ac.createGain();
+        l.frequency.value = o.vib[0]; lg.gain.value = o.vib[1];
+        l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + dur + 0.05);
+      }
+      if (o.filter) {
+        const fl = ac.createBiquadFilter(); fl.type = o.filter[0];
+        fl.frequency.setValueAtTime(o.filter[1], t);
+        if (o.filter[2]) fl.frequency.exponentialRampToValueAtTime(o.filter[2], t + dur);
+        fl.Q.value = o.filter[3] || 0.7; node.connect(fl); node = fl;
+      }
+      const g = ac.createGain(); env(g, t, o.attack || 0.006, o.vol * D.gain, dur);
+      node.connect(g); route(g, o);
+      osc.start(t); osc.stop(t + dur + 0.05);
+    }
+    function noise(o) {
+      const t = at(o), dur = o.dur, s = ac.createBufferSource(), fl = ac.createBiquadFilter();
+      s.buffer = noiseBuf; s.loop = true;
+      fl.type = o.type || 'lowpass'; fl.frequency.setValueAtTime(o.f, t);
+      if (o.f1) fl.frequency.exponentialRampToValueAtTime(o.f1, t + (o.glide || dur));
+      fl.Q.value = o.q || 0.8;
+      const g = ac.createGain(); env(g, t, o.attack || 0.01, o.vol * D.gain, dur);
+      s.connect(fl); fl.connect(g); route(g, o);
+      s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
+      return { s, g };
+    }
+    /** طقطقة نار */
+    function crackle(n, span, vol, t0 = 0) {
+      for (let i = 0; i < n; i++) {
+        noise({ t: t0 + Math.random() * span, dur: 0.012 + Math.random() * 0.012, type: 'highpass', f: 2500 + Math.random() * 3000, vol: vol * (0.4 + Math.random() * 0.6), attack: 0.001, rev: 0.05 });
+      }
+    }
+    return { ac, D, voice, noise, crackle };
+  }
+
+  // آلات صغيرة تستعملها الشخصيات
+  const pluck = (S, f, t = 0, vol = 0.12, dur = 0.5) =>            // وتر مثل الكوتو الياباني
+    S.voice({ type: 'sawtooth', f, t, dur, vol, attack: 0.003, filter: ['lowpass', Math.min(f * 8, 9000), f * 1.2, 1.5] });
+  const brass = (S, f, t = 0, dur = 0.2, vol = 0.1, vib) => {       // بوق ملكي
+    S.voice({ type: 'sawtooth', f: f * 0.96, f1: f, glide: 0.04, t, dur, vol, attack: 0.025, filter: ['lowpass', Math.min(f * 6, 9000), f * 2, 1.2], vib });
+    S.voice({ type: 'square', f, t, dur, vol: vol * 0.3, attack: 0.03, filter: ['lowpass', Math.min(f * 3, 9000), f * 1.5] });
+  };
+  const bell = (S, f, t = 0, vol = 0.16, dur = 0.7) => {             // جرس سحري
+    S.voice({ f, t, dur, vol, attack: 0.003 });
+    S.voice({ f: f * 2, t, dur: dur * 0.5, vol: vol * 0.35, attack: 0.003 });
+    S.voice({ f: f * 3, t, dur: dur * 0.25, vol: vol * 0.15, attack: 0.002 });
+    S.voice({ f: f * 4, t, dur: dur * 0.35, vol: vol * 0.08, detune: 9, attack: 0.003 });
+  };
+
+  /**
+   * أصوات كل شخصية: jump (كل قفزة، نوتاتها تمشي على سلّم موسيقي حتى تطلع لحن)،
+   * boost (نابض/ترامبولين)، lose (الخسارة)، hello (لما تختارها بالمتجر)
+   */
+  const PACKS = {
+    // نطّوط: «بوينغ» مطاطي مرح
+    green: {
+      rev: 0.12, scale: [67, 69, 72, 74, 76, 79],
+      gain: { jump: 0.82, boost: 1.0, lose: 0.62, hello: 0.82 },
+      jump(S, f) { S.voice({ f: f * 0.7, f1: f * 1.5, dur: 0.15, vol: 0.26 }); S.voice({ type: 'triangle', f: f * 0.35, f1: f * 0.75, dur: 0.1, vol: 0.1 }); },
+      boost(S, k) { S.voice({ f: 200 * k, f1: 950 * k, glide: 0.35, dur: 0.5, vol: 0.26, vib: [16, 35] }); S.voice({ type: 'triangle', f: 100 * k, f1: 480 * k, glide: 0.3, dur: 0.35, vol: 0.1 }); },
+      lose(S) { S.voice({ f: 660, dur: 0.2, vol: 0.2, vib: [6, 8] }); S.voice({ f: 494, f1: 180, glide: 0.7, t: 0.2, dur: 0.8, vol: 0.22, vib: [6, 10] }); },
+      hello(S) { [72, 79].forEach((m, i) => S.voice({ f: mf(m) * 0.7, f1: mf(m) * 1.5, t: i * 0.13, dur: 0.16, vol: 0.24 })); },
+    },
+    // برتقالة: «بلوب» عصيري مثل قطرة
+    orange: {
+      rev: 0.14, scale: [69, 72, 74, 76, 79, 81],
+      gain: { jump: 0.6, boost: 0.94, lose: 1.2, hello: 0.88 },
+      jump(S, f) {
+        S.voice({ f: f * 2.2, f1: f * 0.8, dur: 0.045, vol: 0.2, attack: 0.002 });
+        S.voice({ f: f * 0.8, f1: f * 1.6, t: 0.035, dur: 0.09, vol: 0.24 });
+        S.noise({ type: 'bandpass', f: 2800, q: 2, dur: 0.04, vol: 0.06 });
+      },
+      boost(S, k) { S.noise({ f: 3500, f1: 300, dur: 0.35, vol: 0.2 }); [0, 0.07, 0.14].forEach((t, i) => S.voice({ f: (350 + i * 220) * k, f1: (700 + i * 400) * k, t, dur: 0.09, vol: 0.18 })); },
+      lose(S) { S.noise({ f: 1500, f1: 120, dur: 0.4, vol: 0.28 }); S.voice({ f: 300, f1: 70, dur: 0.4, vol: 0.2 }); S.voice({ f: 520, f1: 260, t: 0.35, dur: 0.5, vol: 0.12, vib: [5, 6] }); },
+      hello(S) { [0, 0.09, 0.18].forEach((t, i) => { const f = mf(72 + i * 4); S.voice({ f: f * 2, f1: f * 0.8, t, dur: 0.04, vol: 0.16 }); S.voice({ f: f * 0.8, f1: f * 1.6, t: t + 0.03, dur: 0.09, vol: 0.2 }); }); },
+    },
+    // شبح: «ووووو» هوائي مع صدى
+    ghost: {
+      rev: 0.35, echo: 0.35, scale: [62, 65, 67, 69, 72, 74],
+      gain: { jump: 1.15, boost: 0.95, lose: 0.86, hello: 1.25 },
+      jump(S, f) { S.voice({ f: f * 0.92, f1: f * 1.15, dur: 0.38, vol: 0.13, attack: 0.05, vib: [5, f * 0.015] }); S.noise({ type: 'bandpass', f: f * 3, q: 6, dur: 0.3, vol: 0.03, attack: 0.05 }); },
+      boost(S, k) { S.voice({ f: 280 * k, f1: 720 * k, glide: 0.6, dur: 0.85, vol: 0.16, attack: 0.08, vib: [5.5, 9] }); S.voice({ type: 'triangle', f: 420 * k, f1: 1080 * k, glide: 0.6, dur: 0.7, vol: 0.05, attack: 0.1 }); },
+      lose(S) { S.voice({ f: 520, f1: 170, glide: 1.1, dur: 1.3, vol: 0.17, attack: 0.08, vib: [4.5, 10] }); S.noise({ type: 'bandpass', f: 900, f1: 300, q: 4, dur: 1.1, vol: 0.04 }); },
+      hello(S) { S.voice({ f: mf(62), f1: mf(69), glide: 0.35, dur: 0.5, vol: 0.14, attack: 0.08, vib: [5, 6] }); S.voice({ f: mf(69), f1: mf(65), t: 0.45, glide: 0.4, dur: 0.6, vol: 0.13, attack: 0.08, vib: [5, 6] }); },
+    },
+    // نينجا: «شّش» سيف بالهوا ووتر ياباني
+    ninja: {
+      rev: 0.1, scale: [64, 65, 69, 71, 72, 76],
+      gain: { jump: 2.5, boost: 1.8, lose: 1.04, hello: 1.05 },
+      jump(S, f) { S.noise({ type: 'bandpass', f: 5000, f1: 1200, q: 1.4, dur: 0.11, vol: 0.2, attack: 0.004 }); S.voice({ type: 'triangle', f: f * 2, dur: 0.05, vol: 0.12, attack: 0.002 }); },
+      boost(S, k) {
+        S.noise({ type: 'bandpass', f: 6000, f1: 900, q: 1.2, dur: 0.22, vol: 0.22 });
+        const f = 2400 * k; // «شِنغ!» معدني
+        S.voice({ f, t: 0.05, dur: 0.6, vol: 0.06, attack: 0.002 }); S.voice({ f: f * 1.51, t: 0.05, dur: 0.45, vol: 0.04, attack: 0.002 }); S.voice({ f: f * 2.24, t: 0.05, dur: 0.3, vol: 0.03, attack: 0.002 });
+      },
+      lose(S) { S.noise({ f: 500, f1: 150, dur: 0.18, vol: 0.3 }); [76, 72, 69, 64].forEach((m, i) => pluck(S, mf(m), 0.12 + i * 0.16, 0.13, 0.6)); },
+      hello(S) { [64, 69, 71, 76].forEach((m, i) => pluck(S, mf(m), i * 0.08, 0.12, 0.5)); S.noise({ type: 'bandpass', f: 5000, f1: 1500, q: 1.4, t: 0.32, dur: 0.12, vol: 0.18 }); },
+    },
+    // فضائي: «بيووو» خيال علمي
+    alien: {
+      rev: 0.16, scale: [60, 62, 64, 66, 68, 70, 72],
+      gain: { jump: 2.4, boost: 2.5, lose: 1.03, hello: 2.6 },
+      jump(S, f) { S.voice({ type: 'square', f, f1: f * 2.4, dur: 0.12, vol: 0.07, vib: [32, f * 0.08], filter: ['lowpass', 3500] }); S.voice({ f: f * 2, f1: f * 4, dur: 0.08, vol: 0.06 }); },
+      boost(S, k) { S.voice({ type: 'sawtooth', f: 300 * k, f1: 1800 * k, glide: 0.45, dur: 0.55, vol: 0.08, vib: [12, 60], filter: ['lowpass', 4000, 1500, 3] }); S.voice({ f: 600 * k, f1: 2400 * k, glide: 0.45, dur: 0.5, vol: 0.07 }); },
+      lose(S) { S.voice({ f: 520, f1: 110, glide: 1, dur: 1.1, vol: 0.18, vib: [7, 35] }); S.voice({ type: 'square', f: 260, f1: 55, glide: 1, dur: 1.1, vol: 0.04, vib: [7, 18], filter: ['lowpass', 1500] }); },
+      hello(S) { [72, 79, 67, 84, 76].forEach((m, i) => S.voice({ type: 'square', f: mf(m), f1: mf(m) * (i % 2 ? 0.8 : 1.25), t: i * 0.07, dur: 0.065, vol: 0.06, filter: ['lowpass', 4000] })); },
+    },
+    // ناري: «فووش» لهب وطقطقة، وبالخسارة «تشّش» مثل نار انطفت
+    fire: {
+      rev: 0.16, scale: [57, 60, 62, 64, 67, 69],
+      gain: { jump: 1.6, boost: 1.26, lose: 1.0, hello: 1.0 },
+      jump(S, f) { S.noise({ f: 350, f1: 2600, glide: 0.08, dur: 0.2, vol: 0.2, q: 1.5 }); S.voice({ type: 'triangle', f: f * 0.5, f1: f * 0.75, dur: 0.14, vol: 0.14 }); S.crackle(3, 0.15, 0.12); },
+      boost(S, k) { S.noise({ f: 250, f1: 5000 * k, glide: 0.25, dur: 0.6, vol: 0.28, q: 1.2 }); S.voice({ f: 70, f1: 140, dur: 0.5, vol: 0.2 }); S.crackle(8, 0.5, 0.14); },
+      lose(S) { S.noise({ type: 'highpass', f: 5000, f1: 1500, dur: 1.2, vol: 0.12, attack: 0.02 }); S.noise({ type: 'bandpass', f: 3000, f1: 800, q: 2, dur: 1.0, vol: 0.08 }); S.voice({ f: 220, f1: 55, glide: 0.9, dur: 1.0, vol: 0.16 }); S.crackle(6, 0.4, 0.1); },
+      hello(S) { S.crackle(10, 0.25, 0.14); S.noise({ f: 300, f1: 4500, glide: 0.3, t: 0.15, dur: 0.55, vol: 0.26, q: 1.3 }); S.voice({ f: 90, f1: 160, t: 0.15, dur: 0.45, vol: 0.16 }); },
+    },
+    // الملك: أبواق ملكية، وبالخسارة «واه واه واااه» الحزينة
+    king: {
+      rev: 0.22, scale: [60, 64, 67, 72, 76, 79],
+      gain: { jump: 2.25, boost: 1.6, lose: 1.46, hello: 1.75 },
+      jump(S, f) { brass(S, f, 0, 0.16, 0.09); },
+      boost(S, k) { brass(S, mf(67) * k, 0, 0.12, 0.09); brass(S, mf(72) * k, 0.13, 0.42, 0.1, [5.5, 4]); },
+      lose(S) { [70, 69, 68].forEach((m, i) => brass(S, mf(m) * 0.5, i * 0.3, 0.28, 0.1)); brass(S, mf(67) * 0.5, 0.9, 0.9, 0.1, [6, 3]); },
+      hello(S) { [60, 64, 67].forEach((m, i) => brass(S, mf(m), i * 0.11, 0.1, 0.09)); brass(S, mf(72), 0.33, 0.55, 0.1, [5.5, 5]); },
+    },
+    // أسطورة: أجراس سحرية تعزف لحن وإنت تصعد
+    rainbow: {
+      rev: 0.38, scale: [72, 74, 76, 79, 81, 84, 86, 88],
+      gain: { jump: 0.85, boost: 0.57, lose: 0.6, hello: 0.7 },
+      jump(S, f) { bell(S, f, 0, 0.14, 0.6); },
+      boost(S, k) { [72, 76, 79, 84, 88, 91].forEach((m, i) => bell(S, mf(m) * k, i * 0.045, 0.1, 0.6)); },
+      lose(S) { [88, 84, 81, 79, 76, 72, 69].forEach((m, i) => bell(S, mf(m), i * 0.11, 0.11, 0.8)); },
+      hello(S) { [72, 76, 79, 84].forEach((m, i) => bell(S, mf(m), i * 0.07, 0.12, 0.7)); [72, 76, 79].forEach((m) => bell(S, mf(m + 12), 0.35, 0.06, 1.0)); },
+    },
+  };
+  const packOf = (id) => PACKS[id] || PACKS.green;
+  /** يجهّز صدى الشخصية وتوازن صوتها (gain) حتى كل الشخصيات تطلع بنفس العلو تقريباً */
+  const usePack = (S, id, kind) => { const p = packOf(id); S.D.rev = p.rev; S.D.echo = p.echo || 0; S.D.gain = (p.gain && p.gain[kind]) || 1; return p; };
+
   const Sfx = (() => {
-    let ac = null, out = null, noiseBuf = null, rocketNode = null, jumpN = 0;
+    let ac = null, S = null, rocketNode = null;
+    const noteIdx = {};
     function init() {
       if (ac) { if (ac.state !== 'running') ac.resume().catch(() => {}); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -44,60 +224,66 @@
       // ambient = يحترم زر الصامت بالآيفون وما يوقف أغانيك
       try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) { /* */ }
       ac = new AC();
-      out = ac.createGain(); out.gain.value = 0.55;
-      const comp = ac.createDynamicsCompressor();
-      out.connect(comp); comp.connect(ac.destination);
-      noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
-      const d = noiseBuf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      S = createSynth(ac);
       const b = ac.createBufferSource(); b.buffer = ac.createBuffer(1, 1, 22050); b.connect(ac.destination); b.start(0); // يفك قفل الصوت بسفاري
       if (ac.state !== 'running') ac.resume().catch(() => {});
     }
-    const ok = () => save.sound && ac && ac.state === 'running';
-    function tone(type, f0, f1, dur, vol, delay = 0) {
-      if (!ok()) return;
-      const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
-      o.type = type; o.frequency.setValueAtTime(f0, t);
-      if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.03);
+    const ok = () => save.sound && S && ac.state !== 'closed';
+    /** النوتة الجاية: تمشي خطوة لفوك أو لجوه على سلّم الشخصية، فالقفزات تطلع لحن */
+    function nextNote(id, p) {
+      let i = noteIdx[id] != null ? noteIdx[id] : p.scale.length >> 1;
+      i += pick([-1, 1, 1, -2, 2, -1, 1]);
+      if (i < 0) i = 1; else if (i >= p.scale.length) i = p.scale.length - 2;
+      noteIdx[id] = i;
+      return mf(p.scale[i]);
     }
-    function noise(dur, f, vol, delay = 0, type = 'lowpass', f1 = 0) {
-      if (!ok()) return null;
-      const t = ac.currentTime + delay, s = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain();
-      s.buffer = noiseBuf; s.loop = true; fl.type = type; fl.frequency.setValueAtTime(f, t);
-      if (f1) fl.frequency.exponentialRampToValueAtTime(f1, t + dur);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      s.connect(fl); fl.connect(g); g.connect(out); s.start(t); s.stop(t + dur + 0.05);
-      return { s, g };
-    }
+    const plain = () => { S.D.rev = 0.12; S.D.echo = 0; S.D.gain = 1; return S; };
     const api = {
       init,
-      jump() { const k = 1 + (jumpN++ % 3) * 0.06; tone('sine', 300 * k, 620 * k, 0.14, 0.25); tone('triangle', 150 * k, 310 * k, 0.1, 0.08); },
-      spring() { tone('square', 180, 820, 0.22, 0.08); tone('sine', 360, 1500, 0.32, 0.22); },
-      tramp() { tone('sine', 220, 1200, 0.45, 0.25); tone('triangle', 440, 1800, 0.45, 0.1, 0.05); },
-      coin() { tone('square', 988, 988, 0.06, 0.07); tone('square', 1319, 1319, 0.2, 0.07, 0.06); },
-      brk() { noise(0.2, 1400, 0.35, 0, 'lowpass', 300); tone('triangle', 200, 70, 0.18, 0.18); },
-      vanish() { tone('sine', 1200, 400, 0.14, 0.12); },
-      rocket() { api.rocketStop(); rocketNode = noise(C.ROCKET_T, 500, 0.22, 0, 'bandpass', 1400); tone('sawtooth', 90, 260, C.ROCKET_T * 0.9, 0.04); },
+      jump(id) { if (!ok()) return; const p = usePack(S, id, 'jump'); p.jump(S, nextNote(id, p)); },
+      boost(id, kind) { if (!ok()) return; usePack(S, id, 'boost').boost(S, kind === 'tramp' ? 1.25 : 1); },
+      lose(id, how) {
+        if (!ok()) return;
+        if (how === 'hit') plain().noise({ f: 900, f1: 200, dur: 0.15, vol: 0.25 });
+        usePack(S, id, 'lose').lose(S);
+      },
+      hello(id) { if (!ok()) return; usePack(S, id, 'hello').hello(S); },
+      coin() { if (!ok()) return; const s = plain(); s.voice({ type: 'square', f: 988, dur: 0.06, vol: 0.06, filter: ['lowpass', 5000] }); s.voice({ type: 'square', f: 1319, t: 0.06, dur: 0.22, vol: 0.06, filter: ['lowpass', 5000] }); },
+      brk() { if (!ok()) return; const s = plain(); s.noise({ f: 1400, f1: 300, dur: 0.2, vol: 0.24 }); s.voice({ type: 'triangle', f: 200, f1: 70, dur: 0.18, vol: 0.18 }); },
+      vanish() { if (!ok()) return; plain().voice({ f: 1200, f1: 400, dur: 0.14, vol: 0.12 }); },
+      rocket() {
+        if (!ok()) return; api.rocketStop(); const s = plain();
+        rocketNode = s.noise({ type: 'bandpass', f: 500, f1: 1400, dur: C.ROCKET_T, vol: 0.14 });
+        s.voice({ type: 'sawtooth', f: 90, f1: 260, dur: C.ROCKET_T * 0.9, vol: 0.04 });
+      },
       rocketStop() {
         if (!rocketNode) return;
         try { rocketNode.g.gain.cancelScheduledValues(ac.currentTime); rocketNode.g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.05); rocketNode.s.stop(ac.currentTime + 0.3); } catch (e) { /* */ }
         rocketNode = null;
       },
-      shield() { [660, 880, 1320].forEach((f, i) => tone('sine', f, f * 1.01, 0.18, 0.14, i * 0.06)); },
-      shieldBreak() { noise(0.3, 3000, 0.25, 0, 'highpass'); tone('sine', 900, 200, 0.3, 0.15); },
-      stomp() { tone('square', 520, 140, 0.14, 0.1); tone('sine', 300, 1000, 0.18, 0.2, 0.05); },
-      hit() { tone('sawtooth', 420, 70, 0.55, 0.14); noise(0.25, 800, 0.2); },
-      fall() { tone('sine', 760, 90, 0.95, 0.24); tone('triangle', 380, 45, 0.95, 0.08); },
-      record() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone('square', f, f, i === 4 ? 0.35 : 0.12, 0.07, i * 0.08)); },
-      milestone() { [784, 1047].forEach((f, i) => tone('triangle', f, f, 0.16, 0.16, i * 0.09)); },
-      click() { tone('sine', 620, 820, 0.06, 0.12); },
-      buy() { [880, 1175, 1568].forEach((f, i) => tone('square', f, f, 0.1, 0.07, i * 0.07)); },
-      over() { [392, 330, 262].forEach((f, i) => tone('triangle', f, f * 0.98, 0.2, 0.15, i * 0.14)); },
+      shield() { if (!ok()) return; const s = plain(); [660, 880, 1320].forEach((f, i) => s.voice({ f, t: i * 0.06, dur: 0.18, vol: 0.14 })); },
+      shieldBreak() { if (!ok()) return; const s = plain(); s.noise({ type: 'highpass', f: 3000, dur: 0.3, vol: 0.17 }); s.voice({ f: 900, f1: 200, dur: 0.3, vol: 0.15 }); },
+      stomp() { if (!ok()) return; const s = plain(); s.voice({ type: 'square', f: 520, f1: 140, dur: 0.14, vol: 0.1 }); s.voice({ f: 300, f1: 1000, t: 0.05, dur: 0.18, vol: 0.2 }); },
+      record() { if (!ok()) return; const s = plain(); [523, 659, 784, 1047, 1319].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.08, dur: i === 4 ? 0.35 : 0.12, vol: 0.07, filter: ['lowpass', 5000] })); },
+      milestone() { if (!ok()) return; const s = plain(); [784, 1047].forEach((f, i) => s.voice({ type: 'triangle', f, t: i * 0.09, dur: 0.16, vol: 0.16 })); },
+      click() { if (!ok()) return; plain().voice({ f: 620, f1: 820, dur: 0.06, vol: 0.12, rev: 0 }); },
+      buy() { if (!ok()) return; const s = plain(); [880, 1175, 1568].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.07, dur: 0.1, vol: 0.07, filter: ['lowpass', 5000] })); },
     };
     return api;
   })();
+
+  /** للفحص: يسجّل أصوات بدون سماعات ويرجّع العينات */
+  function renderSounds(list, seconds) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const sr = 44100, oac = new OAC(1, Math.ceil(sr * seconds), sr), S = createSynth(oac);
+    for (const [id, kind, t, note] of list) {
+      const p = usePack(S, id, kind); S.D.t0 = t;
+      if (kind === 'jump') p.jump(S, mf(p.scale[note != null ? note : 2]));
+      else if (kind === 'boost') p.boost(S, 1);
+      else p[kind](S);
+    }
+    return oac.startRendering().then((buf) => buf.getChannelData(0));
+  }
   const vibrate = (ms) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* */ } };
 
   // ---------------------------------------------------------------- الشاشة
@@ -762,7 +948,7 @@
     }
     setTimeout(() => {
       if (state !== 'over') return;
-      show('over'); Sfx.over(); countUp($('oScore'), sc);
+      show('over'); Sfx.click(); countUp($('oScore'), sc);
       if (isRec && prevBest > 0) setTimeout(() => Sfx.record(), 600);
     }, 550);
   }
@@ -786,11 +972,14 @@
       else { const s = document.createElement('span'); s.className = 'buy' + (save.coins >= sk.price ? '' : ' no'); s.textContent = `🪙 ${sk.price}`; st.appendChild(s); }
       b.appendChild(st);
       b.onclick = () => {
-        if (owned) { save.skin = sk.id; persist(); Sfx.click(); buildShop(); return; }
-        if (sk.unlockScore) { toast(`وصّل ${sk.unlockScore} حتى تفتحها`); return; }
-        if (save.coins < sk.price) { toast(`تحتاج 🪙 ${sk.price - save.coins} بعد`); return; }
+        Sfx.init();
+        // كل ضغطة تسمّعك صوت الشخصية، حتى لو بعدها مقفولة
+        if (owned) { save.skin = sk.id; persist(); Sfx.hello(sk.id); buildShop(); return; }
+        if (sk.unlockScore) { Sfx.hello(sk.id); toast(`وصّل ${sk.unlockScore} حتى تفتحها`); return; }
+        if (save.coins < sk.price) { Sfx.hello(sk.id); toast(`تحتاج 🪙 ${sk.price - save.coins} بعد`); return; }
         save.coins -= sk.price; save.owned.push(sk.id); save.skin = sk.id; persist();
-        Sfx.buy(); toast(`🎉 «${sk.name}» صارت إلك!`); buildShop();
+        Sfx.buy(); setTimeout(() => Sfx.hello(sk.id), 320);
+        toast(`🎉 «${sk.name}» صارت إلك!`); buildShop();
       };
       grid.appendChild(b);
       previews.push({ g: c.getContext('2d'), sk, sel });
@@ -850,8 +1039,8 @@
     for (const e of evs) {
       switch (e.type) {
         case 'jump':
-          if (e.v === 'jump') { burst(e.x, e.y, 5, FX.dust); if (live) Sfx.jump(); }
-          else { burst(e.x, e.y, 14, FX.boost); if (live) { if (e.v === 'spring') Sfx.spring(); else Sfx.tramp(); } }
+          if (e.v === 'jump') { burst(e.x, e.y, 5, FX.dust); if (live) Sfx.jump(save.skin); }
+          else { burst(e.x, e.y, 14, FX.boost); if (live) Sfx.boost(save.skin, e.v); }
           break;
         case 'break': burst(e.x, e.y, 12, FX.chunk); if (live) Sfx.brk(); break;
         case 'vanish': burst(e.x, e.y, 12, FX.puff); if (live) Sfx.vanish(); break;
@@ -861,8 +1050,8 @@
         case 'shield': if (live) { Sfx.shield(); toast('🛡️ درع!'); } break;
         case 'shieldBreak': burst(e.x, e.y, 16, FX.glass); shake = 0.25; if (live) Sfx.shieldBreak(); break;
         case 'stomp': burst(e.x, e.y, 14, FX.stars); shake = Math.max(shake, 0.12); if (e.v) floatText(e.x, e.y + 20, '+' + e.v, '#FFD23F'); if (live) Sfx.stomp(); break;
-        case 'hit': shake = 0.5; if (live) { Sfx.hit(); vibrate(120); } break;
-        case 'fall': if (live) { Sfx.fall(); vibrate(60); } break;
+        case 'hit': shake = 0.5; if (live) { Sfx.lose(save.skin, 'hit'); vibrate(120); } break;
+        case 'fall': if (live) { Sfx.lose(save.skin, 'fall'); vibrate(60); } break;
         case 'milestone': if (live) { Sfx.milestone(); toast(`${pick(['🎉 كفو!', '🔥 وحش!', '⭐ استمر!', '💪 بطل!'])} ${e.v}`); } break;
         case 'over': endRun(); break;
       }
@@ -934,5 +1123,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS };
 })();

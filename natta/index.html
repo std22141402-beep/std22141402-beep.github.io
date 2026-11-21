@@ -85,6 +85,7 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 /* ---------- الشخصيات ---------- */
 .shop-card{display:flex;flex-direction:column;max-height:100%;padding:18px 14px}
 .shop-head{display:flex;justify-content:space-between;align-items:center;font-size:22px;font-weight:900;padding:0 6px 12px}
+.shop-hint{font-size:13px;font-weight:800;color:#6b7399;margin:-6px 0 10px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px;margin-bottom:14px;touch-action:pan-y}
 .skin{background:#eef1fb;border-radius:18px;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:4px;border:3px solid transparent;font:inherit;color:inherit;touch-action:manipulation}
 .skin.sel{border-color:#ffb703;background:#fff8e1}
@@ -166,6 +167,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   <section id="shop" class="screen" hidden>
     <div class="card shop-card">
       <div class="shop-head"><span>🎨 الشخصيات</span><span class="chip">🪙 <b id="sCoins">0</b></span></div>
+      <div class="shop-hint">🔊 اضغط على أي شخصية حتى تسمع صوتها</div>
       <div class="grid" id="grid"></div>
       <button class="btn primary" id="shopBack">رجوع</button>
     </div>
