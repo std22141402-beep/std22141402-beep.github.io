@@ -28,6 +28,7 @@
     { id: 'ghost', name: 'شبح', body: '#F2F5FF', dark: '#9AA6D6', belly: '#FFFFFF', price: 150, acc: 'blush' },
     { id: 'ninja', name: 'نينجا', body: '#30354A', dark: '#14172A', belly: '#565C7A', price: 300, acc: 'band' },
     { id: 'alien', name: 'فضائي', body: '#A4F07F', dark: '#4FA637', belly: '#E1FFD2', price: 500, acc: 'antenna' },
+    { id: 'fire', name: 'ناري', body: 'fire', dark: '#8E1A00', belly: '#FFF1A8', price: 700 }, // نفس نطّوط بس جسمه يلتهب
     { id: 'king', name: 'الملك', body: '#FFD23F', dark: '#C99300', belly: '#FFF2B3', price: 900, acc: 'crown' },
     { id: 'rainbow', name: 'أسطورة', body: 'rainbow', dark: '#6C3FA0', belly: '#FFFFFF', unlockScore: 5000, acc: 'star' },
   ];
@@ -375,10 +376,42 @@
 
   // ---------------------------------------------------------------- اللاعب
   function bodyFill(g, sk, t) {
+    if (sk.body === 'fire') {
+      // قلب حار أصفر يطلع لبرتقالي وأحمر عالحواف، ويرجف شوية
+      const fl = Math.sin(t * 13) * 0.04 + Math.sin(t * 7.3) * 0.03;
+      const gr = g.createRadialGradient(0, -15, 2, 0, -20, 25);
+      gr.addColorStop(0, '#FFF6C2'); gr.addColorStop(0.3 + fl, '#FFC93C');
+      gr.addColorStop(0.65 + fl, '#FF7A00'); gr.addColorStop(1, '#D92A00');
+      return gr;
+    }
     if (sk.body !== 'rainbow') return sk.body;
     const gr = g.createLinearGradient(-22, -42, 22, 0);
     for (let i = 0; i < 6; i++) gr.addColorStop(i / 5, `hsl(${(t * 80 + i * 60) % 360},90%,63%)`);
     return gr;
+  }
+  /** ألسنة نار ترتفع من نص الجسم الفوقاني (تنرسم ورا الجسم) */
+  function drawFlames(g, t) {
+    const glow = g.createRadialGradient(0, -24, 6, 0, -28, 36);
+    glow.addColorStop(0, 'rgba(255,170,40,.38)'); glow.addColorStop(1, 'rgba(255,80,0,0)');
+    g.fillStyle = glow; g.beginPath(); g.arc(0, -28, 36, 0, TAU); g.fill();
+    const layers = [[9, 1, '#E62200', '#FF8A00'], [7, 0.66, '#FF8A00', '#FFE066']];
+    for (const [n, k, tip, base] of layers) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.PI * (1.06 + (0.88 * i) / (n - 1));
+        const bx = Math.cos(a) * 17, by = -22 + Math.sin(a) * 16;
+        const fl = Math.sin(t * 11 + i * 2.3) * 0.5 + Math.sin(t * 17 + i * 5.1) * 0.5;
+        const L = (8 + 10 * Math.sin((Math.PI * i) / (n - 1)) + 4 * fl) * k + 4;
+        const w = 7 * k;
+        const tx = bx + Math.sin(t * 8 + i * 1.3) * 3 * k + Math.cos(a) * 0.3 * L, ty = by - L;
+        const gr = g.createLinearGradient(0, by, 0, ty);
+        gr.addColorStop(0, base); gr.addColorStop(1, tip);
+        g.fillStyle = gr;
+        g.beginPath(); g.moveTo(bx - w, by + 3);
+        g.quadraticCurveTo(bx - w * 0.9, by - L * 0.55, tx, ty);
+        g.quadraticCurveTo(bx + w * 0.9, by - L * 0.55, bx + w, by + 3);
+        g.closePath(); g.fill();
+      }
+    }
   }
   function drawHero(g, sk, o) {
     const f = o.face || 1, sq = o.squash || 0, st = o.stretch || 0;
@@ -395,6 +428,7 @@
       rr(g, jx - 7, -38, 14, 25, 5); g.fillStyle = '#C9CFE6'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#6E7799'; g.stroke();
       g.fillStyle = '#E63946'; rr(g, jx - 7, -38, 14, 7, 4); g.fill();
     }
+    if (sk.body === 'fire') drawFlames(g, o.t || 0);
     g.fillStyle = sk.dark;
     g.beginPath(); g.ellipse(-9, -3, 7, 4, 0, 0, TAU); g.ellipse(9, -3, 7, 4, 0, 0, TAU); g.fill();
 
@@ -507,7 +541,7 @@
       parts.push({ x: rnd(0, C.W), y: top + rnd(0, 60), vx: rnd(-90, 90), vy: rnd(-120, 40), g: 160, life: 2.4, max: 2.4, r: rnd(3.5, 6), c: pick(['#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93', '#ff924c']), kind: 'conf', rot: rnd(0, 6) });
     }
   }
-  let shake = 0;
+  let shake = 0, emberAcc = 0;
   function updateFx(dt) {
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
@@ -519,6 +553,16 @@
     for (let i = texts.length - 1; i >= 0; i--) { texts[i].t += dt; if (texts[i].t > 0.9) texts.splice(i, 1); }
     shake = Math.max(0, shake - dt);
     const P = world.player;
+    // شرار يطير من الشخصية النارية
+    if (skinById(save.skin).body === 'fire' && P.state === 'alive') {
+      emberAcc += dt;
+      while (emberAcc > 0.045) {
+        emberAcc -= 0.045;
+        if (parts.length >= 420) break;
+        const life = rnd(0.35, 0.7);
+        parts.push({ x: P.x + rnd(-12, 12), y: P.y + rnd(40, 54), vx: rnd(-25, 25), vy: rnd(40, 110), g: -40, life, max: life, r: rnd(1.4, 2.8), c: pick(['#FFE066', '#FFB000', '#FF6A00', '#FF3D00']), kind: 'dot', rot: 0 });
+      }
+    }
     if (P.rocket > 0 && parts.length < 420) {
       for (let k = 0; k < 2; k++) {
         const life = rnd(0.2, 0.35);

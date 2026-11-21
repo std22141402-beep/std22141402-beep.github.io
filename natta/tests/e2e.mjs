@@ -51,7 +51,7 @@ ok((await G(() => window.__natta.world.player.state)) === 'alive', 'الشخصي
 await page.tap('#openShop');
 await wait(700);
 await shot('2-shop');
-ok((await page.locator('.skin').count()) === 7, '7 شخصيات');
+ok((await page.locator('.skin').count()) === 8, '8 شخصيات');
 await page.locator('.skin').nth(1).tap();
 await wait(300);
 ok((await page.textContent('#toast')).includes('تحتاج'), 'ما تكدر تشتري بلا عملات');
@@ -154,12 +154,26 @@ await wait(700);
 await shot('11-best-line');
 
 // الشخصيات بعد ما صار عنده عملات
-await G(() => { window.__natta.save.coins = 1000; window.__natta.goHome(); window.__natta.openShop(); });
+await G(() => { window.__natta.save.coins = 1700; window.__natta.goHome(); window.__natta.openShop(); });
 await wait(300);
+await page.locator('.skin').nth(6).tap();
+await wait(300);
+ok((await G(() => window.__natta.save.skin)) === 'king', 'الشراء والاختيار يشتغلون');
 await page.locator('.skin').nth(5).tap();
 await wait(500);
 await shot('12-shop-bought');
-ok((await G(() => window.__natta.save.skin)) === 'king', 'الشراء والاختيار يشتغلون');
+ok((await G(() => window.__natta.save.skin)) === 'fire' && (await G(() => window.__natta.save.coins)) === 100, 'شراء «ناري» يشتغل');
+
+// الشخصية النارية بالنهار وبالليل
+await G(() => { window.__natta.goHome(); });
+await wait(700);
+await shot('15-fire-home');
+await page.tap('#play', { force: true });
+await G(() => { window.__botOff = false; });
+await wait(400);
+await G(() => { const w = window.__natta.world, P = w.player; P.y = 40000; P.vy = 820; w.camY = 40000 - w.viewH * 0.42; w.maxY = 40000; w.genY = w.camY - 50; w.platforms = w.platforms.filter((p) => p.y > w.camY - 400); P.invul = 3; });
+await wait(1200);
+await shot('16-fire-night');
 
 // شاشة صغيرة (آيفون SE) وشاشة كمبيوتر
 await page.setViewportSize({ width: 375, height: 667 });
