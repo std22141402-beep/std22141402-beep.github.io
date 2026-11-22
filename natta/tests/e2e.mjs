@@ -125,7 +125,7 @@ await G(() => { const w = window.__natta.world; w.player.rocket = 2.6; w.player.
 await wait(600);
 await shot('7-rocket-shield');
 await teleport(60000, '8-space');
-ok((await G(() => window.__natta.world.enemies.length)) > 0, 'الوحوش تطلع بالمراحل العالية');
+ok((await G(() => { const N = window.__natta, w = N.world; N.Core.genUntil(w, w.camY + 8000); return w.enemies.filter((e) => e.y > w.camY).length; })) > 0, 'الوحوش تطلع بالمراحل العالية');
 
 // نوقف ونكمل
 await page.tap('#pauseBtn');
@@ -176,6 +176,10 @@ await wait(400);
 await G(() => { const w = window.__natta.world, P = w.player; P.y = 40000; P.vy = 820; w.camY = 40000 - w.viewH * 0.42; w.maxY = 40000; w.genY = w.camY - 50; w.platforms = w.platforms.filter((p) => p.y > w.camY - 400); P.invul = 3; });
 await wait(1200);
 await shot('16-fire-night');
+await G(() => { const N = window.__natta; N.strike(); N.bolts.forEach((b) => { b.t = 0.12; b.life = 5; }); });
+await wait(250);
+ok((await G(() => window.__natta.bolts.length)) > 0, 'البرق يضرب بعالم النار');
+await shot('16a-fire-lightning');
 await G(() => { const N = window.__natta, w = N.world; N.explode(w.player.x > 200 ? 110 : 290, w.player.y + 90, 1.2); });
 await wait(120);
 await shot('16b-fire-explode');

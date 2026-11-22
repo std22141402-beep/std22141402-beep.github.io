@@ -87,13 +87,34 @@ const plan = await page.evaluate(() => {
   return { list, total: t + 0.5, marks };
 });
 const pcm = await page.evaluate(async ({ list, total }) => Array.from(await window.__natta.renderSounds(list, total)), plan);
-const sr = 44100, buf = Buffer.alloc(44 + pcm.length * 2);
-buf.write('RIFF', 0); buf.writeUInt32LE(36 + pcm.length * 2, 4); buf.write('WAVE', 8); buf.write('fmt ', 12);
-buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(sr, 24);
-buf.writeUInt32LE(sr * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34); buf.write('data', 36); buf.writeUInt32LE(pcm.length * 2, 40);
-pcm.forEach((v, i) => buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 32767), 44 + i * 2));
-fs.writeFileSync('/tmp/natta-sounds.wav', buf);
+function writeWav(file, pcm) {
+  const sr = 44100, buf = Buffer.alloc(44 + pcm.length * 2);
+  buf.write('RIFF', 0); buf.writeUInt32LE(36 + pcm.length * 2, 4); buf.write('WAVE', 8); buf.write('fmt ', 12);
+  buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(sr, 24);
+  buf.writeUInt32LE(sr * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34); buf.write('data', 36); buf.writeUInt32LE(pcm.length * 2, 40);
+  pcm.forEach((v, i) => buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 32767), 44 + i * 2));
+  fs.writeFileSync(file, buf);
+}
+writeWav('/tmp/natta-sounds.wav', pcm);
 console.log('  العيّنة: /tmp/natta-sounds.wav  —', plan.marks.map(([n, t]) => `${n} ${t}s`).join(' | '));
+
+// 3) أصوات عالم النار: انفجار، رعد قريب وبعيد، فقاعة حمم
+const fxStats = await page.evaluate(async () => {
+  const out = [];
+  for (const [k, n, name] of [['boom', 1, 'انفجار'], ['thunder', 1, 'رعد قريب'], ['thunder', 0, 'رعد بعيد'], ['lavaPop', 1, 'فقاعة حمم']]) {
+    const d = await window.__natta.renderSounds([['fx', k, 0, n]], 3.5);
+    let peak = 0; for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+    out.push({ name, peak });
+  }
+  return out;
+});
+for (const f of fxStats) ok(f.peak > 0.02 && f.peak < 0.99, `${f.name}: مسموع وبلا تشويه (${f.peak.toFixed(2)})`);
+const firePcm = await page.evaluate(async () => Array.from(await window.__natta.renderSounds([
+  ['fx', 'thunder', 0.2, 0], ['fx', 'thunder', 3.0, 1], ['fire', 'jump', 5.4, 1], ['fire', 'jump', 5.85, 3], ['fx', 'boom', 6.3, 1],
+  ['fx', 'lavaPop', 7.4], ['fx', 'lavaPop', 7.8], ['fx', 'lavaPop', 8.1], ['fire', 'boost', 8.5], ['fx', 'thunder', 9.4, 1], ['fire', 'lose', 11.6],
+], 13.5)));
+writeWav('/tmp/natta-fire-sounds.wav', firePcm);
+console.log('  عيّنة عالم النار: /tmp/natta-fire-sounds.wav');
 
 ok(errors.length === 0, 'ماكو أخطاء' + (errors.length ? ': ' + errors.join(' / ') : ''));
 await browser.close(); server.close();

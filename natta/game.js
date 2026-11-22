@@ -210,6 +210,25 @@
       hello(S) { [72, 76, 79, 84].forEach((m, i) => bell(S, mf(m), i * 0.07, 0.12, 0.7)); [72, 76, 79].forEach((m) => bell(S, mf(m + 12), 0.35, 0.06, 1.0)); },
     },
   };
+  /** أصوات عالم النار العامة (تستعملها اللعبة والفحص) */
+  const FXS = {
+    boom(S, s = 1) {
+      S.D.rev = 0.25; const v = 0.3 * Math.min(1.3, s);
+      S.noise({ f: 900 * s + 200, f1: 60, dur: 0.55 + 0.3 * s, vol: v, q: 0.7, attack: 0.004 });
+      S.voice({ f: 110, f1: 32, dur: 0.5 + 0.2 * s, vol: v, attack: 0.004 });
+      S.crackle(Math.round(6 * s), 0.35, 0.12);
+    },
+    lavaPop(S) { S.D.rev = 0.2; S.voice({ f: 180, f1: 520, dur: 0.08, vol: 0.12 }); S.noise({ type: 'bandpass', f: 900, q: 3, dur: 0.05, vol: 0.05 }); },
+    /** رعد: «طق» حاد إذا قريب، وبعده هدير يتدحرج */
+    thunder(S, near = 1, delay = 0) {
+      S.D.rev = 0.4;
+      if (near) S.noise({ type: 'highpass', f: 2600, f1: 700, t: delay, dur: 0.16, vol: 0.3, attack: 0.002 });
+      S.noise({ f: 420, f1: 70, t: delay + 0.03, dur: 2.2, vol: near ? 0.4 : 0.28, attack: 0.04, q: 0.6 });
+      S.noise({ f: 200, f1: 55, t: delay + 0.4, dur: 1.7, vol: near ? 0.26 : 0.18, attack: 0.12 });
+      S.voice({ f: 58, f1: 30, t: delay, dur: 1.9, vol: near ? 0.24 : 0.15, attack: 0.02 });
+      S.crackle(near ? 9 : 3, 0.5, 0.11, delay);
+    },
+  };
   const packOf = (id) => PACKS[id] || PACKS.green;
   /** يجهّز صدى الشخصية وتوازن صوتها (gain) حتى كل الشخصيات تطلع بنفس العلو تقريباً */
   const usePack = (S, id, kind) => { const p = packOf(id); S.D.rev = p.rev; S.D.echo = p.echo || 0; S.D.gain = (p.gain && p.gain[kind]) || 1; return p; };
@@ -267,13 +286,9 @@
       record() { if (!ok()) return; const s = plain(); [523, 659, 784, 1047, 1319].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.08, dur: i === 4 ? 0.35 : 0.12, vol: 0.07, filter: ['lowpass', 5000] })); },
       milestone() { if (!ok()) return; const s = plain(); [784, 1047].forEach((f, i) => s.voice({ type: 'triangle', f, t: i * 0.09, dur: 0.16, vol: 0.16 })); },
       /** انفجار: s = الحجم */
-      boom(s = 1) {
-        if (!ok()) return; const S2 = plain(); S2.D.rev = 0.25; const v = 0.3 * Math.min(1.3, s);
-        S2.noise({ f: 900 * s + 200, f1: 60, dur: 0.55 + 0.3 * s, vol: v, q: 0.7, attack: 0.004 });
-        S2.voice({ f: 110, f1: 32, dur: 0.5 + 0.2 * s, vol: v, attack: 0.004 });
-        S2.crackle(Math.round(6 * s), 0.35, 0.12);
-      },
-      lavaPop() { if (!ok()) return; const S2 = plain(); S2.D.rev = 0.2; S2.voice({ f: 180, f1: 520, dur: 0.08, vol: 0.07 }); S2.noise({ type: 'bandpass', f: 900, q: 3, dur: 0.05, vol: 0.03 }); },
+      boom(s = 1) { if (ok()) FXS.boom(plain(), s); },
+      lavaPop() { if (ok()) FXS.lavaPop(plain()); },
+      thunder(near, delay) { if (ok()) FXS.thunder(plain(), near ? 1 : 0, delay || 0); },
       click() { if (!ok()) return; plain().voice({ f: 620, f1: 820, dur: 0.06, vol: 0.12, rev: 0 }); },
       buy() { if (!ok()) return; const s = plain(); [880, 1175, 1568].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.07, dur: 0.1, vol: 0.07, filter: ['lowpass', 5000] })); },
     };
@@ -285,6 +300,7 @@
     const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     const sr = 44100, oac = new OAC(1, Math.ceil(sr * seconds), sr), S = createSynth(oac);
     for (const [id, kind, t, note] of list) {
+      if (id === 'fx') { S.D.echo = 0; S.D.gain = 1; S.D.t0 = t; FXS[kind](S, note != null ? note : 1); continue; }
       const p = usePack(S, id, kind); S.D.t0 = t;
       if (kind === 'jump') p.jump(S, mf(p.scale[note != null ? note : 2]));
       else if (kind === 'boost') p.boost(S, 1);
@@ -925,6 +941,7 @@
       }
       if (time > v.next) { v.next = time + v.per * rnd(0.7, 1.3); erupt(v, wy); }
     }
+    updateLightning(dt);
     bubbleT -= dt;
     if (bubbleT <= 0) { bubbleT = rnd(0.35, 0.9); bubbles.push({ x: rnd(10, C.W - 10), t: 0, r: rnd(3, 7), loud: Math.random() < 0.35 }); }
     for (let i = bubbles.length - 1; i >= 0; i--) {
@@ -973,6 +990,100 @@
     ctx.fillStyle = '#FFE066';
     ctx.beginPath(); ctx.moveTo(-7, 6); ctx.lineTo(-4, 10); ctx.lineTo(-1, 6); ctx.moveTo(1, 6); ctx.lineTo(4, 10); ctx.lineTo(7, 6); ctx.fill();
     ctx.restore();
+  }
+
+  // ---------------------------------------------------------------- برق ورعد نار ⚡ (عالم «ناري»)
+  const bolts = [];
+  let boltT = 2, skyFlash = 0;
+  /** خط برق متعرج بطريقة «إزاحة النص» (إحداثيات العالم) */
+  function boltPath(x0, y0, x1, y1, disp, levels) {
+    let pts = [[x0, y0], [x1, y1]], d = disp;
+    for (let l = 0; l < levels; l++) {
+      const np = [pts[0]];
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+        np.push([(ax + bx) / 2 + rnd(-d, d), (ay + by) / 2 + rnd(-d, d) * 0.3], [bx, by]);
+      }
+      pts = np; d *= 0.55;
+    }
+    return pts;
+  }
+  /** صاعقة: تختار هدف (منصة، حمم، دخان بركان، أو بالهوا)، تومّض الشاشة، وترعد */
+  function strike() {
+    if (!world || bolts.length > 3) return false;
+    const w = world, top = w.camY + viewH + 30;
+    let x1, y1, hit = 'air';
+    const vis = w.demo ? [] : w.platforms.filter((p) => p.type !== 'g' && !p.broken && !p.gone && Y(p.y) > 140 && Y(p.y) < viewH - 120);
+    const roll = Math.random();
+    const volc = VOLC.filter((v) => volcBase(v) - v.h < viewH - 40);
+    if (w.demo && volc.length && roll < 0.55) { // برق بدخان البركان (يصير بالحقيقة!)
+      const v = pick(volc), cy = w.camY + viewH - (volcBase(v) - v.h);
+      x1 = v.x + rnd(-25, 25); y1 = cy + rnd(50, 120); hit = 'plume';
+    } else if (vis.length && roll < 0.45) {
+      const p = pick(vis); x1 = p.x + rnd(10, p.w - 10); y1 = p.y; hit = 'platform';
+    } else if (roll < 0.72) {
+      x1 = rnd(20, C.W - 20); y1 = w.camY + 16; hit = 'lava';
+    } else {
+      x1 = rnd(30, C.W - 30); y1 = w.camY + viewH * rnd(0.35, 0.65);
+    }
+    const x0 = clamp(x1 + rnd(-90, 90), 10, C.W - 10), len = top - y1;
+    const b = { x0, y0: top, main: boltPath(x0, top, x1, y1, len * 0.16, 6), branches: [], t: 0, life: 0.5 };
+    for (let k = 0, n = 1 + ((Math.random() * 3) | 0); k < n; k++) {
+      const [bx, by] = b.main[Math.floor(b.main.length * rnd(0.15, 0.65))], dir = Math.random() < 0.5 ? -1 : 1;
+      b.branches.push(boltPath(bx, by, bx + dir * rnd(40, 110), by - rnd(60, 170), 22, 4));
+    }
+    bolts.push(b);
+    skyFlash = 0.32;
+    if (hit === 'platform') { explode(x1, y1, 0.5); burst(x1, y1, 10, FX.spark); }
+    else if (hit === 'lava') { burst(x1, y1, 14, { sp: 120, vy0: 200, vy1: 480, g: 1200, life: 0.7, r: 3.5, colors: LAVA_COLS, kind: 'lava' }); parts.push({ x: x1, y: y1, vx: 0, vy: 0, g: 0, life: 0.25, max: 0.25, r: 14, c: '#fff', kind: 'flash', rot: 0, drag: 0 }); }
+    else if (hit === 'plume') burst(x1, y1, 8, FX.spark);
+    if (state === 'play') {
+      const near = hit !== 'air';
+      Sfx.thunder(near, near ? rnd(0.03, 0.15) : rnd(0.3, 0.8));
+      if (near) vibrate(25);
+    }
+    return true;
+  }
+  function updateLightning(dt) {
+    skyFlash = Math.max(0, skyFlash - dt * 1.6);
+    for (let i = bolts.length - 1; i >= 0; i--) { bolts[i].t += dt; if (bolts[i].t > bolts[i].life) bolts.splice(i, 1); }
+    boltT -= dt;
+    if (boltT <= 0) {
+      const s = (world.camY + viewH / 2) / C.SCORE_DIV, base = 7 - 3.5 * clamp(s / 5000, 0, 1); // كل ما تصعد العاصفة تشتد
+      boltT = rnd(base * 0.6, base * 1.3);
+      strike();
+    }
+  }
+  const boltAlpha = (b) => { const t = b.t; return t < 0.06 ? 1 : t < 0.1 ? 0.25 : t < 0.16 ? 1 : clamp(1 - (t - 0.16) / (b.life - 0.16), 0, 1); };
+  function strokeBolt(pts, widths, alpha) {
+    const cols = [`rgba(255,110,30,${0.35 * alpha})`, `rgba(255,150,40,${alpha})`, `rgba(255,248,210,${alpha})`];
+    for (let k = 0; k < 3; k++) {
+      ctx.strokeStyle = cols[k]; ctx.lineWidth = widths[k];
+      ctx.beginPath(); ctx.moveTo(pts[0][0], Y(pts[0][1]));
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], Y(pts[i][1]));
+      ctx.stroke();
+    }
+  }
+  function drawLightning() {
+    if (!bolts.length) return;
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    for (const b of bolts) {
+      const a = boltAlpha(b);
+      // غيمة عاصفة تضوي من جوه
+      const cy = Y(b.y0) + 6;
+      drawCloud(b.x0, cy, 1.35, 0.9, 'rgb(46,18,16)');
+      const g = ctx.createRadialGradient(b.x0, cy, 4, b.x0, cy, 60);
+      g.addColorStop(0, `rgba(255,170,70,${0.55 * a})`); g.addColorStop(1, 'rgba(255,90,0,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x0, cy, 60, 0, TAU); ctx.fill();
+      strokeBolt(b.main, [9, 3.6, 1.5], a);
+      for (const br of b.branches) strokeBolt(br, [5, 2, 0.9], a * 0.8);
+    }
+    ctx.restore();
+  }
+  function drawSkyFlash() {
+    if (skyFlash <= 0) return;
+    ctx.fillStyle = `rgba(255,185,120,${skyFlash})`;
+    ctx.fillRect(-4, -4, C.W + 8, viewH + 8);
   }
 
   // ---------------------------------------------------------------- مؤثرات
@@ -1356,7 +1467,7 @@
           if (e.v) floatText(e.x, e.y + 20, '+' + e.v, '#FFD23F'); if (live) Sfx.stomp(); break;
         case 'hit': deathCause = 'hit'; shake = 0.5; if (FT) { explode(e.x, e.y, 1.2); if (live) Sfx.boom(1.2); } if (live) { Sfx.lose(save.skin, 'hit'); vibrate(120); } break;
         case 'fall': deathCause = 'fall'; if (FT) lavaSplash(e.x); if (live) { Sfx.lose(save.skin, 'fall'); vibrate(60); } break;
-        case 'milestone': if (live) { Sfx.milestone(); toast(`${pick(FT ? ['🌋 بركان!', '🔥 نار!', '💥 انفجار!', '☄️ نيزك!'] : ['🎉 كفو!', '🔥 وحش!', '⭐ استمر!', '💪 بطل!'])} ${e.v}`); } break;
+        case 'milestone': if (FT) { strike(); setTimeout(strike, 180); } if (live) { Sfx.milestone(); toast(`${pick(FT ? ['🌋 بركان!', '🔥 نار!', '💥 انفجار!', '☄️ نيزك!', '⚡ صاعقة!'] : ['🎉 كفو!', '🔥 وحش!', '⭐ استمر!', '💪 بطل!'])} ${e.v}`); } break;
         case 'over': endRun(); break;
       }
     }
@@ -1441,6 +1552,7 @@
     camY = world.camY;
     drawBackground(time);
     drawGround();
+    if (FT) drawLightning();
     if (!world.demo) {
       // بالرئيسية نخلي الخلفية نظيفة: سما وأرض والشخصية بس
       if (world.hero && !FT) drawNet(time);
@@ -1452,6 +1564,7 @@
     drawPlayer(P, time);
     if (FT) { drawLava(time); if (world.hero && !world.demo) drawNet(time); }
     drawFx();
+    if (FT) drawSkyFlash();
     if (state === 'shop') drawPreviews(time);
   }
   function frame(now) {
@@ -1479,5 +1592,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; } };
 })();
