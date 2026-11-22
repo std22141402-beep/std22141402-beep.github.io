@@ -1,5 +1,5 @@
 /* نطّة — يخلي اللعبة تشتغل بدون انترنت بعد أول فتحة */
-const V = 'natta-72de68f0ed';
+const V = 'natta-49153c13be';
 const SHELL = ['./', './index.html', './core.js', './game.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));

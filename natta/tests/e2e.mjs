@@ -170,6 +170,27 @@ await wait(700);
 await G(() => window.__natta.VOLC.forEach((v) => { v.next = 0.0001; }));
 await wait(450);
 await shot('15-fire-home');
+
+// أسراب الطائرات بعالم النار (بالرئيسية حتى الشخصية تبقى عايشة)
+for (const [man, ms, name] of [['loop', 1700, '15a-jets-loop'], ['burst', 2400, '15b-jets-burst'], ['cross', 1150, '15c-jets-cross'], ['roll', 1500, '15d-jets-roll']]) {
+  await G((m) => { const N = window.__natta; N.squads.length = 0; N.spawnSquad(m); }, man);
+  await wait(ms);
+  await shot(name);
+}
+ok((await G(() => window.__natta.squads.length)) > 0, 'أسراب الطائرات تطير بعالم النار');
+const minD = await page.evaluate(() => new Promise((res) => {
+  const N = window.__natta, w = N.world, P = w.player;
+  N.squads.length = 0;
+  N.spawnSquad('flyby', P.y + 20 - w.camY * 0.65, 1);
+  let min = 1e9; const t0 = performance.now();
+  const tick = () => {
+    const py = P.y + 20 - w.camY * 0.65;
+    for (const sq of N.squads) for (const j of sq.jets) min = Math.min(min, Math.hypot(j.x + j.ox - P.x, j.y + j.oy - py));
+    if (performance.now() - t0 < 3500) requestAnimationFrame(tick); else res(min);
+  };
+  tick();
+}));
+ok(minD > 22, `الطيارات تتفادى الشخصية (أقرب مسافة ${minD.toFixed(0)})`);
 await page.tap('#play', { force: true });
 await G(() => { window.__botOff = false; });
 await wait(400);

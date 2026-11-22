@@ -101,7 +101,7 @@ console.log('  العيّنة: /tmp/natta-sounds.wav  —', plan.marks.map(([n, 
 // 3) أصوات عالم النار: انفجار، رعد قريب وبعيد، فقاعة حمم
 const fxStats = await page.evaluate(async () => {
   const out = [];
-  for (const [k, n, name] of [['boom', 1, 'انفجار'], ['thunder', 1, 'رعد قريب'], ['thunder', 0, 'رعد بعيد'], ['lavaPop', 1, 'فقاعة حمم']]) {
+  for (const [k, n, name] of [['boom', 1, 'انفجار'], ['thunder', 1, 'رعد قريب'], ['thunder', 0, 'رعد بعيد'], ['lavaPop', 1, 'فقاعة حمم'], ['jet', 1, 'طيارة تعبر'], ['whoosh', 1, 'انفجار السرب']]) {
     const d = await window.__natta.renderSounds([['fx', k, 0, n]], 3.5);
     let peak = 0; for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
     out.push({ name, peak });
@@ -115,6 +115,10 @@ const firePcm = await page.evaluate(async () => Array.from(await window.__natta.
 ], 13.5)));
 writeWav('/tmp/natta-fire-sounds.wav', firePcm);
 console.log('  عيّنة عالم النار: /tmp/natta-fire-sounds.wav');
+writeWav('/tmp/natta-jets.wav', await page.evaluate(async () => Array.from(await window.__natta.renderSounds([
+  ['fx', 'jet', 0.2, 1], ['fx', 'jet', 3.6, -1], ['fx', 'jet', 3.75, 1], ['fx', 'whoosh', 7.2], ['fx', 'thunder', 8.0, 0],
+], 10.5))));
+console.log('  عيّنة الطيارات: /tmp/natta-jets.wav');
 
 ok(errors.length === 0, 'ماكو أخطاء' + (errors.length ? ': ' + errors.join(' / ') : ''));
 await browser.close(); server.close();

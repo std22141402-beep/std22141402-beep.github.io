@@ -57,6 +57,13 @@
 
     const D = { rev: 0.12, echo: 0, t0: 0, gain: 1 };
     const at = (o) => ac.currentTime + D.t0 + (o.t || 0);
+    /** صوت يمشي من جهة لجهة (يمين/يسار) إذا الجهاز يدعم */
+    function pan(g, o, t, dur) {
+      if (o.pan == null || !ac.createStereoPanner) return g;
+      const p = ac.createStereoPanner(); p.pan.setValueAtTime(o.pan, t);
+      if (o.pan1 != null) p.pan.linearRampToValueAtTime(o.pan1, t + dur);
+      g.connect(p); return p;
+    }
     function route(g, o) {
       g.connect(out);
       const r = o.rev != null ? o.rev : D.rev, e = o.echo != null ? o.echo : D.echo;
@@ -87,7 +94,7 @@
         fl.Q.value = o.filter[3] || 0.7; node.connect(fl); node = fl;
       }
       const g = ac.createGain(); env(g, t, o.attack || 0.006, o.vol * D.gain, dur);
-      node.connect(g); route(g, o);
+      node.connect(g); route(pan(g, o, t, dur), o);
       osc.start(t); osc.stop(t + dur + 0.05);
     }
     function noise(o) {
@@ -97,7 +104,7 @@
       if (o.f1) fl.frequency.exponentialRampToValueAtTime(o.f1, t + (o.glide || dur));
       fl.Q.value = o.q || 0.8;
       const g = ac.createGain(); env(g, t, o.attack || 0.01, o.vol * D.gain, dur);
-      s.connect(fl); fl.connect(g); route(g, o);
+      s.connect(fl); fl.connect(g); route(pan(g, o, t, dur), o);
       s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
       return { s, g };
     }
@@ -220,6 +227,14 @@
     },
     lavaPop(S) { S.D.rev = 0.2; S.voice({ f: 180, f1: 520, dur: 0.08, vol: 0.12 }); S.noise({ type: 'bandpass', f: 900, q: 3, dur: 0.05, vol: 0.05 }); },
     /** رعد: «طق» حاد إذا قريب، وبعده هدير يتدحرج */
+    /** طيارة نفاثة تعبر: هدير يعلى ويوطى (دوبلر) ويمشي من جهة لجهة */
+    jet(S, dir = 1) {
+      S.D.rev = 0.3; const d = dir >= 0 ? 1 : -1;
+      S.noise({ type: 'bandpass', f: 450, f1: 1500, dur: 1.5, vol: 0.13, q: 1.1, attack: 1.2, pan: -0.85 * d, pan1: 0 });
+      S.noise({ type: 'bandpass', f: 1500, f1: 350, t: 1.3, dur: 1.7, vol: 0.13, q: 1.1, attack: 0.06, pan: 0, pan1: 0.85 * d });
+      S.voice({ type: 'sawtooth', f: 92, f1: 60, dur: 3, vol: 0.05, attack: 1.2, filter: ['lowpass', 380], pan: -0.6 * d, pan1: 0.6 * d });
+    },
+    whoosh(S) { S.D.rev = 0.3; S.noise({ type: 'highpass', f: 1200, f1: 4500, dur: 0.5, vol: 0.18, attack: 0.08 }); S.noise({ type: 'bandpass', f: 900, f1: 300, t: 0.15, dur: 0.9, vol: 0.12 }); },
     thunder(S, near = 1, delay = 0) {
       S.D.rev = 0.4;
       if (near) S.noise({ type: 'highpass', f: 2600, f1: 700, t: delay, dur: 0.16, vol: 0.3, attack: 0.002 });
@@ -289,6 +304,8 @@
       boom(s = 1) { if (ok()) FXS.boom(plain(), s); },
       lavaPop() { if (ok()) FXS.lavaPop(plain()); },
       thunder(near, delay) { if (ok()) FXS.thunder(plain(), near ? 1 : 0, delay || 0); },
+      jet(dir) { if (ok()) FXS.jet(plain(), dir); },
+      whoosh() { if (ok()) FXS.whoosh(plain()); },
       click() { if (!ok()) return; plain().voice({ f: 620, f1: 820, dur: 0.06, vol: 0.12, rev: 0 }); },
       buy() { if (!ok()) return; const s = plain(); [880, 1175, 1568].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.07, dur: 0.1, vol: 0.07, filter: ['lowpass', 5000] })); },
     };
@@ -942,6 +959,7 @@
       if (time > v.next) { v.next = time + v.per * rnd(0.7, 1.3); erupt(v, wy); }
     }
     updateLightning(dt);
+    updateSquads(dt);
     bubbleT -= dt;
     if (bubbleT <= 0) { bubbleT = rnd(0.35, 0.9); bubbles.push({ x: rnd(10, C.W - 10), t: 0, r: rnd(3, 7), loud: Math.random() < 0.35 }); }
     for (let i = bubbles.length - 1; i >= 0; i--) {
@@ -1034,6 +1052,7 @@
     }
     bolts.push(b);
     skyFlash = 0.32;
+    jetsEvade(x1);
     if (hit === 'platform') { explode(x1, y1, 0.5); burst(x1, y1, 10, FX.spark); }
     else if (hit === 'lava') { burst(x1, y1, 14, { sp: 120, vy0: 200, vy1: 480, g: 1200, life: 0.7, r: 3.5, colors: LAVA_COLS, kind: 'lava' }); parts.push({ x: x1, y: y1, vx: 0, vy: 0, g: 0, life: 0.25, max: 0.25, r: 14, c: '#fff', kind: 'flash', rot: 0, drag: 0 }); }
     else if (hit === 'plume') burst(x1, y1, 8, FX.spark);
@@ -1084,6 +1103,198 @@
     if (skyFlash <= 0) return;
     ctx.fillStyle = `rgba(255,185,120,${skyFlash})`;
     ctx.fillRect(-4, -4, C.W + 8, viewH + 8);
+  }
+
+  // ---------------------------------------------------------------- أسراب طائرات ✈️ (عالم «ناري»)
+  // كل سرب: قائد يمشي على خطة مناورة، والباقين يمسكون مواقعهم بالتشكيل بـ«توجيه» ذكي:
+  // يلحكون مواقعهم بنعومة (نابض + تخميد)، ما يتقاربون هواية من بعض، يتفادون الشخصية،
+  // ويسوون لفّة هروب إذا البرق ضرب يمّهم. الطيارات بطبقة سما (تتحرك أبطأ من المنصات)
+  const JPAR = 0.35, JV = 250;
+  const squads = [];
+  let squadT = 6, lastMan = '';
+  const JET_SMOKE = ['#FF3D1F', '#FF8C1A', '#FFD23F', '#FFF1DC', '#FF6A3D', '#FFB000'];
+  const FORMS = { // مواقع الطيارات ورا القائد: [لورا، لفوك]
+    V: [[-30, 20], [-30, -20], [-60, 40], [-60, -40], [-90, 60]],
+    trail: [[-40, 0], [-80, 0], [-120, 0], [-160, 0], [-200, 0]],
+    echelon: [[-28, -20], [-56, -40], [-84, -60], [-112, -80], [-140, -100]],
+    diamond: [[-30, 22], [-30, -22], [-60, 0], [-90, 0], [-120, 0]],
+  };
+  const MANEUVERS = ['flyby', 'loop', 'roll', 'burst', 'change', 'cross'];
+  const jetScreenY = (ly) => viewH - (ly - world.camY * JPAR);
+  const toJetY = (sy) => viewH - sy + world.camY * JPAR;
+  /** خطة القائد: مقاطع، كل مقطع مدته وسرعة دورانه وشكل التشكيل */
+  function plan(man, dir) {
+    const r = 70, wl = (JV / r) * dir;
+    switch (man) {
+      case 'loop': return [{ t: 1.05, w: 0, f: 'V' }, { t: TAU / (JV / r), w: wl, f: 'V' }, { t: 3, w: 0, f: 'V' }];
+      case 'roll': return [{ t: 0.9, w: 0, f: 'echelon' }, { t: 1.4, w: 0, f: 'echelon', roll: 2 }, { t: 3, w: 0, f: 'echelon' }];
+      case 'burst': return [{ t: 0.85, w: 0, f: 'diamond' }, { t: (Math.PI / 2) / (JV / 60), w: (JV / 60) * dir, f: 'diamond' }, { t: 0.55, w: 0, f: 'diamond' }, { t: 4, w: 0, f: 'diamond', burst: true }];
+      case 'change': return [{ t: 1.0, w: 0.12 * dir, f: 'trail' }, { t: 1.1, w: -0.12 * dir, f: 'V' }, { t: 3, w: 0, f: 'echelon' }];
+      case 'cross': return [{ t: 4.5, w: 0, f: 'echelon' }];
+      default: return [{ t: 4.5, w: 0.05 * dir, f: 'V' }];
+    }
+  }
+  function slotPos(sq, f, i) {
+    const L = sq.L, lead = sq.jets[0], F = FORMS[f] || FORMS.V;
+    const [sx, sy0] = F[(i - 1) % F.length], sy = sy0 * sq.dir, c = Math.cos(L.ang), s = Math.sin(L.ang);
+    return [L.x + lead.ox + c * sx - s * sy, L.y + lead.oy + s * sx + c * sy];
+  }
+  function makeSquad(man, dir, ly, n) {
+    const ang = dir > 0 ? 0 : Math.PI;
+    const sq = { man, dir, segs: plan(man, dir), si: 0, st: 0, age: 0, gone: 0, free: false, L: { x: dir > 0 ? -50 : C.W + 50, y: ly, ang }, jets: [] };
+    const rot = (Math.random() * JET_SMOKE.length) | 0;
+    for (let i = 0; i < n; i++) {
+      const j = { x: sq.L.x, y: ly, vx: Math.cos(ang) * JV, vy: 0, ang, ox: 0, oy: 0, ovx: 0, ovy: 0, trail: [], trT: 0,
+        col: JET_SMOKE[(i + rot) % JET_SMOKE.length], roll: 0, rollTo: 0, rollWait: 0, knife: false, free: false, fw: 0 };
+      sq.jets.push(j);
+      if (i) { const [x, y] = slotPos(sq, sq.segs[0].f, i); j.x = x; j.y = y; }
+    }
+    squads.push(sq);
+    return sq;
+  }
+  function spawnSquad(man, ly, dir) {
+    man = man || pick(MANEUVERS.filter((m) => m !== lastMan));
+    lastMan = man;
+    dir = dir || (Math.random() < 0.5 ? 1 : -1);
+    if (man === 'cross') { // سربين يتعاكسون ويعبرون يم بعض بوضع «حافة السكين»
+      const y = ly != null ? ly : toJetY(viewH * (world.demo ? rnd(0.62, 0.7) : rnd(0.3, 0.5)));
+      makeSquad('cross', dir, y + 10, 3); makeSquad('cross', -dir, y - 10, 3);
+      if (state === 'play') { Sfx.jet(dir); Sfx.jet(-dir); }
+      return;
+    }
+    // بالرئيسية نطيّرهم جوه الأزرار حتى يبينون فوك البراكين
+    const home = world.demo;
+    const frac = man === 'burst' ? (home ? rnd(0.76, 0.8) : rnd(0.5, 0.58)) : man === 'loop' ? (home ? rnd(0.72, 0.76) : rnd(0.42, 0.52)) : home ? rnd(0.6, 0.72) : rnd(0.2, 0.48);
+    makeSquad(man, dir, ly != null ? ly : toJetY(viewH * frac), man === 'burst' ? 5 : 4 + ((Math.random() * 2) | 0));
+    if (state === 'play') Sfx.jet(dir);
+  }
+  function startSeg(sq, seg) {
+    if (seg.roll) sq.jets.forEach((j, i) => { j.rollTo += seg.roll * TAU; j.rollWait = i * 0.09; }); // لفّة متموجة ورا بعض
+    if (seg.burst) { // «انفجار القنبلة»: كل طيارة تطلع بزاوية مثل المروحة
+      sq.free = true;
+      const L = sq.L;
+      sq.jets.forEach((j, i) => {
+        let sp = clamp((j.x + j.ox - L.x) / 40, -1, 1);
+        if (i && Math.abs(sp) < 0.2) sp += i % 2 ? 0.3 : -0.3;
+        j.free = true; j.ang = Math.PI / 2 - sp * 1.15; j.fw = -sp * 0.55; j.rollTo += TAU;
+      });
+      burst(L.x, L.y + world.camY * (1 - JPAR), 14, FX.spark);
+      if (state === 'play') Sfx.whoosh();
+    }
+  }
+  const _f = [0, 0];
+  function avoidForce(x, y) { // دفع بعيد عن الشخصية
+    _f[0] = 0; _f[1] = 0;
+    const P = world.player;
+    if (P.state !== 'alive') return _f;
+    const dx = x - P.x, dy = y - (P.y + 20 - world.camY * (1 - JPAR)), d = Math.hypot(dx, dy), R = 105;
+    if (d < R && d > 0.01) { const k = (4200 * Math.pow(1 - d / R, 1.3)) / d; _f[0] = dx * k; _f[1] = dy * k; }
+    return _f;
+  }
+  /** البرق ضرب يم السرب: الطيارات القريبة تسوي لفّة هروب */
+  function jetsEvade(x) {
+    for (const sq of squads) for (const j of sq.jets) {
+      const dx = j.x + j.ox - x;
+      if (Math.abs(dx) < 70) { j.ovx += (dx >= 0 ? 1 : -1) * 420; j.ovy += 140; j.rollTo += TAU; }
+    }
+  }
+  function updateSquads(dt) {
+    squadT -= dt;
+    if (squadT <= 0) { squadT = rnd(13, 22); if (squads.length < 2) spawnSquad(); }
+    for (let k = squads.length - 1; k >= 0; k--) {
+      const sq = squads[k], L = sq.L;
+      sq.age += dt;
+      let seg = sq.segs[sq.si];
+      if (!sq.free) {
+        sq.st += dt;
+        if (sq.st > seg.t && sq.si < sq.segs.length - 1) { sq.st = 0; sq.si++; seg = sq.segs[sq.si]; startSeg(sq, seg); }
+        if (!sq.free) { L.ang += (seg.w || 0) * dt; L.x += Math.cos(L.ang) * JV * dt; L.y += Math.sin(L.ang) * JV * dt; }
+      }
+      let onScreen = false;
+      sq.jets.forEach((j, i) => {
+        if (j.free) {
+          j.ang += j.fw * dt; j.vx = Math.cos(j.ang) * JV; j.vy = Math.sin(j.ang) * JV; j.x += j.vx * dt; j.y += j.vy * dt;
+        } else if (i === 0) {
+          j.x = L.x; j.y = L.y; j.ang = L.ang; j.vx = Math.cos(L.ang) * JV; j.vy = Math.sin(L.ang) * JV;
+        } else { // يلحك موقعه بالتشكيل
+          const [tx, ty] = slotPos(sq, seg.f, i), lvx = Math.cos(L.ang) * JV, lvy = Math.sin(L.ang) * JV;
+          let ax = (tx - j.x) * 16 - (j.vx - lvx) * 6.5, ay = (ty - j.y) * 16 - (j.vy - lvy) * 6.5;
+          for (const o of sq.jets) { // ما يتقاربون هواية
+            if (o === j) continue;
+            const dx = j.x - o.x, dy = j.y - o.y, d2 = dx * dx + dy * dy;
+            if (d2 < 676 && d2 > 0.01) { const d = Math.sqrt(d2), s = ((26 - d) * 90) / d; ax += dx * s; ay += dy * s; }
+          }
+          const m = Math.hypot(ax, ay);
+          if (m > 2600) { ax *= 2600 / m; ay *= 2600 / m; }
+          j.vx += ax * dt; j.vy += ay * dt; j.x += j.vx * dt; j.y += j.vy * dt;
+          j.ang = Math.atan2(j.vy, j.vx);
+        }
+        // تفادي الشخصية بنابض ناعم يرجّعها لمسارها
+        avoidForce(j.x + j.ox, j.y + j.oy);
+        j.ovx += (_f[0] - j.ox * 22 - j.ovx * 7) * dt; j.ovy += (_f[1] - j.oy * 22 - j.ovy * 7) * dt;
+        j.ox += j.ovx * dt; j.oy += j.ovy * dt;
+        // اللف حول نفسها
+        j.knife = sq.man === 'cross' && Math.abs(j.x + j.ox - C.W / 2) < 75;
+        if (j.rollWait > 0) j.rollWait -= dt;
+        else { const goal = j.rollTo + (j.knife ? Math.PI / 2 : 0); j.roll += clamp(goal - j.roll, -14 * dt, 14 * dt); }
+        // الدخان
+        const rx = j.x + j.ox, ry = j.y + j.oy, sy = jetScreenY(ry);
+        const vis = rx > -60 && rx < C.W + 60 && sy > -80 && sy < viewH + 80;
+        if (vis) onScreen = true;
+        j.trT -= dt;
+        if (j.trT <= 0) { j.trT = 0.035; j.trail.push(vis ? [rx, ry] : null); if (j.trail.length > 40) j.trail.shift(); }
+      });
+      sq.gone = onScreen ? 0 : sq.gone + dt;
+      if (sq.gone > 1.6 || sq.age > 25) squads.splice(k, 1);
+    }
+  }
+  function drawJet(g, col, c, s) { // c = cos(اللفّة) للجنب، s = sin(اللفّة) للجناحين من فوك
+    const fl = 9 + Math.random() * 7;
+    const fg = g.createLinearGradient(-15, 0, -15 - fl, 0);
+    fg.addColorStop(0, 'rgba(255,240,180,.95)'); fg.addColorStop(0.4, 'rgba(255,140,30,.8)'); fg.addColorStop(1, 'rgba(255,60,0,0)');
+    g.fillStyle = fg; g.beginPath(); g.moveTo(-15, -2.4); g.lineTo(-15 - fl, 0); g.lineTo(-15, 2.4); g.fill();
+    if (Math.abs(s) > 0.05) {
+      g.save(); g.scale(1, s);
+      g.fillStyle = '#B9C0CF'; g.beginPath();
+      g.moveTo(6, 0); g.lineTo(-8, 15); g.lineTo(-12, 15); g.lineTo(-9, 0); g.lineTo(-12, -15); g.lineTo(-8, -15); g.closePath(); g.fill();
+      g.fillStyle = col; g.fillRect(-12, 12.5, 4, 2.5); g.fillRect(-12, -15, 4, 2.5);
+      g.restore();
+    }
+    g.save(); g.scale(1, c);
+    g.fillStyle = '#C9CFDC'; g.beginPath(); g.moveTo(-8, -3); g.lineTo(-15, -3); g.lineTo(-16.5, -11); g.lineTo(-12, -11); g.closePath(); g.fill();
+    g.fillStyle = col; g.fillRect(-16.5, -11, 4.5, 2.6);
+    g.fillStyle = '#EEF1F7'; g.beginPath();
+    g.moveTo(19, 0.6); g.quadraticCurveTo(12, -4.6, -4, -4); g.lineTo(-15, -3.2); g.lineTo(-15, 3.2); g.lineTo(-4, 4); g.quadraticCurveTo(12, 4.4, 19, 0.6);
+    g.closePath(); g.fill(); g.strokeStyle = 'rgba(60,70,95,.6)'; g.lineWidth = 0.8; g.stroke();
+    g.fillStyle = col; g.beginPath(); g.moveTo(14, -1.2); g.lineTo(-13, -1.6); g.lineTo(-13, 1.6); g.lineTo(14, 1); g.closePath(); g.fill();
+    g.fillStyle = '#23345C'; g.beginPath(); g.ellipse(8, -3.4, 5.5, 2.4, -0.08, Math.PI, 0); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.ellipse(9.5, -4.4, 2, 0.8, -0.1, 0, TAU); g.fill();
+    g.fillStyle = '#AEB6C6'; g.beginPath(); g.moveTo(3, 2); g.lineTo(-10, 2.5); g.lineTo(-12, 5.5); g.lineTo(-7, 5.5); g.closePath(); g.fill();
+    g.restore();
+  }
+  function drawSquads() {
+    if (!squads.length) return;
+    ctx.save(); ctx.lineCap = 'round';
+    for (const sq of squads) for (const j of sq.jets) { // الدخان: يتوسع ويخف كل ما يعتق
+      const tr = j.trail, n = tr.length;
+      ctx.strokeStyle = j.col;
+      for (let i = 1; i < n; i++) {
+        const a = tr[i - 1], b = tr[i];
+        if (!a || !b) continue;
+        const age = 1 - i / n;
+        ctx.globalAlpha = 0.5 * (1 - age); ctx.lineWidth = 1.6 + age * 6;
+        ctx.beginPath(); ctx.moveTo(a[0], jetScreenY(a[1])); ctx.lineTo(b[0], jetScreenY(b[1])); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    for (const sq of squads) for (const j of sq.jets) {
+      const x = j.x + j.ox, y = jetScreenY(j.y + j.oy);
+      if (x < -50 || x > C.W + 50 || y < -50 || y > viewH + 50) continue;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(-j.ang); ctx.scale(1.3, 1.3 * sq.dir);
+      drawJet(ctx, j.col, Math.cos(j.roll), Math.sin(j.roll));
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   // ---------------------------------------------------------------- مؤثرات
@@ -1291,7 +1502,8 @@
     $('hHero').hidden = !save.hero;
     $('tag').textContent = isFireSkin() ? 'اصعد فوك البراكين! 🌋' : 'اصعد لأعلى ما تكدر! ☁️';
   }
-  function newDemo() { world = Core.createWorld(rand32(), { viewH, demo: true }); parts.length = 0; texts.length = 0; }
+  function clearSky() { squads.length = 0; bolts.length = 0; squadT = rnd(5, 8); }
+  function newDemo() { world = Core.createWorld(rand32(), { viewH, demo: true }); parts.length = 0; texts.length = 0; clearSky(); }
   function goHome() {
     state = 'home'; newDemo(); show('home'); $('turbo').hidden = true;
     $('hud').hidden = true; $('tut').hidden = true; Sfx.rocketStop(); refreshHome();
@@ -1299,7 +1511,7 @@
   function startRun() {
     Sfx.init();
     if (save.control === 'tilt') enableTilt();
-    FT = isFireSkin(); deathCause = '';
+    FT = isFireSkin(); deathCause = ''; clearSky();
     world = Core.createWorld(rand32(), { viewH, hero: !!save.hero, lava: FT });
     state = 'play'; record = false; bestAtStart = save.best;
     $('turbo').hidden = !save.hero; $('heroChip').hidden = !save.hero;
@@ -1552,7 +1764,7 @@
     camY = world.camY;
     drawBackground(time);
     drawGround();
-    if (FT) drawLightning();
+    if (FT) { drawLightning(); drawSquads(); }
     if (!world.demo) {
       // بالرئيسية نخلي الخلفية نظيفة: سما وأرض والشخصية بس
       if (world.hero && !FT) drawNet(time);
@@ -1592,5 +1804,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; } };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads };
 })();
