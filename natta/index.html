@@ -37,7 +37,10 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 .btn.primary{background:linear-gradient(#ffcf3f,#ff9d1b);color:#fff;text-shadow:0 2px 0 rgba(160,70,0,.45);box-shadow:0 5px 0 #d4700c,0 10px 22px rgba(255,140,0,.35)}
 .btn.primary:active{box-shadow:0 2px 0 #d4700c,0 5px 12px rgba(255,140,0,.35)}
 .btn.big{font-size:28px;padding:16px 54px;border-radius:24px;animation:pulse 1.6s ease-in-out infinite}
-.btn.icon{min-width:52px}
+.btn.icon{min-width:46px;padding-left:10px;padding-right:10px}
+#home .row{gap:8px;flex-wrap:nowrap}
+#home .row .btn{font-size:16px;padding:12px 12px}
+#home .row .btn.icon{padding:12px 10px}
 .logo{touch-action:manipulation;cursor:default}
 #codeIn{width:100%;font:inherit;font-size:20px;font-weight:800;text-align:center;padding:12px;border-radius:14px;border:3px solid #dfe3f3;color:#24305e;background:#f6f7fc;outline:none;-webkit-user-select:text;user-select:text;-webkit-appearance:none}
 #codeIn:focus{border-color:#ffb703}
@@ -125,6 +128,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     <div class="row">
       <button class="btn" id="openShop">🎨 الشخصيات</button>
       <button class="btn" id="ctrl">👆 لمس</button>
+      <button class="btn icon" id="mus" aria-label="الموسيقى">🎵</button>
       <button class="btn icon" id="snd" aria-label="الصوت">🔊</button>
     </div>
     <div class="how" id="how">اضغط يمين أو يسار الشاشة حتى تتحرك — القفز تلقائي 🦘</div>

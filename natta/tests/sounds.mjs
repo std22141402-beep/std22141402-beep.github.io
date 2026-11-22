@@ -120,6 +120,19 @@ writeWav('/tmp/natta-jets.wav', await page.evaluate(async () => Array.from(await
 ], 10.5))));
 console.log('  عيّنة الطيارات: /tmp/natta-jets.wav');
 
+// 4) موسيقى الخلفية: كل نمط يعزف بعلو مناسب، وأوطى من المؤثرات
+const mus = await page.evaluate(async () => {
+  const out = [];
+  for (const style of ['day', 'sunset', 'night', 'space', 'fire']) {
+    const [L] = await window.__natta.renderMusic([[0, { style, intensity: 0.7, bpm: 96 }], [4, { intensity: 4.4, bpm: 120, riser: true, fill: true }], [7, { celebrate: true }]], 10);
+    let peak = 0, a = 0, b = 0; const h = L.length >> 1;
+    for (let i = 0; i < L.length; i++) { peak = Math.max(peak, Math.abs(L[i])); if (i < 44100 * 3.5) a += L[i] * L[i]; else if (i > 44100 * 4.5) b += L[i] * L[i]; }
+    out.push({ style, peak, calm: Math.sqrt(a / (44100 * 3.5)), full: Math.sqrt(b / (L.length - 44100 * 4.5)) });
+  }
+  return out;
+});
+for (const m of mus) ok(m.peak < 0.6 && m.calm > 0.003 && m.full > m.calm * 1.5, `موسيقى «${m.style}»: هادئة بالبداية (${m.calm.toFixed(3)}) وتقوى مع الحماس (${m.full.toFixed(3)})، أعلى نقطة ${m.peak.toFixed(2)}`);
+
 ok(errors.length === 0, 'ماكو أخطاء' + (errors.length ? ': ' + errors.join(' / ') : ''));
 await browser.close(); server.close();
 console.log(fails ? `\n${fails} فشل` : '\nكلشي تمام ✅');

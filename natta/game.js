@@ -14,7 +14,7 @@
 
   // ---------------------------------------------------------------- الحفظ
   const KEY = 'natta.v1';
-  const DEF = { best: 0, coins: 0, owned: ['green'], skin: 'green', control: 'touch', sound: true, tut: false, games: 0, a2hs: false, hero: false };
+  const DEF = { best: 0, coins: 0, owned: ['green'], skin: 'green', control: 'touch', sound: true, music: true, tut: false, games: 0, a2hs: false, hero: false };
   let save;
   try { save = Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { save = Object.assign({}, DEF); }
   save.owned = Array.isArray(save.owned) ? save.owned.slice() : ['green'];
@@ -38,13 +38,13 @@
   const mf = (m) => 440 * Math.pow(2, (m - 69) / 12); // رقم النوتة ← تردد
 
   /** مُركّب أصوات صغير: يشتغل على الصوت الحقيقي، أو على OfflineAudioContext للفحص وتسجيل العينات */
-  function createSynth(ac) {
+  function createSynth(ac, dest, irSec = 1.4) {
     const out = ac.createGain(); out.gain.value = 1.1;
     const comp = ac.createDynamicsCompressor();
     comp.threshold.value = -12; comp.knee.value = 12; comp.ratio.value = 4;
-    out.connect(comp); comp.connect(ac.destination);
+    out.connect(comp); comp.connect(dest || ac.destination);
     // صدى غرفة خفيف (reverb) يخلي الأصوات أنعم وأحلى
-    const len = Math.floor(ac.sampleRate * 1.4), ir = ac.createBuffer(2, len, ac.sampleRate);
+    const len = Math.floor(ac.sampleRate * irSec), ir = ac.createBuffer(2, len, ac.sampleRate);
     for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
     const conv = ac.createConvolver(); conv.buffer = ir;
     const revIn = ac.createGain(); revIn.gain.value = 0.5; revIn.connect(conv); conv.connect(comp);
@@ -76,6 +76,7 @@
       g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(dur, a + 0.01));
     }
     function voice(o) {
+      if (!(o.vol * D.gain > 0.0002) || !(o.dur > 0)) return; // نوتة صامتة: ما نعزفها
       const t = at(o), dur = o.dur, osc = ac.createOscillator();
       osc.type = o.type || 'sine';
       osc.frequency.setValueAtTime(o.f, t);
@@ -98,6 +99,7 @@
       osc.start(t); osc.stop(t + dur + 0.05);
     }
     function noise(o) {
+      if (!(o.vol * D.gain > 0.0002) || !(o.dur > 0)) return null;
       const t = at(o), dur = o.dur, s = ac.createBufferSource(), fl = ac.createBiquadFilter();
       s.buffer = noiseBuf; s.loop = true;
       fl.type = o.type || 'lowpass'; fl.frequency.setValueAtTime(o.f, t);
@@ -259,6 +261,7 @@
       try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) { /* */ }
       ac = new AC();
       S = createSynth(ac);
+      Music.attach(ac);
       const b = ac.createBufferSource(); b.buffer = ac.createBuffer(1, 1, 22050); b.connect(ac.destination); b.start(0); // يفك قفل الصوت بسفاري
       if (ac.state !== 'running') ac.resume().catch(() => {});
     }
@@ -269,7 +272,7 @@
       i += pick([-1, 1, 1, -2, 2, -1, 1]);
       if (i < 0) i = 1; else if (i >= p.scale.length) i = p.scale.length - 2;
       noteIdx[id] = i;
-      return mf(p.scale[i]);
+      return mf(Music.snap(p.scale[i])); // القفزة تنعزف من نغمات الكورد الحالي
     }
     const plain = () => { S.D.rev = 0.12; S.D.echo = 0; S.D.gain = 1; return S; };
     const api = {
@@ -301,7 +304,7 @@
       record() { if (!ok()) return; const s = plain(); [523, 659, 784, 1047, 1319].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.08, dur: i === 4 ? 0.35 : 0.12, vol: 0.07, filter: ['lowpass', 5000] })); },
       milestone() { if (!ok()) return; const s = plain(); [784, 1047].forEach((f, i) => s.voice({ type: 'triangle', f, t: i * 0.09, dur: 0.16, vol: 0.16 })); },
       /** انفجار: s = الحجم */
-      boom(s = 1) { if (ok()) FXS.boom(plain(), s); },
+      boom(s = 1) { if (ok()) { FXS.boom(plain(), s); if (s >= 0.6) Music.duck(0.55, 0.3); } },
       lavaPop() { if (ok()) FXS.lavaPop(plain()); },
       thunder(near, delay) { if (ok()) FXS.thunder(plain(), near ? 1 : 0, delay || 0); },
       jet(dir) { if (ok()) FXS.jet(plain(), dir); },
@@ -326,6 +329,225 @@
     return oac.startRendering().then((buf) => buf.getChannelData(0));
   }
   const vibrate = (ms) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* */ } };
+
+  // ================================================================ موسيقى الخلفية 🎵 (تتولد وتتكيف مع اللعب)
+  // - كل ما تصعد: تدخل آلات جديدة (طبل، باص، لحن…) والسرعة تزيد شوية شوية
+  // - اللحن والمقام يتغيرون ويا السما: نهار ← غروب ← ليل ← فضاء، وعالم «ناري» مقام حجاز بإيقاع مقسوم
+  // - الصاروخ يرفع الحماس، قرب الرقم القياسي يطلع صوت «تصاعد»، ولما تكسره الموسيقى تصعد نغمتين
+  // - الإيقاف يكتم الموسيقى (كأنها جاية من ورا باب)، والطيحة توقفها مثل شريط كاسيت
+  // - قفزات الشخصية تنعزف من نغمات الكورد الحالي، فتصير جزء من الموسيقى
+  const SCALES = {
+    major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10],
+    hijaz: [0, 1, 4, 5, 7, 8, 10], // مقام الحجاز: ري مي♭ فا# صول لا سي♭ دو
+  };
+  const MI = { // آلات الموسيقى
+    padSoft(S, f, d, v) { S.voice({ type: 'triangle', f, dur: d, vol: v, attack: d * 0.25 }); S.voice({ f: f * 2, dur: d, vol: v * 0.3, attack: d * 0.3, detune: 6 }); },
+    padWarm(S, f, d, v) { S.voice({ type: 'sawtooth', f, dur: d, vol: v * 0.6, attack: d * 0.2, filter: ['lowpass', 1300, 700, 0.6], detune: -7 }); S.voice({ type: 'sawtooth', f, dur: d, vol: v * 0.6, attack: d * 0.2, filter: ['lowpass', 1300, 700, 0.6], detune: 7 }); },
+    padGlass(S, f, d, v) { S.voice({ f, dur: d, vol: v, attack: d * 0.35 }); S.voice({ f: f * 3, dur: d * 0.8, vol: v * 0.12, attack: d * 0.4, detune: 5 }); },
+    padDark(S, f, d, v) { S.voice({ type: 'sawtooth', f, dur: d, vol: v * 0.8, attack: d * 0.15, filter: ['lowpass', 800, 450, 1] }); },
+    pluck(S, f, d, v, pan) { S.voice({ type: 'square', f, dur: Math.max(0.12, d), vol: v, attack: 0.003, filter: ['lowpass', Math.min(f * 6, 8000), f * 1.1, 1.2], pan }); },
+    bell(S, f, d, v, pan) { S.voice({ f, dur: 0.5, vol: v, attack: 0.003, pan }); S.voice({ f: f * 2, dur: 0.25, vol: v * 0.3, attack: 0.002, pan }); },
+    qanun(S, f, d, v, pan) { S.voice({ type: 'sawtooth', f, dur: 0.35, vol: v, attack: 0.002, filter: ['lowpass', Math.min(f * 7, 8000), f * 1.3, 2], pan }); },
+    bass(S, f, d, v) { S.voice({ f, dur: d, vol: v, attack: 0.006 }); S.voice({ type: 'triangle', f: f * 2, dur: d * 0.6, vol: v * 0.25, attack: 0.006 }); },
+    bassDist(S, f, d, v) { S.voice({ type: 'sawtooth', f, dur: d, vol: v * 0.55, attack: 0.005, filter: ['lowpass', 520, 180, 3] }); S.voice({ f: f / 2, dur: d, vol: v * 0.5, attack: 0.005 }); },
+    leadBell(S, f, d, v) { S.voice({ type: 'triangle', f, dur: d + 0.25, vol: v, attack: 0.004 }); S.voice({ f: f * 2, dur: d * 0.6, vol: v * 0.25, attack: 0.003 }); },
+    leadSquare(S, f, d, v) { S.voice({ type: 'square', f, dur: d + 0.1, vol: v * 0.55, attack: 0.02, vib: [5.5, f * 0.012], filter: ['lowpass', 2600] }); },
+    leadEcho(S, f, d, v) { S.voice({ f, dur: d + 0.3, vol: v, attack: 0.03, vib: [5, f * 0.01], echo: 0.45 }); },
+    leadGlass(S, f, d, v) { S.voice({ f, dur: d + 0.5, vol: v * 0.9, attack: 0.04, rev: 0.6 }); S.voice({ f: f * 2.01, dur: d + 0.3, vol: v * 0.2, attack: 0.05, rev: 0.6 }); },
+    // مزمار: نفخة مع «سحبة» صغيرة لفوك وترعيشة، مثل النايات والمزامير الشرقية
+    leadMizmar(S, f, d, v) { S.voice({ type: 'sawtooth', f: f * 0.94, f1: f, glide: 0.06, dur: d + 0.12, vol: v * 0.5, attack: 0.03, vib: [6.2, f * 0.016], filter: ['lowpass', Math.min(f * 5, 6000), f * 2.5, 2] }); },
+  };
+  const DR = { // طبول
+    kick(S, v) { S.voice({ f: 150, f1: 45, glide: 0.12, dur: 0.28, vol: 0.55 * v, attack: 0.002, rev: 0.02 }); S.noise({ f: 2000, dur: 0.02, vol: 0.12 * v, attack: 0.001, rev: 0 }); },
+    snare(S, v) { S.noise({ type: 'bandpass', f: 1900, q: 0.8, dur: 0.16, vol: 0.26 * v, attack: 0.002 }); S.voice({ type: 'triangle', f: 190, f1: 150, dur: 0.09, vol: 0.16 * v, attack: 0.002 }); },
+    clap(S, v) { for (let i = 0; i < 3; i++) S.noise({ type: 'bandpass', f: 1400, q: 1.2, t: i * 0.011, dur: 0.06 + i * 0.03, vol: 0.18 * v, attack: 0.001 }); },
+    hat(S, v, open, pan) { S.noise({ type: 'highpass', f: 7500, dur: open ? 0.16 : 0.035, vol: 0.08 * v, attack: 0.001, rev: 0.05, pan }); },
+    crash(S, v) { S.noise({ type: 'highpass', f: 4500, f1: 3000, dur: 1.6, vol: 0.13 * v, attack: 0.003, rev: 0.3 }); },
+    dum(S, v) { S.voice({ f: 120, f1: 68, glide: 0.1, dur: 0.3, vol: 0.5 * v, attack: 0.002 }); S.noise({ f: 600, dur: 0.06, vol: 0.12 * v, attack: 0.001 }); },
+    tek(S, v, pan) { S.noise({ type: 'bandpass', f: 3200, q: 2.5, dur: 0.06, vol: 0.24 * v, attack: 0.001, pan }); S.voice({ type: 'triangle', f: 980, f1: 700, dur: 0.035, vol: 0.07 * v, attack: 0.001, pan }); },
+    ka(S, v, pan) { S.noise({ type: 'bandpass', f: 2600, q: 2, dur: 0.04, vol: 0.13 * v, attack: 0.001, pan }); },
+    riq(S, v, pan) { S.noise({ type: 'bandpass', f: 8000, q: 1.5, dur: 0.05, vol: 0.06 * v, attack: 0.001, pan }); },
+    taiko(S, v) { S.voice({ f: 85, f1: 38, glide: 0.3, dur: 0.7, vol: 0.5 * v, attack: 0.003 }); S.noise({ f: 400, f1: 80, dur: 0.4, vol: 0.18 * v }); },
+  };
+  /** الأنماط: مقام، تتابع الكوردات (درجات بالمقام)، السرعة، الإيقاع، والآلات */
+  const STY = {
+    day: { key: 60, scale: 'major', prog: [0, 4, 5, 3], bpm: [100, 120], beat: 'pop', rev: 0.22, pad: 'padSoft', arp: 'pluck', lead: 'leadBell', bass: 'bass' },
+    sunset: { key: 57, scale: 'minor', prog: [0, 5, 2, 6], bpm: [104, 122], beat: 'pop', rev: 0.28, pad: 'padWarm', arp: 'pluck', lead: 'leadSquare', bass: 'bass' },
+    night: { key: 62, scale: 'dorian', prog: [0, 3, 0, 6], bpm: [106, 124], beat: 'half', rev: 0.38, pad: 'padWarm', arp: 'bell', lead: 'leadEcho', bass: 'bass' },
+    space: { key: 64, scale: 'minor', prog: [0, 5, 3, 4], bpm: [96, 112], beat: 'half', rev: 0.55, pad: 'padGlass', arp: 'bell', lead: 'leadGlass', bass: 'bass', sev: true },
+    fire: { key: 62, scale: 'hijaz', prog: [0, 1, 0, 6], bpm: [112, 138], beat: 'maqsum', rev: 0.24, pad: 'padDark', arp: 'qanun', lead: 'leadMizmar', bass: 'bassDist' },
+  };
+  const BASS = { pop: [[0, 0], [6, 0], [8, 0], [11, 7], [14, 12]], half: [[0, 0], [10, 7]], maqsum: [[0, 0], [3, 0], [6, 0], [8, 0], [12, 7]] };
+  const RHY = [[1, 0, 1, 1, 0, 1, 0, 0], [1, 1, 0, 1, 0, 1, 1, 0], [1, 0, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 1, 0, 0], [1, 1, 1, 0, 1, 0, 0, 0], [0, 1, 1, 0, 1, 1, 0, 1]];
+
+  function noteAt(m, sty, deg) {
+    const sc = SCALES[sty.scale], n = sc.length, oct = Math.floor(deg / n), d = ((deg % n) + n) % n;
+    return sty.key + m.mod + sc[d] + 12 * oct;
+  }
+  /** لحن صغير (8 نوطات ثُمن) يتكرر بشكل A A B A حتى ينحفظ بالذاكرة، ويتجدد كل 8 بارات */
+  function genMotif(r) {
+    const tones = [-3, 0, 2, 4, 7];
+    const snapTone = (d) => tones.reduce((a, b) => (Math.abs(b - d) < Math.abs(a - d) ? b : a));
+    const mk = (rh, start) => {
+      let d = start;
+      return rh.map((on, i) => {
+        if (!on) return null;
+        if (i > 0) d += [-2, -1, -1, 1, 1, 2, 0][(r() * 7) | 0];
+        d = clamp(d, -2, 7);
+        if (i % 4 === 0) d = snapTone(d);
+        return d;
+      });
+    };
+    const holds = (a) => a.map((v, i) => { if (v == null) return 0; let k = i + 1; while (k < a.length && a[k] == null) k++; return Math.min(3, k - i); });
+    const a = mk(RHY[(r() * RHY.length) | 0], [0, 2, 4][(r() * 3) | 0]);
+    const b = mk(RHY[(r() * RHY.length) | 0], [2, 4][(r() * 2) | 0]);
+    const a2 = a.slice(); for (let i = a2.length - 1; i >= 0; i--) if (a2[i] != null) { a2[i] = 0; break; } // نهاية تستقر
+    return { a, b, a2, ha: holds(a), hb: holds(b), ha2: holds(a2) };
+  }
+
+  /** محرك موسيقى على AudioContext (حقيقي أو Offline للفحص) */
+  function createMusic(ac, dest) {
+    const bus = ac.createGain(), lp = ac.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 16000; lp.Q.value = 0.5;
+    bus.connect(lp); lp.connect(dest);
+    const m = { ac, bus, lp, S: createSynth(ac, bus, 1.1), style: 'day', wantStyle: 'day', inten: 0.6, bpm: 96, mod: 0, modNext: 0,
+      step: 0, nextT: 0, motif: null, section: -1, riser: false, fill: false, crashNext: false, chord: [60, 64, 67], rnd: Core.mulberry32((Math.random() * 1e9) | 0) };
+    const w = (th) => clamp(m.inten - th + 0.5, 0, 1); // وزن الطبقة: تدخل بالتدريج حوالين العتبة th
+    function onBar(barN, T, sty) {
+      if (m.wantStyle !== m.style) { m.style = m.wantStyle; m.section = -1; if (m.inten > 1) m.crashNext = true; }
+      if (m.modNext !== m.mod) { m.mod = m.modNext; m.crashNext = true; }
+      const sec = barN >> 3;
+      if (sec !== m.section || !m.motif) { m.section = sec; m.motif = genMotif(m.rnd); }
+    }
+    function playStep(step, T) {
+      const s = step & 15, barN = step >> 4;
+      let sty = STY[m.style];
+      if (s === 0) { onBar(barN, T, sty); sty = STY[m.style]; }
+      const S = m.S, I = m.inten, b16 = 60 / m.bpm / 4, bar = b16 * 16;
+      S.D.t0 = Math.max(0, T - ac.currentTime); S.D.gain = 1; S.D.echo = 0; S.D.rev = sty.rev;
+      const deg = sty.prog[barN % sty.prog.length];
+      const chord = [0, 2, 4].concat(sty.sev ? [6] : []).map((k) => noteAt(m, sty, deg + k));
+      if (s === 0) m.chord = chord;
+      // كوردات خلفية
+      if (s === 0) chord.forEach((n) => MI[sty.pad](S, mf(n - 12), bar * 0.98, I < 1 ? 0.07 : 0.045));
+      if (s === 0 && m.crashNext) { DR.crash(S, 1); m.crashNext = false; }
+      // أربيجو
+      const aw = w(0.6);
+      const sixteen = I >= 3;
+      if (aw > 0 && (sixteen || s % 2 === 0)) {
+        const idx = sixteen ? s : s >> 1, n = chord[idx % chord.length] + 12 * ((idx / chord.length) % 2 < 1 ? 0 : 1);
+        MI[sty.arp](S, mf(n), b16 * 1.5, 0.05 * aw, idx % 2 ? 0.3 : -0.3);
+        if (I >= 3.8 && s % 4 === 2) MI[sty.arp](S, mf(n + 12), b16, 0.025 * w(3.8), 0);
+      }
+      // باص
+      const bw = w(1.2);
+      if (bw > 0) for (const [st, off] of BASS[sty.beat]) if (st === s) MI[sty.bass](S, mf(chord[0] - 24 + off), b16 * (sty.beat === 'half' ? 6 : 2.5), 0.16 * bw);
+      // طبول
+      if (sty.beat === 'maqsum') { // دُم تك . تك دُم . تك .
+        if (s === 0 || s === 8) DR.dum(S, w(1.2));
+        if ((s === 2 || s === 6 || s === 12) && w(1.4) > 0) DR.tek(S, w(1.4), s === 6 ? 0.25 : -0.15);
+        if ((s === 4 || s === 10 || s === 14 || s === 15) && w(3) > 0) DR.ka(S, w(3) * (s === 15 ? 0.6 : 1), 0.3);
+        if (w(2.4) > 0 && s % 2 === 1) DR.riq(S, w(2.4), -0.3);
+        if (s === 0 && barN % 2 === 0 && w(3.5) > 0) DR.taiko(S, w(3.5));
+      } else if (sty.beat === 'half') {
+        if (s === 0 || (s === 10 && I >= 3)) DR.kick(S, w(1.2));
+        if (s === 8 && w(2) > 0) DR.clap(S, w(2));
+        if (s % 2 === 0 && w(2.5) > 0) DR.hat(S, w(2.5) * (s % 4 === 2 ? 1 : 0.5), false, 0.2);
+        if (s % 2 === 1 && w(3.5) > 0) DR.riq(S, w(3.5), -0.2);
+      } else {
+        if (s === 0 || s === 8 || (s === 10 && I >= 3.2)) DR.kick(S, w(1.2));
+        if ((s === 4 || s === 12) && w(2) > 0) DR.snare(S, w(2));
+        if (w(2) > 0 && (s % 2 === 0 || I >= 3)) DR.hat(S, w(2) * (s % 4 === 2 ? 1 : 0.55), s === 14 && I >= 3.5, 0.2);
+      }
+      // «فل» طبول آخر البار (عند كل 1000 نقطة)
+      if (m.fill && s >= 12) { DR[sty.beat === 'maqsum' ? 'tek' : 'snare'](S, 0.5 + (s - 12) * 0.15); if (s === 15) { m.fill = false; m.crashNext = true; } }
+      // صوت تصاعد قرب الرقم القياسي
+      if (m.riser && s === 0 && barN % 2 === 0) S.noise({ type: 'bandpass', f: 400, f1: 5000, glide: bar * 2, dur: bar * 2, vol: 0.07, attack: bar * 1.8, q: 2, rev: 0.3 });
+      // اللحن
+      const lw = w(1.8);
+      if (lw > 0 && s % 2 === 0) {
+        const slot = s >> 1, pb = barN % 4, mo = m.motif;
+        const arr = pb === 2 ? mo.b : pb === 3 ? mo.a2 : mo.a, hd = pb === 2 ? mo.hb : pb === 3 ? mo.ha2 : mo.ha;
+        if (arr[slot] != null) MI[sty.lead](S, mf(noteAt(m, sty, deg + arr[slot]) + 12), hd[slot] * b16 * 2 * 0.9, 0.085 * lw);
+      }
+    }
+    m.scheduleUntil = (until) => { while (m.nextT < until) { playStep(m.step, m.nextT); m.nextT += 60 / m.bpm / 4; m.step++; } };
+    return m;
+  }
+
+  const MUSIC_VOL = 0.27; // أوطى من المؤثرات حتى تبقى خلفية
+  const Music = (() => {
+    let m = null, ac = null, mode = 'home', want = -1, duckUntil = 0;
+    const LP = { home: 9000, play: 16000, pause: 650, over: 1300 };
+    function attach(a) { ac = a; m = createMusic(ac, ac.destination); m.bus.gain.value = 0.0001; m.nextT = ac.currentTime + 0.1; }
+    const active = () => m && save.sound && save.music && ac.state === 'running';
+    function setGain(g, tc = 0.3) { const t = ac.currentTime; m.bus.gain.cancelScheduledValues(t); m.bus.gain.setTargetAtTime(Math.max(0.0001, g), t, tc); }
+    function setLp(f, tc = 0.15) { const t = ac.currentTime; m.lp.frequency.cancelScheduledValues(t); m.lp.frequency.setTargetAtTime(f, t, tc); }
+    return {
+      attach,
+      setMode(md) { mode = md; if (m) setLp(LP[md] || 16000); want = -1; },
+      /** كل فريم: نحدّث النمط والحماس والسرعة ونجدول النوطات الجاية */
+      update(dt, info) {
+        if (!m) return;
+        const target = active() ? MUSIC_VOL * (mode === 'pause' ? 0.5 : mode === 'over' ? 0.6 : 1) : 0;
+        if (Math.abs(target - want) > 0.001 && ac.currentTime > duckUntil) { setGain(target); want = target; }
+        if (!active()) { m.nextT = ac.currentTime + 0.1; m.step = (m.step + 15) & ~15; return; }
+        m.wantStyle = info.style;
+        m.inten += clamp(info.intensity - m.inten, -dt * 0.7, dt * 0.7);
+        m.bpm += (info.bpm - m.bpm) * Math.min(1, dt * 0.4);
+        m.riser = !!info.riser;
+        if (m.nextT < ac.currentTime - 0.25) { m.nextT = ac.currentTime + 0.05; m.step = (m.step + 15) & ~15; }
+        m.scheduleUntil(ac.currentTime + 0.16);
+      },
+      /** يوطّي الموسيقى لحظة حتى يبين صوت انفجار/رعد */
+      duck(depth = 0.4, hold = 0.35) {
+        if (!active() || want <= 0) return;
+        const t = ac.currentTime; m.bus.gain.cancelScheduledValues(t);
+        m.bus.gain.setTargetAtTime(want * depth, t, 0.03); m.bus.gain.setTargetAtTime(want, t + hold, 0.4);
+        duckUntil = t + hold + 0.8;
+      },
+      /** إيقاف مثل الكاسيت لما تطيح */
+      tapeStop() {
+        if (!m) return; const t = ac.currentTime;
+        m.lp.frequency.cancelScheduledValues(t); m.lp.frequency.setValueAtTime(m.lp.frequency.value, t); m.lp.frequency.exponentialRampToValueAtTime(220, t + 0.7);
+        m.bus.gain.cancelScheduledValues(t); m.bus.gain.setTargetAtTime(Math.max(0.0001, want * 0.35), t, 0.25);
+        duckUntil = t + 0.9; mode = 'over';
+      },
+      fill() { if (m) m.fill = true; },
+      celebrate() { if (m) { m.modNext = m.mod + 2; m.fill = true; } },
+      reset() { if (m) { m.mod = 0; m.modNext = 0; m.section = -1; m.inten = Math.min(m.inten, 1); m.crashNext = true; m.fill = false; } },
+      /** نوتة القفزة: أقرب نغمة من الكورد اللي ينعزف هسه */
+      snap(midi) {
+        if (!active()) return midi;
+        const pcs = m.chord.map((n) => ((n % 12) + 12) % 12);
+        let best = midi, bd = 99;
+        for (let d = -6; d <= 6; d++) { const pc = (((midi + d) % 12) + 12) % 12; if (pcs.includes(pc) && Math.abs(d) < bd) { bd = Math.abs(d); best = midi + d; } }
+        return best;
+      },
+    };
+  })();
+
+  /** للفحص وتسجيل عيّنة: يعزف خطة (نمط/حماس/سرعة على الزمن) بدون سماعات */
+  function renderMusic(timeline, seconds) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const sr = 44100, oac = new OAC(2, Math.ceil(sr * seconds), sr), m = createMusic(oac, oac.destination);
+    m.bus.gain.value = MUSIC_VOL; m.nextT = 0.05;
+    let ti = 0;
+    while (m.nextT < seconds - 1) {
+      while (ti < timeline.length && timeline[ti][0] <= m.nextT) {
+        const c = timeline[ti][1];
+        if (c.style) m.wantStyle = c.style;
+        if (c.intensity != null) m.inten = c.intensity;
+        if (c.bpm) m.bpm = c.bpm;
+        if (c.riser != null) m.riser = c.riser;
+        if (c.celebrate) { m.modNext = m.mod + 2; m.fill = true; }
+        if (c.fill) m.fill = true;
+        ti++;
+      }
+      m.scheduleUntil(m.nextT + 0.001);
+    }
+    return oac.startRendering().then((b) => [b.getChannelData(0), b.getChannelData(1)]);
+  }
 
   // ---------------------------------------------------------------- الشاشة
   const cvs = $('game');
@@ -1059,6 +1281,7 @@
     if (state === 'play') {
       const near = hit !== 'air';
       Sfx.thunder(near, near ? rnd(0.03, 0.15) : rnd(0.3, 0.8));
+      if (near) Music.duck(0.45, 0.5);
       if (near) vibrate(25);
     }
     return true;
@@ -1183,12 +1406,29 @@
     }
   }
   const _f = [0, 0];
-  function avoidForce(x, y) { // دفع بعيد عن الشخصية
+  /**
+   * تفادي ذكي: الطيارة تتوقع وين راح تكون هي ووين راح تكون الشخصية خلال 0.6 ثانية
+   * (مع قوس القفزة والجاذبية)، وإذا شافت إنهم راح يقربون، تنحرف باتجاه يكبّر المسافة لحظة أقرب نقطة
+   */
+  function avoidForce(j) {
     _f[0] = 0; _f[1] = 0;
     const P = world.player;
     if (P.state !== 'alive') return _f;
-    const dx = x - P.x, dy = y - (P.y + 20 - world.camY * (1 - JPAR)), d = Math.hypot(dx, dy), R = 105;
-    if (d < R && d > 0.01) { const k = (4200 * Math.pow(1 - d / R, 1.3)) / d; _f[0] = dx * k; _f[1] = dy * k; }
+    const px = P.x, py = P.y + 20 - world.camY * (1 - JPAR);
+    const jx = j.x + j.ox, jy = j.y + j.oy, vx = j.vx + j.ovx, vy = j.vy + j.ovy;
+    let best = 1e9, bx = 0, by = 0, bt = 0;
+    for (let t = 0; t <= 0.6001; t += 0.05) {
+      const ex = jx + vx * t - (px + P.vx * t), ey = jy + vy * t - (py + P.vy * t - 0.5 * C.G * t * t);
+      const d2 = ex * ex + ey * ey;
+      if (d2 < best) { best = d2; bx = ex; by = ey; bt = t; }
+    }
+    const d = Math.sqrt(best), RS = 95;
+    if (d < RS) {
+      let nx = bx, ny = by;
+      if (d < 1) { nx = -vy; ny = vx; }
+      const nl = Math.hypot(nx, ny) || 1, mag = Math.min(24000, (11000 * (1 - d / RS)) / (bt * 3 + 0.4));
+      _f[0] = (nx / nl) * mag; _f[1] = (ny / nl) * mag;
+    }
     return _f;
   }
   /** البرق ضرب يم السرب: الطيارات القريبة تسوي لفّة هروب */
@@ -1201,6 +1441,11 @@
   function updateSquads(dt) {
     squadT -= dt;
     if (squadT <= 0) { squadT = rnd(13, 22); if (squads.length < 2) spawnSquad(); }
+    // خطوات صغيرة حتى التفادي يبقى دقيق حتى لو الجهاز بطيء
+    const n = Math.max(1, Math.ceil(dt * 90));
+    for (let i = 0; i < n; i++) stepSquads(dt / n);
+  }
+  function stepSquads(dt) {
     for (let k = squads.length - 1; k >= 0; k--) {
       const sq = squads[k], L = sq.L;
       sq.age += dt;
@@ -1229,9 +1474,9 @@
           j.vx += ax * dt; j.vy += ay * dt; j.x += j.vx * dt; j.y += j.vy * dt;
           j.ang = Math.atan2(j.vy, j.vx);
         }
-        // تفادي الشخصية بنابض ناعم يرجّعها لمسارها
-        avoidForce(j.x + j.ox, j.y + j.oy);
-        j.ovx += (_f[0] - j.ox * 22 - j.ovx * 7) * dt; j.ovy += (_f[1] - j.oy * 22 - j.ovy * 7) * dt;
+        // تفادي الشخصية (نابض ناعم يرجّع الطيارة لمسارها بعد ما تعبر)
+        avoidForce(j);
+        j.ovx += (_f[0] - j.ox * 26 - j.ovx * 7.5) * dt; j.ovy += (_f[1] - j.oy * 26 - j.ovy * 7.5) * dt;
         j.ox += j.ovx * dt; j.oy += j.ovy * dt;
         // اللف حول نفسها
         j.knife = sq.man === 'cross' && Math.abs(j.x + j.ox - C.W / 2) < 75;
@@ -1493,6 +1738,7 @@
     $('hBest').textContent = save.best; $('hCoins').textContent = save.coins;
     $('ctrl').textContent = save.control === 'tilt' ? '📱 ميلان' : '👆 لمس';
     $('snd').textContent = save.sound ? '🔊' : '🔇';
+    $('mus').textContent = save.music && save.sound ? '🎵' : '🔕';
     const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
     $('how').textContent = save.control === 'tilt'
       ? 'ميّل الموبايل يمين ويسار حتى تتحرك — القفز تلقائي 🦘'
@@ -1507,6 +1753,7 @@
   function goHome() {
     state = 'home'; newDemo(); show('home'); $('turbo').hidden = true;
     $('hud').hidden = true; $('tut').hidden = true; Sfx.rocketStop(); refreshHome();
+    Music.setMode('home'); Music.reset();
   }
   function startRun() {
     Sfx.init();
@@ -1518,15 +1765,15 @@
     parts.length = 0; texts.length = 0; ptr.clear(); lastScore = -1; lastCoins = -1; shake = 0;
     show(null); $('hud').hidden = false; $('pbar').hidden = true;
     if (!save.tut) { $('tut').hidden = false; $('tut').style.opacity = '1'; tutTimer = 6; } else $('tut').hidden = true;
-    Sfx.click();
+    Sfx.click(); Music.reset(); Music.setMode('play');
   }
   function pause() {
     if (state !== 'play') return;
-    state = 'pause'; show('pause'); Sfx.rocketStop(); ptr.clear(); keyL = keyR = false; $('turbo').hidden = true;
+    state = 'pause'; show('pause'); Sfx.rocketStop(); ptr.clear(); keyL = keyR = false; $('turbo').hidden = true; Music.setMode('pause');
   }
   function resume() {
     if (state !== 'pause') return;
-    state = 'play'; show(null); lastT = performance.now(); acc = 0; $('turbo').hidden = !world.hero;
+    state = 'play'; show(null); lastT = performance.now(); acc = 0; $('turbo').hidden = !world.hero; Music.setMode('play');
   }
   function countUp(el, to) {
     const t0 = performance.now(), dur = 700;
@@ -1569,7 +1816,7 @@
     }
     setTimeout(() => {
       if (state !== 'over') return;
-      show('over'); Sfx.click(); countUp($('oScore'), sc);
+      show('over'); Sfx.click(); Music.setMode('over'); countUp($('oScore'), sc);
       if (isRec && prevBest > 0) setTimeout(() => Sfx.record(), 600);
     }, 550);
   }
@@ -1628,6 +1875,7 @@
   $('openShop').onclick = openShop;
   $('oNext').onclick = openShop;
   $('shopBack').onclick = () => { Sfx.click(); goHome(); };
+  $('mus').onclick = () => { Sfx.init(); save.music = !save.music; persist(); refreshHome(); Sfx.click(); if (save.music) toast('🎵 الموسيقى شغّالة'); };
   $('snd').onclick = () => { Sfx.init(); save.sound = !save.sound; if (!save.sound) Sfx.rocketStop(); persist(); refreshHome(); Sfx.click(); };
   $('a2hsX').onclick = () => { save.a2hs = true; persist(); refreshHome(); };
   $('ctrl').onclick = () => {
@@ -1648,6 +1896,8 @@
     try { await navigator.clipboard.writeText(text + '\n' + url); toast('انسخ الرابط ✅'); } catch (e) { toast('انسخ الرابط من فوك ⬆️'); }
   };
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+  // أول لمسة بأي مكان تشغّل الصوت والموسيقى (سفاري يحتاج لمسة)
+  document.addEventListener('pointerdown', () => Sfx.init());
   window.addEventListener('pagehide', pause);
   window.addEventListener('resize', resize);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
@@ -1677,15 +1927,15 @@
         case 'stomp':
           if (FT) { explode(e.x, e.y, 1); if (live) Sfx.boom(1); } else { burst(e.x, e.y, 14, FX.stars); shake = Math.max(shake, 0.12); }
           if (e.v) floatText(e.x, e.y + 20, '+' + e.v, '#FFD23F'); if (live) Sfx.stomp(); break;
-        case 'hit': deathCause = 'hit'; shake = 0.5; if (FT) { explode(e.x, e.y, 1.2); if (live) Sfx.boom(1.2); } if (live) { Sfx.lose(save.skin, 'hit'); vibrate(120); } break;
-        case 'fall': deathCause = 'fall'; if (FT) lavaSplash(e.x); if (live) { Sfx.lose(save.skin, 'fall'); vibrate(60); } break;
-        case 'milestone': if (FT) { strike(); setTimeout(strike, 180); } if (live) { Sfx.milestone(); toast(`${pick(FT ? ['🌋 بركان!', '🔥 نار!', '💥 انفجار!', '☄️ نيزك!', '⚡ صاعقة!'] : ['🎉 كفو!', '🔥 وحش!', '⭐ استمر!', '💪 بطل!'])} ${e.v}`); } break;
+        case 'hit': deathCause = 'hit'; shake = 0.5; if (live) Music.tapeStop(); if (FT) { explode(e.x, e.y, 1.2); if (live) Sfx.boom(1.2); } if (live) { Sfx.lose(save.skin, 'hit'); vibrate(120); } break;
+        case 'fall': deathCause = 'fall'; if (FT) lavaSplash(e.x); if (live) Music.tapeStop(); if (live) { Sfx.lose(save.skin, 'fall'); vibrate(60); } break;
+        case 'milestone': if (FT) { strike(); setTimeout(strike, 180); } if (live) { Sfx.milestone(); Music.fill(); toast(`${pick(FT ? ['🌋 بركان!', '🔥 نار!', '💥 انفجار!', '☄️ نيزك!', '⚡ صاعقة!'] : ['🎉 كفو!', '🔥 وحش!', '⭐ استمر!', '💪 بطل!'])} ${e.v}`); } break;
         case 'over': endRun(); break;
       }
     }
     evs.length = 0;
     if (live && !record && !world.hero && bestAtStart > 0 && Core.score(world) > bestAtStart) {
-      record = true; Sfx.record(); toast('🏆 رقم قياسي جديد!', 1800); confetti();
+      record = true; Sfx.record(); Music.celebrate(); toast('🏆 رقم قياسي جديد!', 1800); confetti();
     }
   }
 
@@ -1754,6 +2004,20 @@
     }
   }
 
+  /** شنو لازم تعزف الموسيقى هسه: النمط حسب العالم والارتفاع، والحماس حسب النتيجة والصاروخ */
+  function musicInfo() {
+    if (!world) return { style: 'day', intensity: 0.6, bpm: 92 };
+    if (state !== 'play' && state !== 'pause' && state !== 'over') return { style: FT ? 'fire' : 'day', intensity: 0.7, bpm: FT ? 100 : 92 };
+    const sc = Core.score(world), camS = (world.camY + viewH / 2) / C.SCORE_DIV;
+    const style = FT ? 'fire' : camS < 1300 ? 'day' : camS < 2600 ? 'sunset' : camS < 4200 ? 'night' : 'space';
+    let I = 1.4 + clamp(sc / 400, 0, 1) + clamp((sc - 400) / 1100, 0, 1) + clamp((sc - 1500) / 2000, 0, 1);
+    if (world.player.rocket > 0) I += 0.8;
+    if (state === 'over') I = 0.5;
+    const sty = STY[style], bpm = sty.bpm[0] + (sty.bpm[1] - sty.bpm[0]) * clamp(sc / 5000, 0, 1);
+    const riser = state === 'play' && !record && !world.hero && bestAtStart > 200 && sc > bestAtStart * 0.85 && sc < bestAtStart;
+    return { style, intensity: Math.min(I, 4.6), bpm, riser };
+  }
+
   const STEP = 1 / 120;
   let lastT = performance.now(), acc = 0, time = 0;
   function render() {
@@ -1795,6 +2059,7 @@
       updateFx(dt);
       if (state === 'play') updateHud(dt);
     }
+    Music.update(dt, musicInfo());
     render();
   }
 
@@ -1804,5 +2069,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic };
 })();

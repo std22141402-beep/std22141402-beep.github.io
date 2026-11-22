@@ -47,6 +47,14 @@ ok(await page.isVisible('#home'), 'الرئيسية تبين');
 ok(await page.isVisible('#a2hs'), 'تلميح «إضافة إلى الشاشة الرئيسية» يبين بسفاري الآيفون');
 ok((await G(() => window.__natta.world.player.state)) === 'alive', 'الشخصية تنط بالرئيسية');
 
+// زر الموسيقى
+await page.tap('#mus');
+await wait(150);
+ok((await G(() => window.__natta.save.music)) === false && (await page.textContent('#mus')) === '🔕', 'زر 🎵 يطفي الموسيقى');
+await page.tap('#mus');
+await wait(150);
+ok((await G(() => window.__natta.save.music)) === true && (await page.textContent('#mus')) === '🎵', 'وزر 🎵 يرجّعها');
+
 // الشخصيات
 await page.tap('#openShop');
 await wait(700);
@@ -190,7 +198,7 @@ const minD = await page.evaluate(() => new Promise((res) => {
   };
   tick();
 }));
-ok(minD > 22, `الطيارات تتفادى الشخصية (أقرب مسافة ${minD.toFixed(0)})`);
+ok(minD > 30, `الطيارات تتفادى الشخصية (أقرب مسافة ${minD.toFixed(0)})`);
 await page.tap('#play', { force: true });
 await G(() => { window.__botOff = false; });
 await wait(400);
