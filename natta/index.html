@@ -38,6 +38,14 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 .btn.primary:active{box-shadow:0 2px 0 #d4700c,0 5px 12px rgba(255,140,0,.35)}
 .btn.big{font-size:28px;padding:16px 54px;border-radius:24px;animation:pulse 1.6s ease-in-out infinite}
 .btn.icon{min-width:52px}
+.logo{touch-action:manipulation;cursor:default}
+#codeIn{width:100%;font:inherit;font-size:20px;font-weight:800;text-align:center;padding:12px;border-radius:14px;border:3px solid #dfe3f3;color:#24305e;background:#f6f7fc;outline:none;-webkit-user-select:text;user-select:text;-webkit-appearance:none}
+#codeIn:focus{border-color:#ffb703}
+#codeIn.bad{animation:nope .35s}
+@keyframes nope{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+#turbo{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 22px);transform:translateX(-50%);width:72px;height:72px;border-radius:50%;border:0;font-size:34px;background:radial-gradient(circle at 35% 30%,#fff3b0,#ffb703 55%,#f17c00);box-shadow:0 5px 0 #c25e00,0 10px 24px rgba(255,140,0,.45);touch-action:none;z-index:4}
+#turbo:active{transform:translateX(-50%) translateY(3px);box-shadow:0 2px 0 #c25e00}
+.hero-chip{background:linear-gradient(#ffe066,#ffb703)!important;color:#7a3d00}
 .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .card{background:rgba(255,255,255,.95);border-radius:28px;padding:22px 20px;width:min(100%,360px);text-align:center;box-shadow:0 22px 50px rgba(0,0,0,.28);animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
@@ -112,7 +120,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   <section id="home" class="screen">
     <h1 class="logo out">نطّة</h1>
     <div class="tag out" style="--o:#24305e">اصعد لأعلى ما تكدر! ☁️</div>
-    <div class="stats"><span class="chip">🏆 <b id="hBest">0</b></span><span class="chip">🪙 <b id="hCoins">0</b></span></div>
+    <div class="stats"><span class="chip">🏆 <b id="hBest">0</b></span><span class="chip">🪙 <b id="hCoins">0</b></span><span class="chip hero-chip" id="hHero" hidden>🦸 بطل</span></div>
     <button class="btn primary big" id="play">العب ▶</button>
     <div class="row">
       <button class="btn" id="openShop">🎨 الشخصيات</button>
@@ -128,10 +136,12 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     <div class="hud-top">
       <div id="score" class="out">0</div>
       <div class="chip">🪙 <b id="runCoins">0</b></div>
+      <div class="chip hero-chip" id="heroChip" hidden>🦸</div>
       <button class="hud-btn" id="pauseBtn" aria-label="إيقاف">II</button>
     </div>
     <div id="pbar" hidden><i></i></div>
   </div>
+  <button id="turbo" hidden aria-label="طيران">🚀</button>
   <div id="tut" hidden><div>اضغط هنا ⬅️</div><div>➡️ اضغط هنا</div></div>
   <div id="toast" class="out"></div>
 
@@ -140,7 +150,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     <div class="card stack">
       <div class="over-title">متوقفة ⏸</div>
       <button class="btn primary" id="resume">كمّل ▶</button>
-      <button class="btn" id="quit">الرئيسية</button>
+      <button class="btn" id="quit">إنهاء الجولة 🏁</button>
     </div>
   </section>
 
@@ -153,13 +163,30 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       <div class="lbl">النتيجة</div>
       <div class="boxes">
         <div>أفضل نتيجة<b id="oBest">0</b></div>
-        <div>عملات هالجولة<b id="oCoins">0</b></div>
+        <div>عملات هالجولة<b id="oCoins" dir="ltr">0</b></div>
       </div>
+      <div class="lbl" id="oHero" hidden style="margin:-4px 0 12px">🦸 جولة بوضع البطل: ما تدخل بأفضل نتيجة</div>
       <div class="next" id="oNext" hidden></div>
       <div class="stack">
         <button class="btn primary" id="again" style="font-size:22px">مرة ثانية ↻</button>
         <div class="row"><button class="btn" id="toHome">الرئيسية</button><button class="btn" id="share">شارك 📤</button></div>
       </div>
+    </div>
+  </section>
+
+  <!-- الكود السري (اضغط على شعار «نطّة» 5 مرات) -->
+  <section id="code" class="screen" hidden>
+    <div class="card stack">
+      <div class="over-title">🔐 كود سري</div>
+      <div id="codeOff" class="stack">
+        <input id="codeIn" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" placeholder="اكتب الكود" dir="auto">
+        <button class="btn primary" id="codeGo">تفعيل</button>
+      </div>
+      <div id="codeOn" class="stack" hidden>
+        <div class="lbl" style="font-size:15px;color:#24305e">🦸 وضع البطل شغّال<br>ما تطيح، الوحوش ما تأذيك، وزر 🚀 يطيّرك وقت ما تريد</div>
+        <button class="btn" id="codeKill">اطفي وضع البطل</button>
+      </div>
+      <button class="btn" id="codeX">رجوع</button>
     </div>
   </section>
 

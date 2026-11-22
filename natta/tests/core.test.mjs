@@ -95,3 +95,23 @@ test('الأرض تحمي اللاعب بالبداية، والطيحة تخل�
   assert.strictEqual(d.player.state, 'alive');
   assert.ok(d.player.y <= C.REACH + 1, 'الديمو يبقى ينط على الأرض');
 });
+
+test('وضع البطل: ما يموت حتى لو ما لمس شي، والصاروخ يوصله للفضاء بسرعة', () => {
+  const w = Core.createWorld(77, { viewH: 860, hero: true });
+  for (let i = 0; i < 120 * 90; i++) {
+    Core.step(w, 1 / 120, 0);
+    w.events.length = 0;
+    assert.strictEqual(w.player.state, 'alive');
+  }
+  assert.ok(!w.over);
+  const fast = Core.createWorld(78, { viewH: 860, hero: true });
+  let t = 0;
+  while (Core.score(fast) < 5500 && t < 120) {
+    if (fast.player.rocket <= 0) Core.turbo(fast);
+    Core.step(fast, 1 / 120, 0); fast.events.length = 0; t += 1 / 120;
+  }
+  console.log(`    البطل وصل الفضاء (5500) بـ ${t.toFixed(0)} ثانية`);
+  assert.ok(Core.score(fast) >= 5500 && t < 70);
+  const normal = Core.createWorld(79, { viewH: 860 });
+  assert.strictEqual(Core.turbo(normal), false, 'الصاروخ عند الطلب بس بوضع البطل');
+});

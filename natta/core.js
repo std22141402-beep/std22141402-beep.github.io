@@ -133,6 +133,7 @@
     const w = {
       seed: seed >>> 0, rnd: mulberry32((seed >>> 0) || 1), t: 0, nextId: 1,
       demo: !!opts.demo,
+      hero: !!opts.hero, // وضع البطل (الكود السري): ما يموت، شبكة تحميه، وقفزات أقوى
       viewH: opts.viewH || 860,
       camY: -60,
       platforms: [], coins: [], enemies: [], events: [],
@@ -162,7 +163,7 @@
       if (p.type === 'b') { p.broken = true; emit(w, 'break', p.x + p.w / 2, p.y); continue; }
 
       P.y = p.y;
-      let v = C.JUMP, kind = 'jump';
+      let v = C.JUMP * (w.hero ? 1.3 : 1), kind = 'jump';
       const it = p.item;
       if (it && (it.kind === 'spring' || it.kind === 'tramp')) {
         const iw = it.kind === 'spring' ? 22 : 50;
@@ -206,7 +207,7 @@
       if (Math.abs(wrapDx(P.x, e.x)) >= 36) continue;
       if (!(P.y < e.y + 17 && P.y + C.BODY_H > e.y - 17)) continue;
       const kill = (vy) => { e.dead = true; e.vy = vy; };
-      if (P.rocket > 0) { kill(300); emit(w, 'stomp', e.x, e.y, 0); continue; }
+      if (P.rocket > 0 || w.hero) { kill(300); emit(w, 'stomp', e.x, e.y, 0); continue; }
       if (P.vy < 0 && prevY >= e.y) {                 // دعسة من فوك
         kill(0); P.vy = C.JUMP * 1.1; P.squash = 1; w.runCoins += 3; w.stomps++;
         emit(w, 'stomp', e.x, e.y, 3); continue;
@@ -263,6 +264,10 @@
       if (P.vy < 0 && P.rocket <= 0) landCheck(w, prevY);
       pickups(w);
       enemyCheck(w, prevY);
+      // وضع البطل: شبكة ذهبية بأسفل الشاشة تردّه لفوك بدل ما يطيح
+      if (w.hero && P.vy < 0 && P.rocket <= 0 && P.y < w.camY + 12) {
+        P.y = w.camY + 12; P.vy = C.TRAMP; P.squash = 1; emit(w, 'jump', P.x, P.y, 'net');
+      }
 
       // الكاميرا تصعد ويا اللاعب وما تنزل أبداً
       const target2 = P.y - w.viewH * 0.42;
@@ -300,7 +305,15 @@
     }
   }
 
-  const Core = { C, createWorld, step, score, difficulty, mulberry32, wrapDx, overlapX, genUntil };
+  /** وضع البطل: صاروخ وقت ما تريد */
+  function turbo(w) {
+    const P = w.player;
+    if (!w.hero || P.state !== 'alive') return false;
+    P.rocket = C.ROCKET_T; P.vy = Math.max(P.vy, 400); emit(w, 'rocket', P.x, P.y, 'turbo');
+    return true;
+  }
+
+  const Core = { C, createWorld, step, score, difficulty, mulberry32, wrapDx, overlapX, genUntil, turbo };
   if (typeof module === 'object' && module.exports) module.exports = Core;
   else root.NattaCore = Core;
 })(typeof self !== 'undefined' ? self : this);

@@ -175,6 +175,51 @@ await G(() => { const w = window.__natta.world, P = w.player; P.y = 40000; P.vy 
 await wait(1200);
 await shot('16-fire-night');
 
+// الكود السري ووضع البطل
+await G(() => window.__natta.goHome());
+await wait(400);
+const bestBefore = await G(() => window.__natta.save.best);
+for (let i = 0; i < 5; i++) { await page.tap('.logo', { force: true }); await wait(120); }
+await wait(300);
+ok(await page.isVisible('#code'), 'خمس ضغطات على الشعار تفتح الكود السري');
+await page.fill('#codeIn', '1234');
+await page.tap('#codeGo');
+await wait(200);
+ok((await page.textContent('#toast')).includes('غلط') && !(await G(() => window.__natta.save.hero)), 'الكود الغلط ما يشتغل');
+await shot('17-code');
+await page.fill('#codeIn', ' بَغداد ');
+await page.tap('#codeGo');
+await wait(500);
+ok((await G(() => window.__natta.save.hero)) === true && (await page.isVisible('#hHero')), 'الكود الصح يشغّل وضع البطل');
+await page.tap('#play', { force: true });
+await wait(500);
+ok((await page.isVisible('#turbo')) && (await page.isVisible('#heroChip')), 'زر 🚀 يطلع بوضع البطل');
+await page.tap('#turbo', { force: true });
+await wait(150);
+ok((await G(() => window.__natta.world.player.rocket)) > 0, 'زر 🚀 يطيّر');
+await wait(1500);
+await shot('18-hero-turbo');
+await G(() => { const w = window.__natta.world; w.player.rocket = 0; w.player.y = w.camY + 40; w.player.vy = -900; });
+await wait(400);
+const P2 = await G(() => ({ st: window.__natta.world.player.state, vy: window.__natta.world.player.vy }));
+ok(P2.st === 'alive' && P2.vy > 0, 'الشبكة الذهبية ترجّعه لفوك بدل ما يطيح');
+await shot('19-hero-net');
+await page.tap('#pauseBtn');
+await wait(200);
+await page.tap('#quit');
+await page.waitForSelector('#over:not([hidden])', { timeout: 3000 });
+await wait(800);
+await shot('20-hero-over');
+ok((await page.isVisible('#oHero')) && (await G(() => window.__natta.save.best)) === bestBefore, 'جولة البطل تنتهي من «إنهاء الجولة» وما تغيّر أفضل نتيجة');
+await page.tap('#toHome');
+await wait(300);
+await page.tap('#hHero');
+await wait(300);
+ok(await page.isVisible('#codeOn'), 'شارة 🦸 بالرئيسية تفتح خيار الإطفاء');
+await page.tap('#codeKill');
+await wait(300);
+ok((await G(() => window.__natta.save.hero)) === false && !(await page.isVisible('#hHero')), 'وضع البطل ينطفي');
+
 // شاشة صغيرة (آيفون SE) وشاشة كمبيوتر
 await page.setViewportSize({ width: 375, height: 667 });
 await G(() => window.__natta.goHome());

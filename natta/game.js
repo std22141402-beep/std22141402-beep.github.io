@@ -14,7 +14,7 @@
 
   // ---------------------------------------------------------------- الحفظ
   const KEY = 'natta.v1';
-  const DEF = { best: 0, coins: 0, owned: ['green'], skin: 'green', control: 'touch', sound: true, tut: false, games: 0, a2hs: false };
+  const DEF = { best: 0, coins: 0, owned: ['green'], skin: 'green', control: 'touch', sound: true, tut: false, games: 0, a2hs: false, hero: false };
   let save;
   try { save = Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { save = Object.assign({}, DEF); }
   save.owned = Array.isArray(save.owned) ? save.owned.slice() : ['green'];
@@ -823,6 +823,8 @@
     return 0;
   }
   window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.tagName === 'INPUT') { if (e.key === 'Enter') { e.preventDefault(); tryCode(); } return; }
+    if ((e.code === 'ArrowUp' || e.code === 'KeyW') && state === 'play') { useTurbo(); return; }
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keyL = true; tutSeen(); }
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') { keyR = true; tutSeen(); }
     else if (e.code === 'Escape' || e.code === 'KeyP') { if (state === 'play') pause(); else if (state === 'pause') resume(); }
@@ -862,7 +864,7 @@
 
   // ---------------------------------------------------------------- الواجهة
   let state = 'home', tutTimer = 0, lastScore = -1, lastCoins = -1;
-  const SCREENS = ['home', 'pause', 'over', 'shop'];
+  const SCREENS = ['home', 'pause', 'over', 'shop', 'code'];
   function show(id) { for (const s of SCREENS) $(s).hidden = s !== id; }
   let toastT = 0;
   function toast(text, ms = 1300) {
@@ -886,17 +888,19 @@
       : coarse ? 'اضغط يمين أو يسار الشاشة حتى تتحرك — القفز تلقائي 🦘'
         : 'تحرك بالأسهم ← → أو بالماوس — القفز تلقائي 🦘';
     $('a2hs').hidden = !(isIOS && !standalone && !save.a2hs);
+    $('hHero').hidden = !save.hero;
   }
   function newDemo() { world = Core.createWorld(rand32(), { viewH, demo: true }); parts.length = 0; texts.length = 0; }
   function goHome() {
-    state = 'home'; newDemo(); show('home');
+    state = 'home'; newDemo(); show('home'); $('turbo').hidden = true;
     $('hud').hidden = true; $('tut').hidden = true; Sfx.rocketStop(); refreshHome();
   }
   function startRun() {
     Sfx.init();
     if (save.control === 'tilt') enableTilt();
-    world = Core.createWorld(rand32(), { viewH });
+    world = Core.createWorld(rand32(), { viewH, hero: !!save.hero });
     state = 'play'; record = false; bestAtStart = save.best;
+    $('turbo').hidden = !save.hero; $('heroChip').hidden = !save.hero;
     parts.length = 0; texts.length = 0; ptr.clear(); lastScore = -1; lastCoins = -1; shake = 0;
     show(null); $('hud').hidden = false; $('pbar').hidden = true;
     if (!save.tut) { $('tut').hidden = false; $('tut').style.opacity = '1'; tutTimer = 6; } else $('tut').hidden = true;
@@ -904,11 +908,11 @@
   }
   function pause() {
     if (state !== 'play') return;
-    state = 'pause'; show('pause'); Sfx.rocketStop(); ptr.clear(); keyL = keyR = false;
+    state = 'pause'; show('pause'); Sfx.rocketStop(); ptr.clear(); keyL = keyR = false; $('turbo').hidden = true;
   }
   function resume() {
     if (state !== 'pause') return;
-    state = 'play'; show(null); lastT = performance.now(); acc = 0;
+    state = 'play'; show(null); lastT = performance.now(); acc = 0; $('turbo').hidden = !world.hero;
   }
   function countUp(el, to) {
     const t0 = performance.now(), dur = 700;
@@ -920,14 +924,16 @@
     state = 'over';
     const sc = Core.score(world), gained = world.runCoins, prevBest = save.best;
     save.coins += gained; save.games++; save.tut = true;
-    const isRec = sc > prevBest;
+    const hero = world.hero; // جولات وضع البطل ما تكسر أفضل نتيجة الحقيقية
+    const isRec = !hero && sc > prevBest;
     if (isRec) save.best = sc;
     let unlocked = null;
     for (const sk of SKINS) if (sk.unlockScore && sc >= sk.unlockScore && !save.owned.includes(sk.id)) { save.owned.push(sk.id); unlocked = sk; }
     persist();
-    $('hud').hidden = true; $('tut').hidden = true; Sfx.rocketStop(); ptr.clear();
+    $('hud').hidden = true; $('tut').hidden = true; $('turbo').hidden = true; Sfx.rocketStop(); ptr.clear();
 
-    $('oTitle').textContent = isRec && prevBest > 0 ? 'عاشت إيدك! 🔥'
+    $('oHero').hidden = !hero;
+    $('oTitle').textContent = hero ? '🦸 خلصت جولة البطل' : isRec && prevBest > 0 ? 'عاشت إيدك! 🔥'
       : prevBest > 0 && sc >= prevBest * 0.8 ? 'قربت كلش! 😮'
       : pick(['وكعت! 😵', 'أوف! 😅', 'ولا يهمك 💪', 'مرة لخ! 🙌']);
     $('oRecord').hidden = !(isRec && prevBest > 0);
@@ -1000,7 +1006,8 @@
   $('play').onclick = startRun;
   $('again').onclick = startRun;
   $('toHome').onclick = () => { Sfx.click(); goHome(); };
-  $('quit').onclick = () => { Sfx.click(); goHome(); };
+  // إنهاء الجولة من الإيقاف: تنحسب العملات والنتيجة وتطلع شاشة النهاية
+  $('quit').onclick = () => { Sfx.click(); if (state !== 'pause') return; state = 'play'; endRun(); };
   $('resume').onclick = () => { Sfx.click(); resume(); };
   $('pauseBtn').onclick = () => { Sfx.click(); pause(); };
   $('openShop').onclick = openShop;
@@ -1045,7 +1052,7 @@
         case 'break': burst(e.x, e.y, 12, FX.chunk); if (live) Sfx.brk(); break;
         case 'vanish': burst(e.x, e.y, 12, FX.puff); if (live) Sfx.vanish(); break;
         case 'coin': burst(e.x, e.y, 7, FX.spark); floatText(e.x, e.y + 10, '+1', '#FFD23F'); if (live) Sfx.coin(); break;
-        case 'rocket': if (live) { Sfx.rocket(); toast('🚀 صاروخ!'); } break;
+        case 'rocket': if (live) { Sfx.rocket(); if (e.v !== 'turbo') toast('🚀 صاروخ!'); } break;
         case 'rocketEnd': Sfx.rocketStop(); break;
         case 'shield': if (live) { Sfx.shield(); toast('🛡️ درع!'); } break;
         case 'shieldBreak': burst(e.x, e.y, 16, FX.glass); shake = 0.25; if (live) Sfx.shieldBreak(); break;
@@ -1057,9 +1064,58 @@
       }
     }
     evs.length = 0;
-    if (live && !record && bestAtStart > 0 && Core.score(world) > bestAtStart) {
+    if (live && !record && !world.hero && bestAtStart > 0 && Core.score(world) > bestAtStart) {
       record = true; Sfx.record(); toast('🏆 رقم قياسي جديد!', 1800); confetti();
     }
+  }
+
+  // ---------------------------------------------------------------- الكود السري ووضع البطل
+  // الكود محفوظ كـ«بصمة» مو كنص، حتى اللي يقرا الكود ما يعرفه مباشرة
+  const CODE_HASHES = [3773636336, 2348092680];
+  const normCode = (s) => String(s).normalize('NFKC').toLowerCase().replace(/[ً-ْٰـ\s]/g, '').replace(/[أإآ]/g, 'ا');
+  const hashCode = (s) => { let h = 5381; for (const ch of normCode(s)) h = (Math.imul(h, 33) ^ ch.codePointAt(0)) >>> 0; return h; };
+  let logoTaps = 0, logoT = 0;
+  document.querySelector('.logo').addEventListener('pointerdown', () => {
+    if (state !== 'home') return;
+    const now = performance.now();
+    logoTaps = now - logoT < 700 ? logoTaps + 1 : 1; logoT = now;
+    if (logoTaps >= 5) { logoTaps = 0; openCode(); }
+  });
+  function openCode() {
+    Sfx.init(); Sfx.click();
+    $('codeOff').hidden = !!save.hero; $('codeOn').hidden = !save.hero;
+    $('codeIn').value = ''; show('code');
+    if (!save.hero) setTimeout(() => { try { $('codeIn').focus(); } catch (e) { /* */ } }, 60);
+  }
+  function tryCode() {
+    const el = $('codeIn');
+    if (CODE_HASHES.includes(hashCode(el.value))) {
+      save.hero = true; persist(); el.blur(); goHome();
+      Sfx.hello(save.skin); toast('🦸 وضع البطل شغّال!', 1800);
+    } else {
+      el.classList.remove('bad'); void el.offsetWidth; el.classList.add('bad');
+      Sfx.vanish(); toast('كود غلط ❌');
+    }
+  }
+  $('codeGo').onclick = tryCode;
+  $('codeX').onclick = () => { Sfx.click(); $('codeIn').blur(); goHome(); };
+  $('codeKill').onclick = () => { save.hero = false; persist(); Sfx.click(); goHome(); toast('وضع البطل انطفى'); };
+  $('hHero').onclick = openCode;
+  function useTurbo() {
+    if (state !== 'play' || !Core.turbo(world)) return;
+    burst(world.player.x, world.player.y, 12, FX.boost);
+  }
+  $('turbo').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); Sfx.init(); useTurbo(); });
+  /** الشبكة الذهبية اللي تحمي البطل من الطيحة */
+  function drawNet(t) {
+    const y = viewH - 12;
+    ctx.save();
+    const g = ctx.createLinearGradient(0, y - 12, 0, y + 12);
+    g.addColorStop(0, 'rgba(255,215,64,0)'); g.addColorStop(0.5, 'rgba(255,215,64,.55)'); g.addColorStop(1, 'rgba(255,215,64,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, y - 12, C.W, 24);
+    ctx.strokeStyle = '#FFD23F'; ctx.lineWidth = 3; ctx.setLineDash([14, 8]); ctx.lineDashOffset = -t * 40;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(C.W, y); ctx.stroke();
+    ctx.restore();
   }
 
   // ---------------------------------------------------------------- الحلقة
@@ -1090,6 +1146,7 @@
     drawGround();
     if (!world.demo) {
       // بالرئيسية نخلي الخلفية نظيفة: سما وأرض والشخصية بس
+      if (world.hero) drawNet(time);
       drawBestLine();
       for (const p of world.platforms) drawPlatform(p, time);
       for (const c of world.coins) if (!c.taken) drawCoin(c, time);
