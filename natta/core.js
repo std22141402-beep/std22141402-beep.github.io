@@ -133,6 +133,7 @@
     const w = {
       seed: seed >>> 0, rnd: mulberry32((seed >>> 0) || 1), t: 0, nextId: 1,
       demo: !!opts.demo,
+      lava: !!opts.lava, // عالم النار: تحت الشاشة حمم، فالكاميرا ما تلحك اللاعب لما يطيح
       hero: !!opts.hero, // وضع البطل (الكود السري): ما يموت، شبكة تحميه، وقفزات أقوى
       viewH: opts.viewH || 860,
       camY: -60,
@@ -288,7 +289,7 @@
       P.x += P.vx * dt;
       if (P.state === 'fall') {
         // الكاميرا تلحكه شوية لجوه حتى تبين الطيحة
-        if (P.deadT < 0.9) w.camY = Math.min(w.camY, P.y - w.viewH * 0.3);
+        if (P.deadT < 0.9 && !w.lava) w.camY = Math.min(w.camY, P.y - w.viewH * 0.3);
         if (P.deadT > 0.9 && !w.over) { w.over = true; emit(w, 'over', P.x, P.y); }
       } else if (P.y < w.camY - 80 && !w.over) { w.over = true; emit(w, 'over', P.x, P.y); }
     }

@@ -167,6 +167,8 @@ ok((await G(() => window.__natta.save.skin)) === 'fire' && (await G(() => window
 // الشخصية النارية بالنهار وبالليل
 await G(() => { window.__natta.goHome(); });
 await wait(700);
+await G(() => window.__natta.VOLC.forEach((v) => { v.next = 0.0001; }));
+await wait(450);
 await shot('15-fire-home');
 await page.tap('#play', { force: true });
 await G(() => { window.__botOff = false; });
@@ -174,6 +176,16 @@ await wait(400);
 await G(() => { const w = window.__natta.world, P = w.player; P.y = 40000; P.vy = 820; w.camY = 40000 - w.viewH * 0.42; w.maxY = 40000; w.genY = w.camY - 50; w.platforms = w.platforms.filter((p) => p.y > w.camY - 400); P.invul = 3; });
 await wait(1200);
 await shot('16-fire-night');
+await G(() => { const N = window.__natta, w = N.world; N.explode(w.player.x > 200 ? 110 : 290, w.player.y + 90, 1.2); });
+await wait(120);
+await shot('16b-fire-explode');
+await G(() => { window.__botOff = true; const w = window.__natta.world; w.player.rocket = 0; w.player.y = w.camY + 30; w.player.vy = -300; });
+await wait(330);
+await shot('16c-fire-lava');
+await page.waitForSelector('#over:not([hidden])', { timeout: 5000 });
+await wait(700);
+await shot('16d-fire-over');
+ok((await page.textContent('#oTitle')).includes('الحمم'), 'بعالم النار الطيحة تكون بالحمم');
 
 // الكود السري ووضع البطل
 await G(() => window.__natta.goHome());

@@ -266,6 +266,14 @@
       stomp() { if (!ok()) return; const s = plain(); s.voice({ type: 'square', f: 520, f1: 140, dur: 0.14, vol: 0.1 }); s.voice({ f: 300, f1: 1000, t: 0.05, dur: 0.18, vol: 0.2 }); },
       record() { if (!ok()) return; const s = plain(); [523, 659, 784, 1047, 1319].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.08, dur: i === 4 ? 0.35 : 0.12, vol: 0.07, filter: ['lowpass', 5000] })); },
       milestone() { if (!ok()) return; const s = plain(); [784, 1047].forEach((f, i) => s.voice({ type: 'triangle', f, t: i * 0.09, dur: 0.16, vol: 0.16 })); },
+      /** انفجار: s = الحجم */
+      boom(s = 1) {
+        if (!ok()) return; const S2 = plain(); S2.D.rev = 0.25; const v = 0.3 * Math.min(1.3, s);
+        S2.noise({ f: 900 * s + 200, f1: 60, dur: 0.55 + 0.3 * s, vol: v, q: 0.7, attack: 0.004 });
+        S2.voice({ f: 110, f1: 32, dur: 0.5 + 0.2 * s, vol: v, attack: 0.004 });
+        S2.crackle(Math.round(6 * s), 0.35, 0.12);
+      },
+      lavaPop() { if (!ok()) return; const S2 = plain(); S2.D.rev = 0.2; S2.voice({ f: 180, f1: 520, dur: 0.08, vol: 0.07 }); S2.noise({ type: 'bandpass', f: 900, q: 3, dur: 0.05, vol: 0.03 }); },
       click() { if (!ok()) return; plain().voice({ f: 620, f1: 820, dur: 0.06, vol: 0.12, rev: 0 }); },
       buy() { if (!ok()) return; const s = plain(); [880, 1175, 1568].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.07, dur: 0.1, vol: 0.07, filter: ['lowpass', 5000] })); },
     };
@@ -321,19 +329,19 @@
     [5500, [6, 4, 16], [30, 12, 62]],
   ];
   const mix = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
-  function skyAt(s) {
+  function skyAt(s, T = SKY) {
     let i = 0;
-    while (i < SKY.length - 1 && s > SKY[i + 1][0]) i++;
-    if (i === SKY.length - 1) return [SKY[i][1], SKY[i][2]];
-    const a = SKY[i], b = SKY[i + 1], k = clamp((s - a[0]) / (b[0] - a[0]), 0, 1);
+    while (i < T.length - 1 && s > T[i + 1][0]) i++;
+    if (i === T.length - 1) return [T[i][1], T[i][2]];
+    const a = T[i], b = T[i + 1], k = clamp((s - a[0]) / (b[0] - a[0]), 0, 1);
     return [mix(a[1], b[1], k), mix(a[2], b[2], k)];
   }
   const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
   const themeMeta = document.querySelector('meta[name="theme-color"]');
   let themeTick = 0;
 
-  function drawCloud(x, y, s, a) {
-    ctx.globalAlpha = a; ctx.fillStyle = '#fff';
+  function drawCloud(x, y, s, a, col = '#fff') {
+    ctx.globalAlpha = a; ctx.fillStyle = col;
     ctx.beginPath();
     ctx.arc(x, y, 22 * s, 0, TAU); ctx.arc(x + 24 * s, y + 5 * s, 17 * s, 0, TAU);
     ctx.arc(x - 24 * s, y + 6 * s, 15 * s, 0, TAU); ctx.arc(x + 8 * s, y - 12 * s, 17 * s, 0, TAU);
@@ -343,6 +351,7 @@
   }
 
   function drawBackground(t) {
+    if (FT) return drawFireBackground(t);
     const s = (camY + viewH / 2) / C.SCORE_DIV;
     const [top, bot] = skyAt(s);
     const g = ctx.createLinearGradient(0, 0, 0, viewH);
@@ -395,6 +404,7 @@
   }
 
   function drawGround() {
+    if (FT) return drawFireGround(time);
     const gy = Y(0);
     if (gy > viewH + 5) return;
     const hy = gy - 30 + (camY + 60) * -0.5;
@@ -429,7 +439,7 @@
     if (p.type === 'g') return;
     const y = Y(p.y);
     if (y < -60 || y > viewH + 40) return;
-    const [main, dark, hi] = PLAT[p.type];
+    const [main, dark, hi] = (FT ? PLAT_FIRE : PLAT)[p.type];
     if (p.broken) {
       ctx.save(); ctx.globalAlpha = clamp(1 - p.rot / 2.5, 0, 1);
       for (const side of [-1, 1]) {
@@ -451,8 +461,17 @@
     rr(ctx, p.x, y, p.w, C.PH, 8); ctx.fillStyle = dark; ctx.fill();
     rr(ctx, p.x, y, p.w, C.PH - 5, 8); ctx.fillStyle = main; ctx.fill();
     rr(ctx, p.x + 9, y + 3, p.w - 18, 3, 2); ctx.fillStyle = hi; ctx.fill();
+    if (FT) { // حافة متوهجة حتى تبين المنصة بالسما الغامقة
+      ctx.strokeStyle = p.type === 'b' ? 'rgba(255,90,30,.35)' : 'rgba(255,170,90,.6)'; ctx.lineWidth = 1.5;
+      rr(ctx, p.x - 0.5, y - 0.5, p.w + 1, C.PH + 1, 8.5); ctx.stroke();
+    }
+    if (FT && (p.type === 'n' || p.type === 'm')) { // شق متوهج بالصخر
+      const cx = p.x + 14 + (p.id % 4) * 11;
+      ctx.strokeStyle = `rgba(255,140,40,${0.55 + 0.3 * Math.sin(t * 3 + p.id)})`; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(cx, y + 5); ctx.lineTo(cx + 5, y + 8); ctx.lineTo(cx + 2, y + 11); ctx.stroke();
+    }
     if (p.type === 'b') {
-      ctx.strokeStyle = dark; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.strokeStyle = FT ? `rgba(255,224,102,${0.7 + 0.3 * Math.sin(t * 6 + p.id)})` : dark; ctx.lineWidth = 2; ctx.beginPath();
       ctx.moveTo(p.x + 22, y + 1); ctx.lineTo(p.x + 27, y + 7); ctx.lineTo(p.x + 23, y + C.PH - 2);
       ctx.moveTo(p.x + 48, y + 1); ctx.lineTo(p.x + 43, y + 8); ctx.lineTo(p.x + 47, y + C.PH - 2);
       ctx.stroke();
@@ -460,7 +479,7 @@
       ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = dark; ctx.lineWidth = 1.5;
       rr(ctx, p.x + 1, y + 1, p.w - 2, C.PH - 2, 7); ctx.stroke(); ctx.restore();
     } else if (p.type === 'm') {
-      ctx.fillStyle = 'rgba(255,255,255,.85)';
+      ctx.fillStyle = FT ? 'rgba(255,160,80,.95)' : 'rgba(255,255,255,.85)';
       for (const s of [-1, 1]) {
         const cx = p.x + p.w / 2 + s * 24;
         ctx.beginPath(); ctx.moveTo(cx + s * 5, y + 5.5); ctx.lineTo(cx - s * 2, y + 1.5); ctx.lineTo(cx - s * 2, y + 9.5); ctx.fill();
@@ -528,6 +547,7 @@
   }
 
   function drawEnemy(e, t, P) {
+    if (FT) return drawFireEnemy(e, t, P);
     const y = Y(e.y);
     if (y < -50 || y > viewH + 50) return;
     ctx.save(); ctx.translate(e.x, y);
@@ -702,13 +722,266 @@
     ctx.globalAlpha = 1;
   }
 
+  // ================================================================ عالم «ناري» 🌋
+  // يشتغل لما تختار شخصية «ناري»: سما بركانية، براكين تثور، حمم، نيازك، انفجارات
+  let FT = false; // هل عالم النار شغّال هسه
+  const isFireSkin = () => skinById(save.skin).body === 'fire';
+  const SKY_FIRE = [
+    [0, [70, 16, 22], [255, 112, 40]],
+    [1200, [48, 12, 26], [200, 56, 32]],
+    [2600, [26, 8, 20], [120, 26, 32]],
+    [4000, [12, 4, 12], [66, 12, 28]],
+    [5500, [6, 2, 8], [36, 6, 26]],
+  ];
+  const PLAT_FIRE = {
+    n: ['#8A6A5C', '#3E2A22', '#FFC27A'], // صخر بركاني فاتح حوافه متوهجة (واضح بالسما الغامقة)
+    m: ['#7B5BA6', '#33204D', '#FFB07A'], // زجاج بركاني بنفسجي
+    v: ['#C4BBB4', '#6E6661', '#EEE8E3'], // رماد ينفخ ويختفي
+    b: ['#4A1A10', '#220904', '#B8441C'], // قشرة غامقة مشققة: فخ، تنفجر إذا دست عليها
+  };
+  const LAVA_COLS = ['#FFE066', '#FFB000', '#FF6A00', '#FF3D00'];
+  const SMOKE_COLS = ['rgba(60,40,38,.9)', 'rgba(85,62,58,.9)', 'rgba(40,28,26,.9)'];
+  const VOLC = [
+    { x: 300, w: 300, h: 210, par: 0.3, col: '#4A1A15', per: 6.5, next: 0, smokeT: 0 },
+    { x: 80, w: 230, h: 150, par: 0.5, col: '#2C120E', per: 4.8, next: 0, smokeT: 0 },
+  ];
+  const volcBase = (v) => viewH - 40 + (world.camY + 60) * v.par;
+
+  function flameTongue(g, x, y, w, h, t, seed) { // لسان نار يطلع لفوك من (x,y)
+    const fl = 1 + 0.18 * Math.sin(t * 15 + seed * 3.1);
+    const tip = y - h * fl, sway = Math.sin(t * 9 + seed) * w * 0.35;
+    const gr = g.createLinearGradient(0, y, 0, tip);
+    gr.addColorStop(0, '#FFE066'); gr.addColorStop(0.5, '#FF8A00'); gr.addColorStop(1, 'rgba(230,34,0,.85)');
+    g.fillStyle = gr;
+    g.beginPath(); g.moveTo(x - w / 2, y);
+    g.quadraticCurveTo(x - w * 0.55, y - h * 0.55, x + sway, tip);
+    g.quadraticCurveTo(x + w * 0.55, y - h * 0.55, x + w / 2, y);
+    g.closePath(); g.fill();
+  }
+
+  function drawMeteors(t) {
+    const per = 2.4;
+    ctx.lineCap = 'round';
+    for (let k = Math.floor(t / per) - 1; k <= Math.floor(t / per); k++) {
+      const age = t - k * per;
+      if (age < 0 || age > 1.4 || hash(k * 4.4) < 0.25) continue;
+      const dir = hash(k * 2.7) < 0.5 ? -1 : 1;
+      const x0 = (dir > 0 ? -30 : C.W + 30) + dir * hash(k * 1.3) * 160, y0 = hash(k * 5.9) * viewH * 0.45 - 20;
+      const vx = dir * (230 + hash(k * 3.1) * 120), vy = 260 + hash(k * 6.2) * 140;
+      const x = x0 + vx * age, y = y0 + vy * age, a = clamp(1.4 - age, 0, 1);
+      const tx = x - vx * 0.22, ty = y - vy * 0.22;
+      const g = ctx.createLinearGradient(tx, ty, x, y);
+      g.addColorStop(0, 'rgba(255,120,30,0)'); g.addColorStop(1, `rgba(255,200,80,${a})`);
+      ctx.strokeStyle = g; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
+      ctx.globalAlpha = a * 0.35; ctx.fillStyle = '#FF9A3D'; ctx.beginPath(); ctx.arc(x, y, 8, 0, TAU); ctx.fill();
+      ctx.globalAlpha = a; ctx.fillStyle = '#FFF3B0'; ctx.beginPath(); ctx.arc(x, y, 3.4, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.lineCap = 'butt';
+  }
+
+  function drawFireBackground(t) {
+    const s = (camY + viewH / 2) / C.SCORE_DIV;
+    const [top, bot] = skyAt(s, SKY_FIRE);
+    const g = ctx.createLinearGradient(0, 0, 0, viewH);
+    g.addColorStop(0, rgb(top)); g.addColorStop(1, rgb(bot));
+    ctx.fillStyle = g; ctx.fillRect(-4, -4, C.W + 8, viewH + 8);
+    if (++themeTick % 30 === 0 && themeMeta) themeMeta.content = rgb(top);
+    // سديم أحمر بالفضاء
+    const spaceA = clamp((s - 3800) / 1500, 0, 1);
+    if (spaceA > 0) {
+      const f = 0.05, py = camY * f, cell = 600;
+      for (let i = Math.floor(py / cell) - 1, e = Math.floor((py + viewH) / cell) + 1; i <= e; i++) {
+        if (hash(i * 7.7) > 0.75) continue;
+        const x = hash(i * 2.9) * C.W, y = viewH - (i * cell + hash(i * 3.7) * cell - py), r = 110 + hash(i * 5.3) * 110;
+        const ng = ctx.createRadialGradient(x, y, 0, x, y, r);
+        ng.addColorStop(0, hash(i) > 0.5 ? 'rgba(255,70,40,.32)' : 'rgba(170,40,120,.3)'); ng.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalAlpha = spaceA; ctx.fillStyle = ng; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    // دخان بركاني بدل الغيوم
+    const smokeA = 1 - clamp((s - 2600) / 1200, 0, 1);
+    if (smokeA > 0) {
+      const f = 0.35, py = camY * f, cell = 240;
+      for (let i = Math.floor(py / cell) - 1, e = Math.floor((py + viewH) / cell) + 1; i <= e; i++) {
+        const x = hash(i * 2.3) * (C.W + 120) - 60 + Math.sin(t * 0.15 + i) * 14;
+        const y = viewH - (i * cell + hash(i * 8.8) * 120 - py);
+        drawCloud(x, y, 0.7 + hash(i * 4.7) * 0.8, 0.45 * smokeA, 'rgb(45,20,20)');
+      }
+    }
+    // جمر يصعد بالهوا
+    const span = viewH + 40;
+    for (let i = 0; i < 36; i++) {
+      const sp = 20 + hash(i * 5.7) * 50;
+      const y = viewH + 20 - ((((t * sp + hash(i * 3.3) * span + camY * 0.2) % span) + span) % span);
+      const x = hash(i * 1.9) * C.W + Math.sin(t * (0.6 + hash(i)) + i) * 12;
+      ctx.globalAlpha = 0.35 + 0.35 * Math.sin(t * 4 + i);
+      ctx.fillStyle = ['#FFB347', '#FF6A00', '#FFD166'][i % 3];
+      ctx.beginPath(); ctx.arc(x, y, 1 + hash(i * 8.1) * 1.8, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    drawMeteors(t);
+  }
+
+  function drawVolcano(v, t) {
+    const by = volcBase(v), ty = by - v.h;
+    if (ty > viewH + 10) return;
+    const cx = v.x, hw = v.w / 2, cw = v.w * 0.1;
+    ctx.fillStyle = v.col;
+    ctx.beginPath(); ctx.moveTo(cx - hw, by + 60);
+    ctx.quadraticCurveTo(cx - hw * 0.35, by - v.h * 0.55, cx - cw, ty); ctx.lineTo(cx + cw, ty);
+    ctx.quadraticCurveTo(cx + hw * 0.35, by - v.h * 0.55, cx + hw, by + 60); ctx.closePath(); ctx.fill();
+    const gl = ctx.createRadialGradient(cx, ty, 2, cx, ty, v.w * 0.3);
+    gl.addColorStop(0, 'rgba(255,210,90,.95)'); gl.addColorStop(0.3, 'rgba(255,120,30,.5)'); gl.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(cx, ty, v.w * 0.3, 0, TAU); ctx.fill();
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) { // أنهار حمم نازلة على الجوانب
+      const s = i - 1, a = 0.6 + 0.4 * Math.sin(t * 2.5 + i * 1.7 + v.x);
+      ctx.strokeStyle = `rgba(255,${110 + i * 30},30,${a})`; ctx.lineWidth = 3.2 - i * 0.6;
+      ctx.beginPath(); ctx.moveTo(cx + s * cw * 0.6, ty + 2);
+      ctx.quadraticCurveTo(cx + s * (cw + 12) + Math.sin(i * 3) * 6, ty + v.h * 0.35, cx + s * (cw + 30 + i * 8), ty + v.h * (0.6 + 0.1 * i));
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+
+  function drawFireGround(t) {
+    for (const v of VOLC) drawVolcano(v, t);
+    const gy = Y(0);
+    if (gy > viewH + 5) return;
+    ctx.fillStyle = '#2B1B18'; ctx.fillRect(-4, gy, C.W + 8, viewH - gy + 20);
+    ctx.fillStyle = '#4A302A'; ctx.fillRect(-4, gy, C.W + 8, 6);
+    ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i++) { // عروق حمم بالصخر
+      const x = 20 + i * 65 + hash(i) * 20;
+      ctx.strokeStyle = `rgba(255,${130 + (i % 3) * 30},40,${0.5 + 0.35 * Math.sin(t * 3 + i)})`;
+      ctx.beginPath(); ctx.moveTo(x, gy + 7); ctx.lineTo(x + 7, gy + 16); ctx.lineTo(x + 2, gy + 26); ctx.lineTo(x + 9, gy + 38); ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+    for (let i = 0; i < 9; i++) flameTongue(ctx, i * 46 + 14 + hash(i * 2) * 16, gy + 1, 8, 7 + hash(i * 5) * 7, t, i);
+  }
+
+  // بحيرة الحمم بأسفل الشاشة (إذا وكعت بيها تخسر)
+  const bubbles = [];
+  let bubbleT = 0;
+  function drawLava(t) {
+    const base = viewH - 16;
+    const gl = ctx.createLinearGradient(0, base - 70, 0, base);
+    gl.addColorStop(0, 'rgba(255,90,0,0)'); gl.addColorStop(1, 'rgba(255,120,20,.38)');
+    ctx.fillStyle = gl; ctx.fillRect(-4, base - 70, C.W + 8, 70);
+    ctx.beginPath(); ctx.moveTo(-4, viewH + 6);
+    for (let x = -4; x <= C.W + 8; x += 8) ctx.lineTo(x, base + Math.sin(x * 0.045 + t * 2.2) * 3.5 + Math.sin(x * 0.11 - t * 3.1) * 1.8);
+    ctx.lineTo(C.W + 8, viewH + 6); ctx.closePath();
+    const g = ctx.createLinearGradient(0, base - 4, 0, viewH);
+    g.addColorStop(0, '#FFE066'); g.addColorStop(0.25, '#FF8C1A'); g.addColorStop(1, '#B3200B');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.fillStyle = 'rgba(110,24,10,.45)'; // قشور غامقة تمشي على السطح
+    for (let i = 0; i < 6; i++) {
+      const x = ((((hash(i) * C.W + t * (10 + i * 3) * (i % 2 ? 1 : -1)) % (C.W + 40)) + C.W + 40) % (C.W + 40)) - 20;
+      ctx.beginPath(); ctx.ellipse(x, base + 9, 14, 2.8, 0, 0, TAU); ctx.fill();
+    }
+    for (const b of bubbles) {
+      const r = b.r * Math.min(1, b.t / 0.5);
+      ctx.fillStyle = '#FFD166'; ctx.strokeStyle = '#FF7A1A'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(b.x, base + 1, r, Math.PI, 0); ctx.fill(); ctx.stroke();
+    }
+  }
+
+  function explode(x, y, s = 1) { // انفجار: وميض + حمم + دخان + اهتزاز
+    if (parts.length > 600) return;
+    parts.push({ x, y, vx: 0, vy: 0, g: 0, life: 0.28, max: 0.28, r: 16 * s, c: '#fff', kind: 'flash', rot: 0, drag: 0 });
+    burst(x, y, Math.round(18 * s), { sp: 260 * s, vy0: -120 * s, vy1: 320 * s, g: 500, life: 0.65, r: 4 * s, colors: LAVA_COLS, kind: 'lava', drag: 2.5 });
+    burst(x, y, Math.round(7 * s), { sp: 80 * s, vy0: 20, vy1: 120, g: -60, life: 1.1, r: 8 * s, colors: SMOKE_COLS, kind: 'smoke', drag: 1.5, spread: 10 });
+    shake = Math.max(shake, 0.16 * s);
+  }
+  function lavaSplash(x) {
+    const y = world.camY + 16;
+    parts.push({ x, y, vx: 0, vy: 0, g: 0, life: 0.3, max: 0.3, r: 20, c: '#fff', kind: 'flash', rot: 0, drag: 0 });
+    burst(x, y, 28, { sp: 160, vy0: 250, vy1: 650, g: 1300, life: 0.9, r: 4.5, colors: LAVA_COLS, kind: 'lava' });
+    burst(x, y, 10, { sp: 70, vy0: 40, vy1: 140, g: -40, life: 1.4, r: 10, colors: ['rgba(230,225,220,.8)', 'rgba(190,185,180,.8)'], kind: 'smoke', drag: 1.2, spread: 18 });
+    shake = Math.max(shake, 0.3);
+  }
+  function erupt(v, wy) {
+    const s = v.par < 0.4 ? 0.8 : 1;
+    parts.push({ x: v.x, y: wy, vx: 0, vy: 0, g: 0, life: 0.35, max: 0.35, r: 18 * s, c: '#fff', kind: 'flash', rot: 0, drag: 0 });
+    burst(v.x, wy, 24, { sp: 120 * s, vy0: 280 * s, vy1: 650 * s, g: 700, life: 1.6, r: 3.8 * s, colors: LAVA_COLS, kind: 'lava' });
+    burst(v.x, wy, 8, { sp: 40, vy0: 60, vy1: 140, g: -30, life: 2.2, r: 10 * s, colors: SMOKE_COLS, kind: 'smoke', drag: 0.6, spread: 10 });
+    if (state === 'play') Sfx.boom(0.45 * s);
+  }
+  /** تحديث عالم النار: ثوران البراكين، دخانها، وفقاعات الحمم */
+  function updateFire(dt) {
+    for (const v of VOLC) {
+      const ty = volcBase(v) - v.h;
+      if (ty > viewH) continue;
+      const wy = world.camY + viewH - ty;
+      if (!(v.next > 0)) v.next = time + rnd(0.6, 2.5);
+      v.smokeT -= dt;
+      if (v.smokeT <= 0 && parts.length < 600) {
+        v.smokeT = rnd(0.25, 0.45);
+        const life = rnd(1.8, 2.6);
+        parts.push({ x: v.x + rnd(-8, 8), y: wy, vx: rnd(-8, 22), vy: rnd(30, 60), g: -25, life, max: life, r: rnd(6, 9), c: pick(SMOKE_COLS), kind: 'smoke', rot: 0, drag: 0.3 });
+      }
+      if (time > v.next) { v.next = time + v.per * rnd(0.7, 1.3); erupt(v, wy); }
+    }
+    bubbleT -= dt;
+    if (bubbleT <= 0) { bubbleT = rnd(0.35, 0.9); bubbles.push({ x: rnd(10, C.W - 10), t: 0, r: rnd(3, 7), loud: Math.random() < 0.35 }); }
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+      const b = bubbles[i];
+      b.t += dt;
+      if (b.t > 0.6) {
+        burst(b.x, world.camY + 17, 5, { sp: 50, vy0: 80, vy1: 200, g: 900, life: 0.5, r: 2, colors: LAVA_COLS, kind: 'lava' });
+        if (b.loud && state === 'play') Sfx.lavaPop();
+        bubbles.splice(i, 1);
+      }
+    }
+  }
+
+  function drawFireEnemy(e, t, P) { // وحش حمم بجناحين من نار
+    const y = Y(e.y);
+    if (y < -50 || y > viewH + 50) return;
+    ctx.save(); ctx.translate(e.x, y);
+    if (e.dead) ctx.rotate(e.rot);
+    const gl = ctx.createRadialGradient(0, 0, 4, 0, 0, 42);
+    gl.addColorStop(0, 'rgba(255,120,30,.45)'); gl.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, 42, 0, TAU); ctx.fill();
+    const flap = Math.sin(t * 14 + e.ph);
+    for (const s of [-1, 1]) {
+      ctx.save(); ctx.scale(s, 1); ctx.translate(17, -2); ctx.rotate(Math.PI / 2 - 0.5 + flap * 0.45);
+      flameTongue(ctx, 0, 0, 13, 22, t, e.ph + s); ctx.restore();
+    }
+    ctx.fillStyle = '#2B0A06';
+    ctx.beginPath(); ctx.moveTo(-13, -11); ctx.lineTo(-10, -26); ctx.lineTo(-4, -14); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(13, -11); ctx.lineTo(10, -26); ctx.lineTo(4, -14); ctx.fill();
+    const g = ctx.createRadialGradient(-4, -5, 2, 0, 0, 24);
+    g.addColorStop(0, '#FFE08A'); g.addColorStop(0.45, '#FF7A1A'); g.addColorStop(1, '#B3200B');
+    ctx.beginPath(); ctx.ellipse(0, 0, 23, 17, 0, 0, TAU); ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = '#5C1006'; ctx.stroke();
+    ctx.fillStyle = 'rgba(70,20,10,.55)';
+    ctx.beginPath(); ctx.ellipse(-14, 6, 5, 3, 0.3, 0, TAU); ctx.ellipse(13, 8, 4, 2.5, -0.3, 0, TAU); ctx.fill();
+    const lx = clamp(Core.wrapDx(P.x, e.x) / 60, -1, 1) * 2, ly = clamp((e.y - (P.y + 20)) / 60, -1, 1) * 2;
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.ellipse(s * 8, -3, 6, 5.5, 0, 0, TAU); ctx.fillStyle = '#FFF3A0'; ctx.fill();
+      if (e.dead) {
+        ctx.strokeStyle = '#1B0A05'; ctx.lineWidth = 2; ctx.beginPath();
+        ctx.moveTo(s * 8 - 3, -6); ctx.lineTo(s * 8 + 3, 0); ctx.moveTo(s * 8 + 3, -6); ctx.lineTo(s * 8 - 3, 0); ctx.stroke();
+      } else { ctx.beginPath(); ctx.ellipse(s * 8 + lx, -3 + ly, 1.7, 4.2, 0, 0, TAU); ctx.fillStyle = '#1B0A05'; ctx.fill(); }
+      ctx.strokeStyle = '#3B0A06'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(s * 3, -10); ctx.lineTo(s * 13, -14); ctx.stroke();
+    }
+    ctx.fillStyle = '#3B0A06'; rr(ctx, -9, 6, 18, 6, 3); ctx.fill();
+    ctx.fillStyle = '#FFE066';
+    ctx.beginPath(); ctx.moveTo(-7, 6); ctx.lineTo(-4, 10); ctx.lineTo(-1, 6); ctx.moveTo(1, 6); ctx.lineTo(4, 10); ctx.lineTo(7, 6); ctx.fill();
+    ctx.restore();
+  }
+
   // ---------------------------------------------------------------- مؤثرات
   const parts = [], texts = [];
   function burst(x, y, n, o) {
-    if (parts.length > 420) return;
+    if (parts.length > 650) return;
     for (let i = 0; i < n; i++) {
       const life = o.life * rnd(0.6, 1.2);
-      parts.push({ x: x + rnd(-o.spread || 0, o.spread || 0), y, vx: rnd(-1, 1) * o.sp, vy: rnd(o.vy0, o.vy1), g: o.g, life, max: life, r: o.r * rnd(0.6, 1.4), c: pick(o.colors), kind: o.kind || 'dot', rot: rnd(0, 6) });
+      parts.push({ x: x + rnd(-o.spread || 0, o.spread || 0), y, vx: rnd(-1, 1) * o.sp, vy: rnd(o.vy0, o.vy1), g: o.g, life, max: life, r: o.r * rnd(0.6, 1.4), c: pick(o.colors), kind: o.kind || 'dot', rot: rnd(0, 6), drag: o.drag || 0 });
     }
   }
   const FX = {
@@ -719,6 +992,9 @@
     spark: { sp: 110, vy0: -40, vy1: 140, g: 200, life: 0.45, r: 2.6, colors: ['#FFD23F', '#FFF6C4', '#FFB703'], kind: 'star' },
     stars: { sp: 180, vy0: 0, vy1: 220, g: 600, life: 0.7, r: 4.5, colors: ['#FFE066', '#ffffff', '#C2A8FF'], kind: 'star' },
     glass: { sp: 200, vy0: -50, vy1: 200, g: 500, life: 0.6, r: 3, colors: ['#9FE7FF', '#ffffff'], kind: 'rect' },
+    emberDust: { sp: 70, vy0: 20, vy1: 90, g: -30, life: 0.45, r: 2.6, colors: ['#FFB000', '#FF6A00', '#FFE066'], spread: 12 },
+    ash: { sp: 110, vy0: -20, vy1: 90, g: 60, life: 0.7, r: 5, colors: ['rgba(140,130,125,.9)', 'rgba(90,82,80,.9)'], kind: 'smoke', spread: 25, drag: 2 },
+    magma: { sp: 120, vy0: 40, vy1: 220, g: 1000, life: 0.9, r: 5, colors: ['#D9480F', '#7C1D06', '#FFB000'], kind: 'rect', spread: 25 },
   };
   function floatText(x, y, text, color) { texts.push({ x, y, text, color, t: 0 }); }
   function confetti() {
@@ -733,7 +1009,9 @@
       const p = parts[i];
       p.life -= dt;
       if (p.life <= 0) { parts[i] = parts[parts.length - 1]; parts.pop(); continue; }
-      p.vy -= p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 6;
+      p.vy -= p.g * dt;
+      if (p.drag) { const k = Math.max(0, 1 - p.drag * dt); p.vx *= k; p.vy *= k; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 6;
       if (p.kind === 'conf') p.vx *= 0.99;
     }
     for (let i = texts.length - 1; i >= 0; i--) { texts[i].t += dt; if (texts[i].t > 0.9) texts.splice(i, 1); }
@@ -744,12 +1022,13 @@
       emberAcc += dt;
       while (emberAcc > 0.045) {
         emberAcc -= 0.045;
-        if (parts.length >= 420) break;
+        if (parts.length >= 650) break;
         const life = rnd(0.35, 0.7);
         parts.push({ x: P.x + rnd(-12, 12), y: P.y + rnd(40, 54), vx: rnd(-25, 25), vy: rnd(40, 110), g: -40, life, max: life, r: rnd(1.4, 2.8), c: pick(['#FFE066', '#FFB000', '#FF6A00', '#FF3D00']), kind: 'dot', rot: 0 });
       }
     }
-    if (P.rocket > 0 && parts.length < 420) {
+    if (FT) updateFire(dt);
+    if (P.rocket > 0 && parts.length < 650) {
       for (let k = 0; k < 2; k++) {
         const life = rnd(0.2, 0.35);
         parts.push({ x: P.x - P.face * 19 + rnd(-3, 3), y: P.y - 2, vx: rnd(-30, 30), vy: rnd(-380, -220), g: 0, life, max: life, r: rnd(3, 7), c: pick(['#FFE066', '#FF9F1C', '#FF5D3D', '#ffffff']), kind: 'dot', rot: 0 });
@@ -765,6 +1044,16 @@
       else if (p.kind === 'rect' || p.kind === 'conf') {
         ctx.save(); ctx.translate(p.x, y); ctx.rotate(p.rot); ctx.fillStyle = p.c;
         ctx.fillRect(-p.r, -p.r * (p.kind === 'conf' ? 0.5 : 0.8), p.r * 2, p.r * (p.kind === 'conf' ? 1 : 1.6)); ctx.restore();
+      } else if (p.kind === 'flash') {
+        const r = p.r * (1 + (1 - p.life / p.max) * 2.2), g = ctx.createRadialGradient(p.x, y, 0, p.x, y, r);
+        g.addColorStop(0, 'rgba(255,255,230,1)'); g.addColorStop(0.35, 'rgba(255,200,80,.85)'); g.addColorStop(1, 'rgba(255,90,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, y, r, 0, TAU); ctx.fill();
+      } else if (p.kind === 'smoke') {
+        ctx.globalAlpha = (p.life / p.max) * 0.55; ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(p.x, y, p.r * (1 + (1 - p.life / p.max) * 1.8), 0, TAU); ctx.fill();
+      } else if (p.kind === 'lava') {
+        ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, y, p.r, 0, TAU); ctx.fill();
+        ctx.globalAlpha *= 0.3; ctx.beginPath(); ctx.arc(p.x, y, p.r * 2.2, 0, TAU); ctx.fill();
       } else { ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, y, p.r * (0.5 + 0.5 * p.life / p.max), 0, TAU); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
@@ -780,7 +1069,7 @@
   }
 
   // ---------------------------------------------------------------- خط أفضل نتيجة
-  let bestAtStart = 0, record = false;
+  let bestAtStart = 0, record = false, deathCause = '';
   function drawBestLine() {
     if (bestAtStart <= 0) return;
     const y = Y(bestAtStart * C.SCORE_DIV);
@@ -889,6 +1178,7 @@
         : 'تحرك بالأسهم ← → أو بالماوس — القفز تلقائي 🦘';
     $('a2hs').hidden = !(isIOS && !standalone && !save.a2hs);
     $('hHero').hidden = !save.hero;
+    $('tag').textContent = isFireSkin() ? 'اصعد فوك البراكين! 🌋' : 'اصعد لأعلى ما تكدر! ☁️';
   }
   function newDemo() { world = Core.createWorld(rand32(), { viewH, demo: true }); parts.length = 0; texts.length = 0; }
   function goHome() {
@@ -898,7 +1188,8 @@
   function startRun() {
     Sfx.init();
     if (save.control === 'tilt') enableTilt();
-    world = Core.createWorld(rand32(), { viewH, hero: !!save.hero });
+    FT = isFireSkin(); deathCause = '';
+    world = Core.createWorld(rand32(), { viewH, hero: !!save.hero, lava: FT });
     state = 'play'; record = false; bestAtStart = save.best;
     $('turbo').hidden = !save.hero; $('heroChip').hidden = !save.hero;
     parts.length = 0; texts.length = 0; ptr.clear(); lastScore = -1; lastCoins = -1; shake = 0;
@@ -933,7 +1224,8 @@
     $('hud').hidden = true; $('tut').hidden = true; $('turbo').hidden = true; Sfx.rocketStop(); ptr.clear();
 
     $('oHero').hidden = !hero;
-    $('oTitle').textContent = hero ? '🦸 خلصت جولة البطل' : isRec && prevBest > 0 ? 'عاشت إيدك! 🔥'
+    $('oTitle').textContent = hero ? '🦸 خلصت جولة البطل'
+      : FT && deathCause === 'fall' ? 'ذبت بالحمم! 🌋' : FT && deathCause === 'hit' ? 'انفجرت! 💥' : isRec && prevBest > 0 ? 'عاشت إيدك! 🔥'
       : prevBest > 0 && sc >= prevBest * 0.8 ? 'قربت كلش! 😮'
       : pick(['وكعت! 😵', 'أوف! 😅', 'ولا يهمك 💪', 'مرة لخ! 🙌']);
     $('oRecord').hidden = !(isRec && prevBest > 0);
@@ -1046,20 +1338,25 @@
     for (const e of evs) {
       switch (e.type) {
         case 'jump':
-          if (e.v === 'jump') { burst(e.x, e.y, 5, FX.dust); if (live) Sfx.jump(save.skin); }
-          else { burst(e.x, e.y, 14, FX.boost); if (live) Sfx.boost(save.skin, e.v); }
+          if (e.v === 'jump') { burst(e.x, e.y, FT ? 6 : 5, FT ? FX.emberDust : FX.dust); if (live) Sfx.jump(save.skin); }
+          else { if (FT) explode(e.x, e.y + 4, 0.55); else burst(e.x, e.y, 14, FX.boost); if (live) Sfx.boost(save.skin, e.v); }
           break;
-        case 'break': burst(e.x, e.y, 12, FX.chunk); if (live) Sfx.brk(); break;
-        case 'vanish': burst(e.x, e.y, 12, FX.puff); if (live) Sfx.vanish(); break;
+        case 'break':
+          if (FT) { explode(e.x, e.y, 0.7); burst(e.x, e.y, 10, FX.magma); if (live) Sfx.boom(0.6); }
+          else { burst(e.x, e.y, 12, FX.chunk); if (live) Sfx.brk(); }
+          break;
+        case 'vanish': burst(e.x, e.y, 12, FT ? FX.ash : FX.puff); if (live) Sfx.vanish(); break;
         case 'coin': burst(e.x, e.y, 7, FX.spark); floatText(e.x, e.y + 10, '+1', '#FFD23F'); if (live) Sfx.coin(); break;
         case 'rocket': if (live) { Sfx.rocket(); if (e.v !== 'turbo') toast('🚀 صاروخ!'); } break;
         case 'rocketEnd': Sfx.rocketStop(); break;
         case 'shield': if (live) { Sfx.shield(); toast('🛡️ درع!'); } break;
         case 'shieldBreak': burst(e.x, e.y, 16, FX.glass); shake = 0.25; if (live) Sfx.shieldBreak(); break;
-        case 'stomp': burst(e.x, e.y, 14, FX.stars); shake = Math.max(shake, 0.12); if (e.v) floatText(e.x, e.y + 20, '+' + e.v, '#FFD23F'); if (live) Sfx.stomp(); break;
-        case 'hit': shake = 0.5; if (live) { Sfx.lose(save.skin, 'hit'); vibrate(120); } break;
-        case 'fall': if (live) { Sfx.lose(save.skin, 'fall'); vibrate(60); } break;
-        case 'milestone': if (live) { Sfx.milestone(); toast(`${pick(['🎉 كفو!', '🔥 وحش!', '⭐ استمر!', '💪 بطل!'])} ${e.v}`); } break;
+        case 'stomp':
+          if (FT) { explode(e.x, e.y, 1); if (live) Sfx.boom(1); } else { burst(e.x, e.y, 14, FX.stars); shake = Math.max(shake, 0.12); }
+          if (e.v) floatText(e.x, e.y + 20, '+' + e.v, '#FFD23F'); if (live) Sfx.stomp(); break;
+        case 'hit': deathCause = 'hit'; shake = 0.5; if (FT) { explode(e.x, e.y, 1.2); if (live) Sfx.boom(1.2); } if (live) { Sfx.lose(save.skin, 'hit'); vibrate(120); } break;
+        case 'fall': deathCause = 'fall'; if (FT) lavaSplash(e.x); if (live) { Sfx.lose(save.skin, 'fall'); vibrate(60); } break;
+        case 'milestone': if (live) { Sfx.milestone(); toast(`${pick(FT ? ['🌋 بركان!', '🔥 نار!', '💥 انفجار!', '☄️ نيزك!'] : ['🎉 كفو!', '🔥 وحش!', '⭐ استمر!', '💪 بطل!'])} ${e.v}`); } break;
         case 'over': endRun(); break;
       }
     }
@@ -1146,18 +1443,20 @@
     drawGround();
     if (!world.demo) {
       // بالرئيسية نخلي الخلفية نظيفة: سما وأرض والشخصية بس
-      if (world.hero) drawNet(time);
+      if (world.hero && !FT) drawNet(time);
       drawBestLine();
       for (const p of world.platforms) drawPlatform(p, time);
       for (const c of world.coins) if (!c.taken) drawCoin(c, time);
     }
     for (const e of world.enemies) drawEnemy(e, time, P);
     drawPlayer(P, time);
+    if (FT) { drawLava(time); if (world.hero && !world.demo) drawNet(time); }
     drawFx();
     if (state === 'shop') drawPreviews(time);
   }
   function frame(now) {
     requestAnimationFrame(frame);
+    FT = isFireSkin();
     let dt = (now - lastT) / 1000; lastT = now;
     if (!(dt > 0)) dt = 0;
     if (dt > 0.1) dt = 0.1;
@@ -1180,5 +1479,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC };
 })();
