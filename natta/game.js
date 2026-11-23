@@ -3302,6 +3302,7 @@
     const seed = window.__seed != null ? window.__seed : (Math.random() * 4294967295) >>> 0;
     WS.info = WD.enter(skinById(save.skin), { at: opts.at, seed });
     state = 'world'; resumeTo = 'world';
+    clearTimeout(toastT); $('toast').classList.remove('show'); // رسالة «نجهّز العالم» تختفي أول ما يبين
     show(null); $('hud').hidden = true; $('turbo').hidden = true; $('tut').hidden = true; $('banner').classList.remove('show'); $('count').hidden = true;
     $('g3d').hidden = false; $('vign').hidden = false; $('app').classList.add('v3d');
     $('vbar').hidden = false; $('vMap').hidden = false; $('jumpBtn').hidden = false; $('actBtn').hidden = true; $('skip').hidden = true;

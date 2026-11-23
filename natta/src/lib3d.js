@@ -114,9 +114,30 @@ export function waterNormalTexture() {
   t.colorSpace = ''; return t;
 }
 
+/** شجر شفاف حوالين البطل: إذا أغصان أو جذع بين الكاميرا والبطل تنفتح بيها فتحة ناعمة (تنقيط) حتى يبين، وكذلك اللي لاصك بالكاميرا.
+ *  U.see = { value: Vector4(بكسل x، بكسل y، عمق البطل، نصف قطر الفتحة بالبكسل) }، والقطر 0 = مطفي */
+export function seeThroughShader(sh, U) {
+  if (!U || !U.see) return;
+  sh.uniforms.uSee = U.see;
+  sh.vertexShader = 'varying float vSeeZ;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vSeeZ = -mvPosition.z;');
+  sh.fragmentShader = 'uniform vec4 uSee; varying float vSeeZ;\n' + sh.fragmentShader.replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+    if (uSee.w > 0.0) {
+      float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+      float sd = distance(gl_FragCoord.xy, uSee.xy) / uSee.w;
+      if (vSeeZ < uSee.z - 0.7 && sd < 1.0 && ign >= smoothstep(0.5, 1.0, sd)) discard;
+      if (vSeeZ < 1.2 && ign >= smoothstep(0.45, 1.2, vSeeZ)) discard;
+    }`);
+}
+export function seeThroughMat(base, U) {
+  const m = base.clone();
+  m.onBeforeCompile = (sh) => seeThroughShader(sh, U);
+  m.customProgramCacheKey = () => 'see' + (base.flatShading ? 'f' : '') + base.side + (base.vertexColors ? 'v' : '');
+  return m;
+}
 export function swayMat(base, amp, h0, U) {
   const m = base.clone();
   m.onBeforeCompile = (sh) => {
+    seeThroughShader(sh, U);
     sh.uniforms.uTime = U.time; sh.uniforms.uWind = U.wind || { value: 0 };
     sh.vertexShader = 'uniform float uTime; uniform float uWind;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
       float hh = max(0.0, transformed.y - ${h0.toFixed(2)});
@@ -128,7 +149,7 @@ export function swayMat(base, amp, h0, U) {
       transformed.x += ((sin(uTime * (1.25 + uWind * 3.0) + ph) + 0.35 * sin(uTime * 2.7 + ph * 1.7)) * ${amp.toFixed(4)} * wk + uWind * ${(amp * 8).toFixed(4)}) * hh * hh;
       transformed.z += cos(uTime * (1.05 + uWind * 2.5) + ph) * ${(amp * 0.5).toFixed(4)} * wk * hh * hh;`);
   };
-  m.customProgramCacheKey = () => 'sway' + amp + '_' + h0 + (base.flatShading ? 'f' : '') + base.side;
+  m.customProgramCacheKey = () => 'sway' + amp + '_' + h0 + (base.flatShading ? 'f' : '') + base.side + (U && U.see ? 'see' : '');
   return m;
 }
 

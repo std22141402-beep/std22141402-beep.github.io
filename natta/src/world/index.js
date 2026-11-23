@@ -21,7 +21,7 @@ export function createWorld(canvas, cfg = {}) {
   }
   function step(dt, inp = {}) {
     if (S.scope) { cam.scopeYaw = clamp(cam.scopeYaw + (inp.dyaw || 0) * 0.35, -0.9, 0.9); cam.scopePitch = clamp(cam.scopePitch + (inp.dpitch || 0) * -0.3, -0.75, 0.2); }
-    else { cam.yaw += inp.dyaw || 0; cam.pitch = clamp(cam.pitch + (inp.dpitch || 0), 0.06, 1.15); }
+    else { cam.yaw += inp.dyaw || 0; cam.pitch = clamp(cam.pitch + (inp.dpitch || 0), -0.3, 1.15); } // تكدر تباوع لفوك شوية (القمة من الوادي)
     const jx = inp.jx || 0, jy = inp.jy || 0, cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
     const cmd = { mx: cy * jy - sy * jx, mz: sy * jy + cy * jx, mag: inp.mag || 0, jump: !!inp.jump, sneak: !!inp.sneak };
     const ev = sim.step(dt, cmd);

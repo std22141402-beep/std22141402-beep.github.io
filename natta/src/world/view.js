@@ -1,7 +1,7 @@
 // 🎨 نطّة — رسم العالم المفتوح (three.js): الأرض قطع بدرجتين تفاصيل، الغابة، الوادي، الساحة، الماي، الكائنات، والكاميرا.
 // يقرا من الجغرافيا (geo) والمحاكاة (sim) بس، وما يغيّر بيهم شي.
 import {
-  Scene, PerspectiveCamera, OrthographicCamera, Color, Fog, HemisphereLight, DirectionalLight, Mesh, Group, InstancedMesh, Object3D, Vector3,
+  Scene, PerspectiveCamera, OrthographicCamera, Color, Fog, HemisphereLight, DirectionalLight, Mesh, Group, InstancedMesh, Object3D, Vector3, Vector4,
   PlaneGeometry, SphereGeometry, CylinderGeometry, ConeGeometry, IcosahedronGeometry, DodecahedronGeometry, TorusGeometry, LatheGeometry,
   CapsuleGeometry, BoxGeometry, CircleGeometry, RingGeometry, TubeGeometry, ShapeGeometry, Shape, Vector2, BufferGeometry, BufferAttribute,
   MeshLambertMaterial, MeshPhongMaterial, MeshBasicMaterial, PointsMaterial, Points, DoubleSide, AdditiveBlending, LineSegments, LineBasicMaterial,
@@ -9,7 +9,7 @@ import {
 } from 'three';
 import {
   TAU, clamp, lerp, smooth, damp, rng, hash2, vnoise, fbm, paint, tf, along, merge, mix, canvasTex, _c, _ca, _cb, angDiff, dampAngle,
-  phong, shadowAll, makeSky, glowTexture, waterNormalTexture, swayMat, palmGeo, treeGeo, bushGeo, rockGeo, reedGeo, tuftGeo, makeHero, makeMan,
+  phong, shadowAll, makeSky, glowTexture, waterNormalTexture, swayMat, seeThroughMat, palmGeo, treeGeo, bushGeo, rockGeo, reedGeo, tuftGeo, makeHero, makeMan,
 } from '../lib3d.js';
 
 const D2R = Math.PI / 180;
@@ -20,7 +20,7 @@ export function createView(cfg, G, sim) {
   const FOG = new Color('#CFDFE8');
   scene.background = FOG; scene.fog = new Fog(FOG, 60, 400);
   const camera = new PerspectiveCamera(62, 0.5, 0.1, 2600);
-  const U = { time: { value: 0 }, wind: { value: 0 } };
+  const U = { time: { value: 0 }, wind: { value: 0 }, see: { value: new Vector4(0, 0, 0, 0) } };
   const R = rng(4242);
   const hemi = new HemisphereLight('#D2E6FF', '#6A8A4E', 1.0); scene.add(hemi);
   const SUN = new Vector3(0.5, 0.72, 0.45).normalize();
@@ -169,8 +169,9 @@ export function createView(cfg, G, sim) {
   scatterChunks(geos.pineB, mats.pine, vg.pineB, { cast: true, lod: lodPine(6, 2.5, true) });
   scatterChunks(geos.oak, mats.tree, vg.oak, { cast: true, lod: tf(paint(new IcosahedronGeometry(1.5, 0), '#3E7D3A'), 0, 3.1, 0) });
   const hedgeGeo = merge([tf(paint(new IcosahedronGeometry(0.85, 0), (c, x, y, z) => mix(c, '#1E4A24', '#4C8A3E', 0.35 + y * 0.4 + hash2(x * 9, z * 9) * 0.3)), 0, 0.55, 0, 0, 0, 0, 1, 0.95, 1), tf(paint(new IcosahedronGeometry(0.6, 0), (c, x, y) => mix(c, '#2A5C2C', '#5E9E48', 0.5 + y * 0.5)), 0.25, 1.25, 0.1)]);
-  scatterChunks(hedgeGeo, matFlat, vg.hedge, { size: 26, far: 70, cast: false });
-  scatterChunks(bushGeo(), matFlat, vg.bush, { size: 30, far: 70, small: true });
+  const matSee = seeThroughMat(matFlat, U); // سياج المتاهة والشجيرات: تنفتح إذا غطّت البطل
+  scatterChunks(hedgeGeo, matSee, vg.hedge, { size: 26, far: 70, cast: false });
+  scatterChunks(bushGeo(), matSee, vg.bush, { size: 30, far: 70, small: true });
   scatterChunks(rockGeo(), matFlat, vg.rock, { size: 30, far: 120 });
   // الوادي
   const palmGeos = [palmGeo(rng(3), 1.1, 9), palmGeo(rng(8), -0.8, 10), palmGeo(rng(15), 0.5, 8)];
@@ -495,18 +496,21 @@ export function createView(cfg, G, sim) {
     cam.tgt.x = damp(cam.tgt.x, _ct.x, k, dt); cam.tgt.z = damp(cam.tgt.z, _ct.z, k, dt); cam.tgt.y = damp(cam.tgt.y, _ct.y, h.air && !story && !glide ? 6 : 10, dt);
     cam.dist = damp(cam.dist, wantDist, 3, dt);
     const dir = (dd, pt) => _cp.set(cam.tgt.x - Math.cos(cam.yaw) * Math.cos(pt) * dd, cam.tgt.y + Math.sin(pt) * dd, cam.tgt.z - Math.sin(cam.yaw) * Math.cos(pt) * dd);
-    let bTrunk = false;
-    const blocked = (dd, pt) => {
-      bTrunk = false;
+    let bType = '';
+    const blocked = (dd, pt) => { // يفحص الخط من جسم البطل (مو بس راسه) للكاميرا
+      bType = '';
       for (let i = 1; i <= 8; i++) {
         const kk = i / 8; dir(dd * kk, pt); const gy = G.H(_cp.x, _cp.z);
-        if (_cp.y < gy + 0.4) return kk;
-        if (!story && G.tallNear(_cp.x, _cp.z, (c) => { const dx = _cp.x - c.x, dz = _cp.z - c.z, d2 = dx * dx + dz * dz, rt = c.r + 0.3; if (c.tree && d2 < rt * rt && _cp.y < gy + 12) { bTrunk = true; return true; } /* جذع بين الكاميرا والبطل */ const rr = c.r * (c.tree ? 3.4 : 1.2); return i >= 2 && !S.summit && d2 < rr * rr && _cp.y > gy + 1.9 && _cp.y < gy + 9; })) return kk;
+        if (_cp.y < gy + 0.4 || _cp.y - 0.85 * (1 - kk) < gy + 0.2) { bType = 'terr'; return kk; }
+        bType = 'canopy';
+        if (!story && G.tallNear(_cp.x, _cp.z, (c) => { const dx = _cp.x - c.x, dz = _cp.z - c.z, d2 = dx * dx + dz * dz; const rr = c.r * (c.tree ? 3.4 : 1.2); return i >= 2 && !S.summit && d2 < rr * rr && _cp.y > gy + 1.9 && _cp.y < gy + 9; })) return kk;
       }
+      bType = '';
       return 0;
     };
     let pitch = story ? 0.35 : glide ? Math.max(cam.pitch, 0.42) : cam.pitch, dist = cam.dist, kb = blocked(dist, pitch);
-    if (kb && !bTrunk) { const low = Math.min(pitch, 0.04), kb2 = blocked(dist, low); if (!kb2 || kb2 > kb) { pitch = low; kb = kb2; } }
+    if (kb && bType === 'canopy') { const low = Math.min(pitch, 0.04), kb2 = blocked(dist, low); if (!kb2 || kb2 > kb) { pitch = low; kb = kb2; } } // تحت الأغصان
+    else if (kb) { for (const up of [0.3, 0.6]) { const hi = Math.min(pitch + up, 1.05), kb2 = blocked(dist, hi); if (!kb2 || kb2 > kb) { pitch = hi; kb = kb2; } if (!kb) break; } } // الأرض تغطّيه: نصعد فوك بدل ما نلزگ بيه
     if (kb) dist = Math.max(1.8, dist * (kb - 1 / 8));
     cam.effPitch = cam.effPitch == null ? pitch : damp(cam.effPitch, pitch, pitch < cam.effPitch ? 8 : 2.5, dt);
     cam.effDist = cam.effDist == null ? dist : damp(cam.effDist, dist, dist < cam.effDist ? 10 : 2.5, dt);
@@ -673,12 +677,24 @@ export function createView(cfg, G, sim) {
     for (const c of tChunks) { const d2 = (c.x - cx) ** 2 + (c.z - cz) ** 2, hi = c.hi && d2 < hiR * hiR; if (c.hi) c.hi.visible = hi; c.lo.visible = !hi; }
     const sx = Math.round(e.x / 0.25) * 0.25, sz = Math.round(e.z / 0.25) * 0.25;
     sun.target.position.set(sx, e.y, sz); sun.position.set(sx + SUN.x * 90, e.y + SUN.y * 90, sz + SUN.z * 90);
+    updateSee(e);
     renderer.render(scene, camera);
+  }
+  const _sv = new Vector3(), _sb = new Vector2();
+  function updateSee(e) { // مكان البطل على الشاشة وعمقه، للفتحة بالشجر
+    const see = U.see.value;
+    if (S.scope || e.mode === 'lift' || e.mode === 'carry') { see.w = 0; return; }
+    camera.updateMatrixWorld();
+    _sv.set(e.x, e.y + 0.75, e.z).applyMatrix4(camera.matrixWorldInverse); const depth = -_sv.z;
+    if (depth < 0.3) { see.w = 0; return; }
+    _sv.set(e.x, e.y + 0.75, e.z).project(camera); renderer.getDrawingBufferSize(_sb);
+    const rad = (1.35 / (depth * Math.tan((camera.fov * Math.PI) / 360))) * (_sb.y / 2);
+    see.set((_sv.x * 0.5 + 0.5) * _sb.x, (_sv.y * 0.5 + 0.5) * _sb.y, depth, rad);
   }
   const _p = new Vector3();
   function project(x, y, z) { _p.set(x, y, z).project(camera); return { x: (_p.x + 1) / 2, y: (1 - _p.y) / 2, vis: _p.z < 1 && _p.z > -1 }; }
   function portrait(size = 160) {
-    scene.updateMatrixWorld();
+    scene.updateMatrixWorld(); U.see.value.w = 0;
     const hp = new Vector3(); mer.head.getWorldPosition(hp);
     const w = renderer.domElement.width, h = renderer.domElement.height, pc = new PerspectiveCamera(28, w / h, 0.05, 1200);
     const fwd = new Vector3(Math.sin(mer.root.rotation.y), 0, Math.cos(mer.root.rotation.y));
@@ -694,7 +710,7 @@ export function createView(cfg, G, sim) {
   }
   /** صورة العالم كله من فوك (راس الصورة = +x = الشرق صوب الوادي... الشمال بالبوصلة). الكائنات والخيمة مخفية: إنت تدوّرهم وتأشّرهم */
   function mapShot(size = 1024) {
-    buildHi(1e9);
+    buildHi(1e9); U.see.value.w = 0;
     const oc = new OrthographicCamera(-HALF, HALF, HALF, -HALF, 1, 900);
     oc.position.set(0, 600, 0); oc.up.set(1, 0, 0); oc.lookAt(0, 0, 0);
     const hide = [campG, mer.root, gzM.root, coinMesh, zone, clouds, ...birds, ...butterflies, ...beastV.map((b) => b.m.root), ...(hero ? [hero.root, hero.chute, hero.drop, hero.rope] : [])];
