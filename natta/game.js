@@ -229,6 +229,26 @@
     },
     lavaPop(S) { S.D.rev = 0.2; S.voice({ f: 180, f1: 520, dur: 0.08, vol: 0.12 }); S.noise({ type: 'bandpass', f: 900, q: 3, dur: 0.05, vol: 0.05 }); },
     /** رعد: «طق» حاد إذا قريب، وبعده هدير يتدحرج */
+    /** وضع الحماس: صعود قوي وبعده كورد لامع */
+    fever(S) {
+      S.D.rev = 0.35;
+      S.noise({ type: 'bandpass', f: 300, f1: 4000, glide: 0.5, dur: 0.6, vol: 0.18, attack: 0.45, q: 1.5 });
+      [0, 4, 7, 12].forEach((k, i) => S.voice({ type: 'sawtooth', f: mf(62 + k), t: 0.45 + i * 0.05, dur: 0.6, vol: 0.06, attack: 0.01, filter: ['lowpass', 4000, 1200, 1] }));
+      S.voice({ type: 'square', f: mf(74), t: 0.45, dur: 0.5, vol: 0.05, vib: [7, 8], filter: ['lowpass', 3000] });
+    },
+    feverEnd(S) { S.D.rev = 0.3; S.voice({ type: 'sawtooth', f: 600, f1: 150, dur: 0.5, vol: 0.06, filter: ['lowpass', 2000, 400] }); S.noise({ type: 'bandpass', f: 3000, f1: 300, dur: 0.5, vol: 0.08, q: 1.2 }); },
+    combo(S, n = 5) { S.D.rev = 0.25; const b = 72 + Math.min(12, (n / 5 - 1) * 2); [0, 4, 7].forEach((k, i) => S.voice({ type: 'triangle', f: mf(b + k), t: i * 0.05, dur: 0.25, vol: 0.1, attack: 0.003 })); },
+    slowmo(S) { S.D.rev = 0.5; S.voice({ f: 220, f1: 70, dur: 0.6, vol: 0.18, attack: 0.02 }); S.noise({ f: 1200, f1: 200, dur: 0.6, vol: 0.12, attack: 0.25 }); },
+    warn(S) { S.D.rev = 0.15; [0, 0.1].forEach((t) => S.voice({ type: 'square', f: 1320, t, dur: 0.06, vol: 0.045, attack: 0.002, filter: ['lowpass', 4000] })); },
+    /** بداية حدث: «ووش» وبعده صفارة للخطر أو نغمة حلوة للهدايا */
+    event(S, danger = 0) {
+      S.D.rev = 0.35; S.noise({ type: 'highpass', f: 800, f1: 5000, dur: 0.45, vol: 0.12, attack: 0.3 });
+      if (danger) [880, 660, 880, 660].forEach((f, i) => S.voice({ type: 'square', f, t: 0.35 + i * 0.16, dur: 0.14, vol: 0.05, filter: ['lowpass', 3000] }));
+      else [76, 79, 84].forEach((m, i) => S.voice({ f: mf(m), t: 0.35 + i * 0.08, dur: 0.4, vol: 0.12, attack: 0.003 }));
+    },
+    revive(S) { S.D.rev = 0.45; [60, 64, 67, 72, 76, 79, 84].forEach((m, i) => S.voice({ type: 'triangle', f: mf(m), t: i * 0.05, dur: 0.5, vol: 0.1, attack: 0.003 })); S.noise({ type: 'highpass', f: 3000, f1: 8000, dur: 0.6, vol: 0.06, attack: 0.3 }); },
+    mission(S) { S.D.rev = 0.35; [79, 84, 88, 91].forEach((m, i) => { S.voice({ f: mf(m), t: i * 0.07, dur: 0.6, vol: 0.12, attack: 0.003 }); S.voice({ f: mf(m) * 2, t: i * 0.07, dur: 0.3, vol: 0.04, attack: 0.002 }); }); },
+    count(S, n = 1) { S.D.rev = 0.2; S.voice({ type: 'square', f: n ? 660 : 1320, dur: n ? 0.12 : 0.3, vol: 0.07, attack: 0.003, filter: ['lowpass', 4000] }); },
     /** طيارة نفاثة تعبر: هدير يعلى ويوطى (دوبلر) ويمشي من جهة لجهة */
     jet(S, dir = 1) {
       S.D.rev = 0.3; const d = dir >= 0 ? 1 : -1;
@@ -308,6 +328,10 @@
       lavaPop() { if (ok()) FXS.lavaPop(plain()); },
       thunder(near, delay) { if (ok()) FXS.thunder(plain(), near ? 1 : 0, delay || 0); },
       jet(dir) { if (ok()) FXS.jet(plain(), dir); },
+      fever() { if (ok()) FXS.fever(plain()); }, feverEnd() { if (ok()) FXS.feverEnd(plain()); },
+      combo(n) { if (ok()) FXS.combo(plain(), n); }, slowmo() { if (ok()) FXS.slowmo(plain()); },
+      warn() { if (ok()) FXS.warn(plain()); }, event(danger) { if (ok()) FXS.event(plain(), danger ? 1 : 0); },
+      revive() { if (ok()) FXS.revive(plain()); }, mission() { if (ok()) FXS.mission(plain()); }, count(n) { if (ok()) FXS.count(plain(), n); },
       whoosh() { if (ok()) FXS.whoosh(plain()); },
       click() { if (!ok()) return; plain().voice({ f: 620, f1: 820, dur: 0.06, vol: 0.12, rev: 0 }); },
       buy() { if (!ok()) return; const s = plain(); [880, 1175, 1568].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.07, dur: 0.1, vol: 0.07, filter: ['lowpass', 5000] })); },
@@ -514,6 +538,8 @@
         duckUntil = t + 0.9; mode = 'over';
       },
       fill() { if (m) m.fill = true; },
+      /** الحركة البطيئة: الموسيقى تنكتم لحظة وترجع */
+      slowmo() { if (!m) return; const t = ac.currentTime; m.lp.frequency.cancelScheduledValues(t); m.lp.frequency.setTargetAtTime(900, t, 0.05); m.lp.frequency.setTargetAtTime(LP[mode] || 16000, t + 0.45, 0.2); },
       celebrate() { if (m) { m.modNext = m.mod + 2; m.fill = true; } },
       reset() { if (m) { m.mod = 0; m.modNext = 0; m.section = -1; m.inten = Math.min(m.inten, 1); m.crashNext = true; m.fill = false; } },
       /** نوتة القفزة: أقرب نغمة من الكورد اللي ينعزف هسه */
@@ -694,7 +720,7 @@
     if (p.type === 'g') return;
     const y = Y(p.y);
     if (y < -60 || y > viewH + 40) return;
-    const [main, dark, hi] = (FT ? PLAT_FIRE : PLAT)[p.type];
+    const [main, dark, hi] = p.rescue ? ['#FFD23F', '#C99300', '#FFF6C4'] : (FT ? PLAT_FIRE : PLAT)[p.type]; // منصة الإنقاذ ذهبية
     if (p.broken) {
       ctx.save(); ctx.globalAlpha = clamp(1 - p.rot / 2.5, 0, 1);
       for (const side of [-1, 1]) {
@@ -972,6 +998,11 @@
     for (const off of [0, -C.W, C.W]) {
       const x = P.x + off;
       if (x < -45 || x > C.W + 45) continue;
+      if (world.feverT > 0) { // هالة الحماس
+        const ag = ctx.createRadialGradient(x, y - 22, 6, x, y - 22, 46);
+        ag.addColorStop(0, `hsla(${(t * 200) % 360},100%,70%,.55)`); ag.addColorStop(1, 'rgba(255,200,0,0)');
+        ctx.fillStyle = ag; ctx.beginPath(); ctx.arc(x, y - 22, 46, 0, TAU); ctx.fill();
+      }
       ctx.save(); ctx.translate(x, y); drawHero(ctx, sk, o); ctx.restore();
     }
     ctx.globalAlpha = 1;
@@ -1627,6 +1658,7 @@
     try { ctx.direction = 'ltr'; } catch (e) { /* الصفحة RTL، والأرقام مثل +1 لازم تنكتب LTR */ }
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '900 20px -apple-system,system-ui,sans-serif'; ctx.lineJoin = 'round';
     for (const tx of texts) {
+      try { ctx.direction = /[\u0600-\u06FF]/.test(tx.text) ? 'rtl' : 'ltr'; } catch (e) { /* */ }
       const y = Y(tx.y + tx.t * 60);
       ctx.globalAlpha = clamp(1.4 - tx.t * 1.6, 0, 1);
       ctx.lineWidth = 5; ctx.strokeStyle = '#24305e'; ctx.strokeText(tx.text, tx.x, y);
@@ -1720,11 +1752,11 @@
 
   // ---------------------------------------------------------------- الواجهة
   let state = 'home', tutTimer = 0, lastScore = -1, lastCoins = -1;
-  const SCREENS = ['home', 'pause', 'over', 'shop', 'code'];
+  const SCREENS = ['home', 'pause', 'over', 'shop', 'code', 'revive', 'missions'];
   function show(id) { for (const s of SCREENS) $(s).hidden = s !== id; }
   let toastT = 0;
   function toast(text, ms = 1300) {
-    const el = $('toast'); el.textContent = text; el.classList.add('show');
+    const el = $('toast'); el.textContent = text; el.classList.toggle('long', [...text].length > 18); el.classList.add('show');
     clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), ms);
   }
   function tutSeen() {
@@ -1760,6 +1792,9 @@
     if (save.control === 'tilt') enableTilt();
     FT = isFireSkin(); deathCause = ''; clearSky();
     world = Core.createWorld(rand32(), { viewH, hero: !!save.hero, lava: FT });
+    runId++; doneThisRun = []; slowT = 0; lastCombo = -1; misTimer = 1;
+    ensureMissions(); for (const m of save.missions) { m.run = -1; m.fresh = false; m.checked = true; }
+    $('banner').classList.remove('show'); $('count').hidden = true;
     state = 'play'; record = false; bestAtStart = save.best;
     $('turbo').hidden = !save.hero; $('heroChip').hidden = !save.hero;
     parts.length = 0; texts.length = 0; ptr.clear(); lastScore = -1; lastCoins = -1; shake = 0;
@@ -1768,12 +1803,13 @@
     Sfx.click(); Music.reset(); Music.setMode('play');
   }
   function pause() {
-    if (state !== 'play') return;
+    if (state !== 'play' && state !== 'countdown') return;
+    clearTimeout(countTimer); $('count').hidden = true;
     state = 'pause'; show('pause'); Sfx.rocketStop(); ptr.clear(); keyL = keyR = false; $('turbo').hidden = true; Music.setMode('pause');
   }
   function resume() {
     if (state !== 'pause') return;
-    state = 'play'; show(null); lastT = performance.now(); acc = 0; $('turbo').hidden = !world.hero; Music.setMode('play');
+    startCountdown(); // 3-2-1 حتى تلحك تحط إصبعك
   }
   function countUp(el, to) {
     const t0 = performance.now(), dur = 700;
@@ -1794,12 +1830,21 @@
     $('hud').hidden = true; $('tut').hidden = true; $('turbo').hidden = true; Sfx.rocketStop(); ptr.clear();
 
     $('oHero').hidden = !hero;
+    checkMissions(true);
     $('oTitle').textContent = hero ? '🦸 خلصت جولة البطل'
+      : deathCause === 'meteor' ? 'ضربك نيزك! ☄️'
       : FT && deathCause === 'fall' ? 'ذبت بالحمم! 🌋' : FT && deathCause === 'hit' ? 'انفجرت! 💥' : isRec && prevBest > 0 ? 'عاشت إيدك! 🔥'
       : prevBest > 0 && sc >= prevBest * 0.8 ? 'قربت كلش! 😮'
       : pick(['وكعت! 😵', 'أوف! 😅', 'ولا يهمك 💪', 'مرة لخ! 🙌']);
     $('oRecord').hidden = !(isRec && prevBest > 0);
     $('oBest').textContent = save.best; $('oCoins').textContent = '+' + gained;
+    const st = $('oStats'); st.textContent = '';
+    for (const s of [`⚡ أعلى كومبو ${world.maxCombo}`, `🔥 حماس ×${world.fevers}`, `👾 ${world.stomps}`, world.revives ? '💪 فرصة ثانية' : '', world.clutches ? `😮 نجاة ×${world.clutches}` : '']) {
+      if (!s) continue; const sp = document.createElement('span'); sp.textContent = s; st.appendChild(sp);
+    }
+    const om = $('oMis'); om.textContent = '';
+    if (!hero) { const r = runStats(); for (const d of doneThisRun) om.appendChild(missionRow(d, null, true)); for (const m of save.missions) om.appendChild(missionRow(m, r, false)); }
+    $('oMisWrap').hidden = hero;
     $('oScore').textContent = '0';
 
     const nx = $('oNext');
@@ -1874,6 +1919,8 @@
   $('pauseBtn').onclick = () => { Sfx.click(); pause(); };
   $('openShop').onclick = openShop;
   $('oNext').onclick = openShop;
+  $('rvYes').onclick = acceptRevive; $('rvNo').onclick = () => { Sfx.click(); declineRevive(); };
+  $('hMis').onclick = openMissions; $('mBack').onclick = () => { Sfx.click(); goHome(); };
   $('shopBack').onclick = () => { Sfx.click(); goHome(); };
   $('mus').onclick = () => { Sfx.init(); save.music = !save.music; persist(); refreshHome(); Sfx.click(); if (save.music) toast('🎵 الموسيقى شغّالة'); };
   $('snd').onclick = () => { Sfx.init(); save.sound = !save.sound; if (!save.sound) Sfx.rocketStop(); persist(); refreshHome(); Sfx.click(); };
@@ -1927,10 +1974,27 @@
         case 'stomp':
           if (FT) { explode(e.x, e.y, 1); if (live) Sfx.boom(1); } else { burst(e.x, e.y, 14, FX.stars); shake = Math.max(shake, 0.12); }
           if (e.v) floatText(e.x, e.y + 20, '+' + e.v, '#FFD23F'); if (live) Sfx.stomp(); break;
-        case 'hit': deathCause = 'hit'; shake = 0.5; if (live) Music.tapeStop(); if (FT) { explode(e.x, e.y, 1.2); if (live) Sfx.boom(1.2); } if (live) { Sfx.lose(save.skin, 'hit'); vibrate(120); } break;
+        case 'hit': deathCause = e.v === 'meteor' ? 'meteor' : 'hit'; if (e.v === 'meteor') explode(e.x, e.y, 1); shake = 0.5; if (live) Music.tapeStop(); if (FT) { explode(e.x, e.y, 1.2); if (live) Sfx.boom(1.2); } if (live) { Sfx.lose(save.skin, 'hit'); vibrate(120); } break;
         case 'fall': deathCause = 'fall'; if (FT) lavaSplash(e.x); if (live) Music.tapeStop(); if (live) { Sfx.lose(save.skin, 'fall'); vibrate(60); } break;
         case 'milestone': if (FT) { strike(); setTimeout(strike, 180); } if (live) { Sfx.milestone(); Music.fill(); toast(`${pick(FT ? ['🌋 بركان!', '🔥 نار!', '💥 انفجار!', '☄️ نيزك!', '⚡ صاعقة!'] : ['🎉 كفو!', '🔥 وحش!', '⭐ استمر!', '💪 بطل!'])} ${e.v}`); } break;
-        case 'over': endRun(); break;
+        case 'over': offerRevive(); break;
+        case 'fever': if (live) { banner('🔥', 'حماس!', 'ما تموت · عملات ×2 · مغناطيس', 'fever'); Sfx.fever(); shake = Math.max(shake, 0.2); burst(e.x, e.y + 20, 24, FX.boost); } break;
+        case 'feverEnd': if (live) Sfx.feverEnd(); break;
+        case 'combo': floatText(e.x, e.y + 70, `كومبو ${e.v}! +1`, '#C9B6FF'); if (live) Sfx.combo(e.v); break;
+        case 'clutch': slowmo('😮 نجاة!'); break;
+        case 'nearMiss': slowmo('😮 فلتت!', 0.32); break;
+        case 'eventStart': {
+          const I = EVENT_INFO[e.v];
+          const sub = e.v === 'wind' ? (world.ev && world.ev.dir > 0 ? 'تدفعك يمين ➡️' : 'تدفعك يسار ⬅️') : I.sub;
+          if (live) { banner(I.icon, I.title, sub, I.cls); Sfx.event(e.v === 'meteors'); }
+          break;
+        }
+        case 'eventEnd':
+          if (live && e.v === 'meteors' && world.player.state === 'alive') { world.runCoins += 5; floatText(world.player.x, world.player.y + 70, 'نجيت! +5', '#FFD23F'); toast('✅ نجيت من النيازك!'); Sfx.mission(); }
+          break;
+        case 'meteorWarn': if (live) Sfx.warn(); break;
+        case 'meteorBlock': if (FT) explode(e.x, e.y, 0.6); else burst(e.x, e.y, 16, FX.stars); if (live) Sfx.boom(0.5); break;
+        case 'revive': burst(e.x, e.y, 30, FX.boost); if (live) { Sfx.revive(); toast('💪 كمّل!'); } break;
       }
     }
     evs.length = 0;
@@ -1997,6 +2061,16 @@
     const r = world.player.rocket;
     $('pbar').hidden = !(r > 0);
     if (r > 0) pbarI.style.transform = `scaleX(${r / C.ROCKET_T})`;
+    // عدّاد الحماس والكومبو والحدث
+    const fb = $('fbar'), on = world.feverT > 0;
+    fb.firstElementChild.style.width = Math.round((on ? world.feverT / C.FEVER_T : world.fever) * 100) + '%';
+    fb.classList.toggle('on', on); fb.classList.toggle('full', !on && world.fever > 0.85);
+    const cb = $('combo'), c = world.combo;
+    if (c !== lastCombo) { lastCombo = c; cb.hidden = c < 3; if (c >= 3) { cb.textContent = `⚡ ${c}`; cb.classList.remove('pop'); void cb.offsetWidth; cb.classList.add('pop'); } }
+    const ev = world.ev, ec = $('evChip');
+    ec.hidden = !ev;
+    if (ev) ec.textContent = `${EVENT_INFO[ev.type].icon} ${Math.max(0, Math.ceil(ev.dur - ev.t))}`;
+    misTimer -= dt; if (misTimer <= 0) { misTimer = 0.5; checkMissions(false); }
     if (tutTimer > 0) {
       tutTimer -= dt;
       if (tutTimer < 0.5) $('tut').style.opacity = String(Math.max(0, tutTimer / 0.5));
@@ -2004,17 +2078,235 @@
     }
   }
 
+  // ================================================================ تشويق: حماس، أحداث، نجاة، مهام، فرصة ثانية
+  let slowT = 0, bannerTimer = 0, reviveT = 0, runId = 0, doneThisRun = [], misTimer = 0, lastCombo = 0;
+  const REVIVE_COST = 50;
+  const EVENT_INFO = {
+    coinrain: { icon: '🪙', title: 'مطر عملات!', sub: 'اجمعها قبل ما توكع', cls: 'gold' },
+    wind: { icon: '💨', title: 'رياح قوية!', sub: '', cls: '' },
+    meteors: { icon: '☄️', title: 'مطر نيازك!', sub: 'ابتعد عن العلامة الحمرة ⚠️', cls: 'danger' },
+    lowgrav: { icon: '🪶', title: 'جاذبية خفيفة!', sub: 'قفزاتك صارت أعلى', cls: '' },
+  };
+  function banner(icon, title, sub, cls = '', ms = 2300) {
+    const b = $('banner');
+    $('bnIcon').textContent = icon; $('bnTitle').textContent = title; $('bnSub').textContent = sub || '';
+    $('bnSub').hidden = !sub;
+    b.className = cls; void b.offsetWidth; b.classList.add('show');
+    clearTimeout(bannerTimer); bannerTimer = setTimeout(() => b.classList.remove('show'), ms);
+  }
+  /** حركة بطيئة لحظة (نجاة بأعجوبة) */
+  function slowmo(text, dur = 0.45) {
+    if (state !== 'play') return;
+    slowT = dur;
+    const P = world.player;
+    floatText(P.x, P.y + 60, text, '#FFFFFF');
+    Sfx.slowmo(); Music.slowmo();
+  }
+
+  // ---- رسم المؤثرات الجديدة
+  function drawFeverFx(t) {
+    const ft = world.feverT, k = Math.min(1, ft / 0.6, (C.FEVER_T - ft) / 0.3);
+    if (k <= 0) return;
+    const hue = (t * 140) % 360;
+    const g = ctx.createRadialGradient(C.W / 2, viewH / 2, viewH * 0.28, C.W / 2, viewH / 2, viewH * 0.78);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `hsla(${hue},100%,60%,${0.38 * k})`);
+    ctx.fillStyle = g; ctx.fillRect(-4, -4, C.W + 8, viewH + 8);
+    ctx.strokeStyle = `rgba(255,255,255,${0.32 * k})`; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (let i = 0; i < 16; i++) { // خطوط سرعة
+      const x = hash(i * 3.3) * C.W, len = 60 + hash(i * 7.1) * 90, sp = 900 + hash(i * 1.7) * 600;
+      const y = ((t * sp + hash(i * 5.5) * viewH * 2) % (viewH + len * 2)) - len;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + len); ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+  function drawWind(t, ev) {
+    const k = ev.k, dir = ev.dir;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineWidth = 2;
+    ctx.strokeStyle = FT ? `rgba(255,190,140,${0.32 * k})` : `rgba(255,255,255,${0.5 * k})`;
+    for (let i = 0; i < 18; i++) {
+      const y = hash(i * 2.7) * viewH, len = 40 + hash(i * 4.1) * 70, sp = 520 + hash(i * 6.3) * 420, span = C.W + len * 2;
+      let x = ((t * sp + hash(i * 9.1) * span) % span) - len;
+      if (dir < 0) x = C.W - x;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - dir * len * 0.5, y + Math.sin(t * 3 + i) * 5, x - dir * len, y); ctx.stroke();
+    }
+    for (let i = 0; i < 10; i++) { // ورق شجر بالعالم العادي، ورماد بعالم النار
+      const sp = 260 + hash(i * 3.1) * 200, span = C.W + 40;
+      let x = ((t * sp + hash(i * 8.3) * span) % span) - 20; if (dir < 0) x = C.W - x;
+      const y = hash(i * 5.9) * viewH + Math.sin(t * 2 + i) * 20;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(t * 4 + i); ctx.globalAlpha = 0.85 * k;
+      ctx.fillStyle = FT ? '#6E625C' : ['#7ED957', '#FFB347', '#9BE15D'][i % 3];
+      ctx.beginPath(); ctx.ellipse(0, 0, 5, 2.4, 0, 0, TAU); ctx.fill(); ctx.restore();
+    }
+    ctx.restore();
+  }
+  function drawLowGrav(t, ev) {
+    ctx.fillStyle = `rgba(150,110,255,${0.09 * ev.k})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8);
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 22; i++) {
+      const x = hash(i * 3.9) * C.W + Math.sin(t + i) * 10, span = viewH + 20;
+      const y = viewH - ((t * (30 + hash(i) * 40) + hash(i * 7.7) * span) % span);
+      ctx.strokeStyle = `rgba(255,255,255,${0.55 * ev.k})`;
+      ctx.beginPath(); ctx.arc(x, y, 2 + hash(i * 2.2) * 4, 0, TAU); ctx.stroke();
+    }
+  }
+  function drawMeteorsFx(t) {
+    for (const m of world.meteors) {
+      if (m.warn > 0) { // علامة إنذار بمكان النيزك
+        const a = 0.55 + 0.45 * Math.sin(t * 22), x = m.x;
+        const g = ctx.createLinearGradient(0, 0, 0, viewH * 0.6);
+        g.addColorStop(0, `rgba(255,40,40,${0.3 * a})`); g.addColorStop(1, 'rgba(255,40,40,0)');
+        ctx.fillStyle = g; ctx.fillRect(x - 18, 0, 36, viewH * 0.6);
+        const ty = 122;
+        ctx.fillStyle = `rgba(230,30,30,${0.65 + 0.35 * a})`;
+        ctx.beginPath(); ctx.moveTo(x, ty - 18); ctx.lineTo(x + 17, ty + 12); ctx.lineTo(x - 17, ty + 12); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.font = '900 20px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('!', x, ty + 3);
+        continue;
+      }
+      const y = Y(m.y);
+      if (y < -60 || y > viewH + 60) continue;
+      const tx = m.x - m.vx * 0.18, ty = Y(m.y - m.vy * 0.18);
+      const g = ctx.createLinearGradient(tx, ty, m.x, y);
+      g.addColorStop(0, 'rgba(255,120,30,0)'); g.addColorStop(1, 'rgba(255,210,90,.95)');
+      ctx.strokeStyle = g; ctx.lineWidth = 15; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(m.x, y); ctx.stroke(); ctx.lineCap = 'butt';
+      ctx.fillStyle = 'rgba(255,140,40,.35)'; ctx.beginPath(); ctx.arc(m.x, y, 22, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#5A4038'; ctx.beginPath(); ctx.arc(m.x, y, 13, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#FF8A3D'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#3E2B25';
+      ctx.beginPath(); ctx.arc(m.x - 4, y - 3, 3.2, 0, TAU); ctx.arc(m.x + 5, y + 4, 2.4, 0, TAU); ctx.fill();
+    }
+  }
+  function drawSlowmo() {
+    const k = Math.min(1, slowT / 0.15);
+    const g = ctx.createRadialGradient(C.W / 2, viewH / 2, viewH * 0.25, C.W / 2, viewH / 2, viewH * 0.75);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(20,30,80,${0.5 * k})`);
+    ctx.fillStyle = g; ctx.fillRect(-4, -4, C.W + 8, viewH + 8);
+  }
+
+  // ---- المهام 📋
+  const MISSIONS = {
+    coins: { icon: '🪙', t: [25, 50, 90, 140, 200], txt: (n) => `اجمع ${n} عملة بجولة وحدة`, val: (r) => r.coins },
+    stomp: { icon: '👾', t: [1, 3, 5, 8, 12], txt: (n) => (n === 1 ? 'دوس على وحش' : `دوس على ${n} وحوش بجولة`), val: (r) => r.stomps },
+    score: { icon: '🏔️', t: [800, 1500, 2500, 4000, 6000], txt: (n) => `وصّل نتيجة ${n}`, val: (r) => r.score },
+    fever: { icon: '🔥', t: [1, 2, 3, 4, 5], txt: (n) => (n === 1 ? 'شغّل وضع الحماس' : `شغّل الحماس ${n} مرات بجولة`), val: (r) => r.fevers },
+    combo: { icon: '⚡', t: [8, 12, 18, 25, 35], txt: (n) => `سوّي كومبو ${n}`, val: (r) => r.combo },
+    springs: { icon: '🌀', t: [3, 6, 10, 15, 20], txt: (n) => `انط على ${n} نوابض بجولة`, val: (r) => r.springs },
+    clutch: { icon: '😮', t: [1, 2, 4, 6, 8], txt: (n) => (n === 1 ? 'انجى بأعجوبة' : `انجى بأعجوبة ${n} مرات بجولة`), val: (r) => r.clutches },
+    meteors: { icon: '☄️', t: [1, 2, 3, 4, 5], txt: (n) => (n === 1 ? 'انجى من مطر النيازك' : `انجى من النيازك ${n} مرات بجولة`), val: (r) => r.meteors },
+    games: { icon: '🎮', t: [3, 5, 10, 15, 20], txt: (n) => `العب ${n} جولات`, val: (r, m) => save.games - (m.base || 0), total: true },
+  };
+  const misTarget = (id, tier) => { const t = MISSIONS[id].t; return tier < t.length ? t[tier] : Math.round(t[t.length - 1] * Math.pow(1.5, tier - t.length + 1)); };
+  const misReward = (tier) => 20 + tier * 15;
+  function ensureMissions() {
+    if (!Array.isArray(save.missions)) save.missions = [];
+    if (!save.mtier || typeof save.mtier !== 'object') save.mtier = {};
+    save.missions = save.missions.filter((m) => m && MISSIONS[m.id]);
+    const ids = Object.keys(MISSIONS);
+    while (save.missions.length < 3) {
+      const free = ids.filter((id) => !save.missions.some((m) => m.id === id));
+      const id = pick(free), m = { id, tier: save.mtier[id] || 0, run: runId };
+      if (MISSIONS[id].total) m.base = save.games;
+      save.missions.push(m);
+    }
+  }
+  const runStats = () => ({ coins: world.runCoins, stomps: world.stomps, score: Core.score(world), fevers: world.fevers, combo: world.maxCombo, springs: world.springs, clutches: world.clutches, meteors: world.meteorsSurvived });
+  /** يفحص المهام: اللي تخلص تنطي عملات وتنبدل بمهمة أصعب */
+  function checkMissions(final) {
+    if (!world || world.demo || world.hero) return;
+    const r = runStats();
+    for (let i = 0; i < save.missions.length; i++) {
+      const m = save.missions[i], d = MISSIONS[m.id], tg = misTarget(m.id, m.tier);
+      if (d.total ? !final : m.run === runId && m.fresh) continue; // المهمة الجديدة تبدي من الجولة الجاية
+      if ((d.val(r, m) || 0) < tg) continue;
+      const rw = misReward(m.tier);
+      save.coins += rw; save.mtier[m.id] = m.tier + 1;
+      doneThisRun.push({ icon: d.icon, txt: d.txt(tg), rw });
+      save.missions.splice(i, 1); i--;
+      ensureMissions();
+      for (const n of save.missions) if (n.run === runId && !n.checked) { n.fresh = true; n.checked = true; }
+      persist();
+      if (!final) { toast(`✅ ${d.icon} ${d.txt(tg)}  +🪙${rw}`, 2200); Sfx.mission(); }
+    }
+  }
+  function missionRow(m, r, done) {
+    const d = MISSIONS[m.id] || {}, tg = done ? 0 : misTarget(m.id, m.tier);
+    const el = document.createElement('div'); el.className = 'mi' + (done ? ' done' : '');
+    const ic = document.createElement('div'); ic.className = 'ic'; ic.textContent = done ? '✅' : d.icon;
+    const tx = document.createElement('div'); tx.className = 'tx'; tx.textContent = done ? m.txt : d.txt(tg);
+    if (!done && r) {
+      const v = Math.min(tg, Math.max(0, d.val(r, m) || 0));
+      const pb = document.createElement('div'); pb.className = 'pb';
+      const i = document.createElement('i'); i.style.width = Math.round((v / tg) * 100) + '%'; pb.appendChild(i); tx.appendChild(pb);
+    }
+    const rw = document.createElement('div'); rw.className = 'rw'; rw.textContent = `🪙 ${done ? '+' + m.rw : misReward(m.tier)}`;
+    el.append(ic, tx, rw);
+    return el;
+  }
+  function openMissions() {
+    ensureMissions(); persist();
+    state = 'missions'; show('missions'); Sfx.click();
+    $('mCoins').textContent = save.coins;
+    const L = $('mList'); L.textContent = '';
+    for (const m of save.missions) L.appendChild(missionRow(m, MISSIONS[m.id].total ? {} : null, false));
+  }
+
+  // ---- الفرصة الثانية
+  const canRevive = () => !world.hero && world.revives === 0 && Core.score(world) >= 150 && save.coins + world.runCoins >= REVIVE_COST;
+  function offerRevive() {
+    if (state !== 'play') return;
+    if (!canRevive()) { endRun(); return; }
+    state = 'revive'; reviveT = 4;
+    $('rvCost').textContent = REVIVE_COST; $('turbo').hidden = true;
+    show('revive'); Sfx.click();
+  }
+  function acceptRevive() {
+    if (state !== 'revive') return;
+    let cost = REVIVE_COST; // ندفع من عملات الجولة أول، وبعدين من المحفوظة
+    const fromRun = Math.min(world.runCoins, cost); world.runCoins -= fromRun; cost -= fromRun; save.coins -= cost; persist();
+    Core.revive(world);
+    state = 'play'; show(null); lastT = performance.now(); acc = 0;
+    $('turbo').hidden = !world.hero; Music.setMode('play');
+  }
+  function declineRevive() { if (state !== 'revive') return; state = 'play'; endRun(); }
+  function updateRevive(dt) {
+    reviveT -= dt;
+    const k = Math.max(0, reviveT / 4);
+    $('rvArc').style.strokeDashoffset = String(276.5 * (1 - k));
+    $('rvNum').textContent = Math.max(0, Math.ceil(reviveT));
+    if (reviveT <= 0) declineRevive();
+  }
+
+  // ---- عد تنازلي بعد الإيقاف
+  let countTimer = 0;
+  function startCountdown() {
+    show(null); $('turbo').hidden = !world.hero;
+    state = 'countdown';
+    let n = 3; const el = $('count');
+    const showN = () => { el.hidden = false; el.textContent = n; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); Sfx.count(1); };
+    showN();
+    const tick = () => {
+      if (state !== 'countdown') { el.hidden = true; return; }
+      n--;
+      if (n > 0) { showN(); countTimer = setTimeout(tick, 520); return; }
+      el.hidden = true; Sfx.count(0);
+      state = 'play'; lastT = performance.now(); acc = 0; Music.setMode('play');
+    };
+    clearTimeout(countTimer); countTimer = setTimeout(tick, 520);
+  }
+
   /** شنو لازم تعزف الموسيقى هسه: النمط حسب العالم والارتفاع، والحماس حسب النتيجة والصاروخ */
   function musicInfo() {
     if (!world) return { style: 'day', intensity: 0.6, bpm: 92 };
-    if (state !== 'play' && state !== 'pause' && state !== 'over') return { style: FT ? 'fire' : 'day', intensity: 0.7, bpm: FT ? 100 : 92 };
+    if (state !== 'play' && state !== 'pause' && state !== 'over' && state !== 'revive' && state !== 'countdown') return { style: FT ? 'fire' : 'day', intensity: 0.7, bpm: FT ? 100 : 92 };
     const sc = Core.score(world), camS = (world.camY + viewH / 2) / C.SCORE_DIV;
     const style = FT ? 'fire' : camS < 1300 ? 'day' : camS < 2600 ? 'sunset' : camS < 4200 ? 'night' : 'space';
     let I = 1.4 + clamp(sc / 400, 0, 1) + clamp((sc - 400) / 1100, 0, 1) + clamp((sc - 1500) / 2000, 0, 1);
     if (world.player.rocket > 0) I += 0.8;
+    if (world.feverT > 0) I += 1.2;
     if (state === 'over') I = 0.5;
     const sty = STY[style], bpm = sty.bpm[0] + (sty.bpm[1] - sty.bpm[0]) * clamp(sc / 5000, 0, 1);
-    const riser = state === 'play' && !record && !world.hero && bestAtStart > 200 && sc > bestAtStart * 0.85 && sc < bestAtStart;
+    const riser = (state === 'play' && !record && !world.hero && bestAtStart > 200 && sc > bestAtStart * 0.85 && sc < bestAtStart) || (world.ev && world.ev.type === 'meteors');
     return { style, intensity: Math.min(I, 4.6), bpm, riser };
   }
 
@@ -2036,11 +2328,16 @@
       for (const p of world.platforms) drawPlatform(p, time);
       for (const c of world.coins) if (!c.taken) drawCoin(c, time);
     }
+    if (world.ev && world.ev.type === 'lowgrav') drawLowGrav(time, world.ev);
     for (const e of world.enemies) drawEnemy(e, time, P);
+    drawMeteorsFx(time);
     drawPlayer(P, time);
     if (FT) { drawLava(time); if (world.hero && !world.demo) drawNet(time); }
     drawFx();
     if (FT) drawSkyFlash();
+    if (world.ev && world.ev.type === 'wind') drawWind(time, world.ev);
+    if (world.feverT > 0) drawFeverFx(time);
+    if (slowT > 0) drawSlowmo();
     if (state === 'shop') drawPreviews(time);
   }
   function frame(now) {
@@ -2049,7 +2346,11 @@
     let dt = (now - lastT) / 1000; lastT = now;
     if (!(dt > 0)) dt = 0;
     if (dt > 0.1) dt = 0.1;
-    if (state !== 'pause') {
+    if (state === 'revive') updateRevive(dt);
+    const frozen = state === 'pause' || state === 'revive' || state === 'countdown';
+    const realDt = dt;
+    if (slowT > 0) { slowT -= realDt; dt *= 0.33; } // حركة بطيئة
+    if (!frozen) {
       time += dt; acc += dt;
       const dir = state === 'play' ? inputDir() : Math.sin(time * 0.7) * 0.45;
       let n = 0;
@@ -2057,9 +2358,9 @@
       if (n >= 20) acc = 0;
       handleEvents();
       updateFx(dt);
-      if (state === 'play') updateHud(dt);
+      if (state === 'play') updateHud(realDt);
     }
-    Music.update(dt, musicInfo());
+    Music.update(realDt, musicInfo());
     render();
   }
 
@@ -2069,5 +2370,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, get slowT() { return slowT; } };
 })();

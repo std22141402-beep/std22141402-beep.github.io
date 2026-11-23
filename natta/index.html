@@ -76,11 +76,56 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 #pbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff5d5d,#ffb13b);border-radius:9px;transform-origin:right}
 #tut{direction:ltr;position:absolute;inset:auto 0 calc(env(safe-area-inset-bottom) + 90px);display:flex;justify-content:space-between;padding:0 16px;pointer-events:none;transition:opacity .5s}
 #tut div{direction:rtl;background:rgba(36,48,94,.85);color:#fff;font-weight:800;font-size:16px;border-radius:16px;padding:12px 14px;animation:pulse 1.2s infinite}
-#toast{z-index:10;position:absolute;top:calc(env(safe-area-inset-top) + 110px);left:0;right:0;text-align:center;font-size:30px;font-weight:900;pointer-events:none;opacity:0;transform:scale(.6);transition:opacity .25s,transform .35s cubic-bezier(.2,1.6,.4,1)}
+#toast{z-index:10;position:absolute;top:calc(env(safe-area-inset-top) + 160px);left:0;right:0;text-align:center;font-size:30px;font-weight:900;pointer-events:none;opacity:0;transform:scale(.6);transition:opacity .25s,transform .35s cubic-bezier(.2,1.6,.4,1)}
 #toast.show{opacity:1;transform:scale(1)}
+#toast.long{font-size:20px;padding:0 18px;line-height:1.35}
 
 /* ---------- نهاية الجولة ---------- */
 .over-title{font-size:30px;font-weight:900}
+/* ---------- الحماس، الكومبو، الأحداث ---------- */
+.hud-row{display:flex;align-items:center;gap:8px;margin-top:8px;min-height:22px}
+.hud-row .fi{font-size:15px;line-height:1}
+#fbar{position:relative;height:10px;width:130px;border-radius:9px;background:rgba(255,255,255,.38);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
+#fbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffb703,#ff5d8f);border-radius:9px;transition:width .2s}
+#fbar.on i{background:linear-gradient(90deg,#ff3d00,#ffd23f,#ff5dd2,#7b5cff,#ff3d00);background-size:300% 100%;animation:rainbow .8s linear infinite}
+#fbar.full{box-shadow:0 0 12px #ffb703}
+@keyframes rainbow{to{background-position:300% 0}}
+#combo{font-size:20px;font-weight:900;--o:#5a2fd6;transition:transform .15s}
+#combo.pop{animation:cpop .3s}
+@keyframes cpop{0%{transform:scale(1.6)}100%{transform:scale(1)}}
+#evChip{font-size:15px;padding:4px 10px}
+#banner{position:absolute;z-index:6;top:calc(env(safe-area-inset-top) + 92px);left:50%;transform:translate(-50%,-24px) scale(.9);opacity:0;pointer-events:none;
+  display:flex;align-items:center;gap:12px;white-space:nowrap;color:#fff;border-radius:22px;padding:10px 20px 10px 18px;
+  background:linear-gradient(135deg,rgba(36,48,94,.94),rgba(96,48,160,.94));box-shadow:0 12px 30px rgba(0,0,0,.35);transition:opacity .25s,transform .4s cubic-bezier(.2,1.5,.4,1)}
+#banner.show{opacity:1;transform:translate(-50%,0) scale(1)}
+#banner.fever{background:linear-gradient(135deg,rgba(255,90,0,.95),rgba(255,60,140,.95))}
+#banner.danger{background:linear-gradient(135deg,rgba(170,20,20,.95),rgba(255,90,0,.95))}
+#banner.gold{background:linear-gradient(135deg,rgba(220,150,0,.95),rgba(255,200,60,.95))}
+#bnIcon{font-size:36px;line-height:1}
+#bnTitle{font-size:22px;font-weight:900;line-height:1.2}
+#bnSub{font-size:13px;font-weight:700;opacity:.92}
+#count{position:absolute;z-index:7;inset:0;display:flex;align-items:center;justify-content:center;font-size:120px;font-weight:900;pointer-events:none}
+#count.pop{animation:cpop .5s}
+/* ---------- فرصة ثانية ---------- */
+.ring{position:relative;width:120px;height:120px;margin:4px auto 6px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:9}
+.ring .bg{stroke:#eef1fb}.ring .fg{stroke:url(#rvGrad);stroke-linecap:round;stroke-dasharray:276.5;stroke-dashoffset:0}
+.ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:46px;color:#24305e}
+/* ---------- المهام ---------- */
+.mlist{display:flex;flex-direction:column;gap:8px;text-align:right;margin-bottom:14px}
+.mi{display:flex;align-items:center;gap:10px;background:#eef1fb;border-radius:16px;padding:9px 10px}
+.mi.done{background:#e3f9e5}
+.mi .ic{font-size:24px;width:30px;text-align:center}
+.mi .tx{flex:1;font-weight:800;font-size:14px;color:#24305e}
+.mi .pb{height:7px;background:#dfe3f3;border-radius:9px;margin-top:5px;overflow:hidden}
+.mi .pb i{display:block;height:100%;background:linear-gradient(90deg,#2fb760,#8be28f);border-radius:9px}
+.mi .rw{font-weight:900;font-size:13px;color:#7a3d00;background:#fff3c4;border-radius:10px;padding:3px 8px;white-space:nowrap}
+.mlist.mini .mi{padding:6px 9px}.mlist.mini .ic{font-size:18px}.mlist.mini .tx{font-size:12.5px}
+.ostats{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:-2px 0 12px}
+.ostats span{background:#f3effe;color:#4b2ea8;border-radius:12px;padding:4px 9px;font-weight:800;font-size:13px}
+.mhead{font-weight:900;font-size:14px;color:#6b7399;text-align:right;margin:2px 4px 6px}
+#over .card{max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .badge{display:inline-block;margin-top:8px;background:linear-gradient(#ffe066,#ffb703);color:#7a3d00;border-radius:999px;padding:6px 14px;font-weight:900;animation:pulse 1s infinite}
 .big-score{font-size:72px;font-weight:900;line-height:1;margin-top:10px;color:#24305e;font-variant-numeric:tabular-nums}
 .lbl{font-size:14px;font-weight:700;color:#6b7399}
@@ -123,7 +168,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   <section id="home" class="screen">
     <h1 class="logo out">نطّة</h1>
     <div class="tag out" id="tag" style="--o:#24305e">اصعد لأعلى ما تكدر! ☁️</div>
-    <div class="stats"><span class="chip">🏆 <b id="hBest">0</b></span><span class="chip">🪙 <b id="hCoins">0</b></span><span class="chip hero-chip" id="hHero" hidden>🦸 بطل</span></div>
+    <div class="stats"><span class="chip">🏆 <b id="hBest">0</b></span><span class="chip">🪙 <b id="hCoins">0</b></span><span class="chip hero-chip" id="hHero" hidden>🦸 بطل</span><button class="chip" id="hMis" style="border:0;font:inherit;font-weight:800">📋 المهام</button></div>
     <button class="btn primary big" id="play">العب ▶</button>
     <div class="row">
       <button class="btn" id="openShop">🎨 الشخصيات</button>
@@ -143,8 +188,11 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       <div class="chip hero-chip" id="heroChip" hidden>🦸</div>
       <button class="hud-btn" id="pauseBtn" aria-label="إيقاف">II</button>
     </div>
+    <div class="hud-row"><span class="fi">🔥</span><div id="fbar"><i></i></div><div id="combo" class="out" hidden></div><div class="chip" id="evChip" hidden></div></div>
     <div id="pbar" hidden><i></i></div>
   </div>
+  <div id="banner"><div id="bnIcon"></div><div><div id="bnTitle"></div><div id="bnSub"></div></div></div>
+  <div id="count" class="out" hidden>3</div>
   <button id="turbo" hidden aria-label="طيران">🚀</button>
   <div id="tut" hidden><div>اضغط هنا ⬅️</div><div>➡️ اضغط هنا</div></div>
   <div id="toast" class="out"></div>
@@ -169,12 +217,35 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         <div>أفضل نتيجة<b id="oBest">0</b></div>
         <div>عملات هالجولة<b id="oCoins" dir="ltr">0</b></div>
       </div>
+      <div class="ostats" id="oStats"></div>
       <div class="lbl" id="oHero" hidden style="margin:-4px 0 12px">🦸 جولة بوضع البطل: ما تدخل بأفضل نتيجة</div>
       <div class="next" id="oNext" hidden></div>
+      <div id="oMisWrap" hidden><div class="mhead">📋 المهام</div><div class="mlist mini" id="oMis"></div></div>
       <div class="stack">
         <button class="btn primary" id="again" style="font-size:22px">مرة ثانية ↻</button>
         <div class="row"><button class="btn" id="toHome">الرئيسية</button><button class="btn" id="share">شارك 📤</button></div>
       </div>
+    </div>
+  </section>
+
+  <!-- فرصة ثانية -->
+  <section id="revive" class="screen" hidden>
+    <div class="card stack">
+      <div class="over-title">تريد تكمّل؟ 💪</div>
+      <div class="ring"><svg viewBox="0 0 100 100"><defs><linearGradient id="rvGrad" x1="0" x2="1"><stop offset="0" stop-color="#ffb703"/><stop offset="1" stop-color="#ff5d8f"/></linearGradient></defs><circle class="bg" cx="50" cy="50" r="44"/><circle class="fg" id="rvArc" cx="50" cy="50" r="44"/></svg><b id="rvNum">4</b></div>
+      <div class="lbl" id="rvInfo">ترجع فوك منصة إنقاذ ذهبية</div>
+      <button class="btn primary" id="rvYes" style="font-size:21px">كمّل بـ 🪙 <span id="rvCost">50</span></button>
+      <button class="btn" id="rvNo">لا، خلّص الجولة</button>
+    </div>
+  </section>
+
+  <!-- المهام -->
+  <section id="missions" class="screen" hidden>
+    <div class="card shop-card">
+      <div class="shop-head"><span>📋 المهام</span><span class="chip">🪙 <b id="mCoins">0</b></span></div>
+      <div class="shop-hint">كمّل المهام بالجولات وخذ عملات، وكل مهمة تخلصها تجيك أصعب منها بجائزة أكبر</div>
+      <div class="mlist" id="mList"></div>
+      <button class="btn primary" id="mBack">رجوع</button>
     </div>
   </section>
 

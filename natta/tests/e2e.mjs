@@ -34,6 +34,11 @@ const errors = [];
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 
+async function waitOver() {
+  await page.waitForFunction(() => ['revive', 'over'].includes(window.__natta.state), null, { timeout: 6000 });
+  if (await page.isVisible('#revive')) await page.tap('#rvNo'); // ما نريد فرصة ثانية بهالفحص
+  await page.waitForSelector('#over:not([hidden])', { timeout: 5000 });
+}
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if (!cond) fails++; };
 const shot = (name) => page.screenshot({ path: `${SHOTS}/${name}.png` });
@@ -141,12 +146,12 @@ await wait(300);
 ok((await G(() => window.__natta.state)) === 'pause', 'زر الإيقاف يشتغل');
 await shot('9-pause');
 await page.tap('#resume');
-await wait(200);
-ok((await G(() => window.__natta.state)) === 'play', 'كمّل يرجع للعب');
+await wait(1900); // عد تنازلي 3-2-1
+ok((await G(() => window.__natta.state)) === 'play', 'كمّل يرجع للعب بعد العد التنازلي');
 
 // الطيحة
 await G(() => { window.__botOff = true; const w = window.__natta.world; w.player.y = w.camY - 100; w.player.vy = -200; w.player.rocket = 0; });
-await page.waitForSelector('#over:not([hidden])', { timeout: 5000 });
+await waitOver();
 await wait(900);
 await shot('10-over');
 const saved = await G(() => JSON.parse(localStorage.getItem('natta.v1')));
@@ -215,7 +220,7 @@ await shot('16b-fire-explode');
 await G(() => { window.__botOff = true; const w = window.__natta.world; w.player.rocket = 0; w.player.y = w.camY + 30; w.player.vy = -300; });
 await wait(330);
 await shot('16c-fire-lava');
-await page.waitForSelector('#over:not([hidden])', { timeout: 5000 });
+await waitOver();
 await wait(700);
 await shot('16d-fire-over');
 ok((await page.textContent('#oTitle')).includes('الحمم'), 'بعالم النار الطيحة تكون بالحمم');

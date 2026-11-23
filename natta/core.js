@@ -24,6 +24,8 @@
     SCORE_DIV: 10,     // النتيجة = أعلى ارتفاع ÷ 10
   };
   C.REACH = (C.JUMP * C.JUMP) / (2 * C.G);
+  C.FEVER_T = 6;      // مدة وضع الحماس
+  C.EVENT_T = 9;      // مدة الحدث المفاجئ
 
   function mulberry32(a) {
     return function () {
@@ -141,6 +143,12 @@
       genY: 0, lastMainX: C.W / 2 - C.PW / 2,
       lastRocketY: -1e9, lastShieldY: -1e9, lastEnemyY: -1e9, lastSpringY: -1e9, tutSpring: false,
       maxY: 0, runCoins: 0, stomps: 0, milestone: 0, over: false,
+      // الحماس والكومبو
+      fever: 0, feverT: 0, fevers: 0, combo: 0, comboT: 0, maxCombo: 0, lastLandY: 0,
+      springs: 0, clutches: 0, revives: 0,
+      // الأحداث المفاجئة (عندها مولّد عشوائي خاص حتى ما تأثر على توليد المنصات)
+      erng: mulberry32(((seed >>> 0) ^ 0x9e3779b9) || 7), ev: null, nextEv: 1200, evCount: 0, evOrder: [],
+      evSurvived: 0, meteorsSurvived: 0, meteors: [],
       player: {
         x: C.W / 2, y: 0, vx: 0, vy: C.JUMP, face: 1,
         rocket: 0, shield: false, invul: 0, state: 'alive', deadT: 0, squash: 0, flip: 0,
@@ -163,6 +171,7 @@
 
       if (p.type === 'b') { p.broken = true; emit(w, 'break', p.x + p.w / 2, p.y); continue; }
 
+      const fallV = P.vy;
       P.y = p.y;
       let v = C.JUMP * (w.hero ? 1.3 : 1), kind = 'jump';
       const it = p.item;
@@ -173,15 +182,17 @@
           if (kind === 'tramp') P.flip = 1;
         }
       }
+      if (w.feverT > 0 && kind === 'jump') v *= 1.15;
       P.vy = v; P.squash = 1;
       emit(w, 'jump', P.x, p.y, kind);
+      if (!w.demo) landed(w, p, kind, fallV);
       if (p.type === 'v') { p.gone = true; p.pop = 0.0001; emit(w, 'vanish', p.x + p.w / 2, p.y); }
       return;
     }
   }
 
-  function pickups(w) {
-    const P = w.player, cy = P.y + C.BODY_H / 2;
+  function pickups(w, dt) {
+    const P = w.player, cy = P.y + C.BODY_H / 2, mag = w.feverT > 0;
     for (const p of w.platforms) {
       const it = p.item;
       if (!it || it.taken || (it.kind !== 'rocket' && it.kind !== 'shield') || p.gone) continue;
@@ -195,8 +206,13 @@
     }
     for (const c of w.coins) {
       if (c.taken) continue;
+      if (mag) { // الحماس: العملات تنسحب لك مثل المغناطيس
+        const dx = wrapDx(P.x, c.x), dy = cy - c.y;
+        if (dx * dx + dy * dy < 150 * 150) { const k = Math.min(1, dt * 9); c.x = (c.x + dx * k + C.W) % C.W; c.y += dy * k; }
+      }
       if (Math.abs(wrapDx(P.x, c.x)) < 26 && Math.abs(cy - c.y) < 30) {
-        c.taken = true; w.runCoins++; emit(w, 'coin', c.x, c.y);
+        const val = w.feverT > 0 ? 2 : 1;
+        c.taken = true; w.runCoins += val; addFever(w, 0.02); emit(w, 'coin', c.x, c.y, val);
       }
     }
   }
@@ -205,12 +221,17 @@
     const P = w.player;
     for (const e of w.enemies) {
       if (e.dead) continue;
-      if (Math.abs(wrapDx(P.x, e.x)) >= 36) continue;
+      // «نجاة بأعجوبة»: عبرت يم الوحش بدون ما يلمسك
+      const ndx = wrapDx(P.x, e.x), ndy = P.y + 21 - e.y, nd = Math.hypot(ndx, ndy);
+      if (nd < 64) e.near = true;
+      else if (e.near && nd > 90 && !e.missed && !w.demo) { e.missed = true; w.clutches++; addFever(w, 0.12); emit(w, 'nearMiss', e.x, e.y); }
+      if (Math.abs(ndx) >= 36) continue;
       if (!(P.y < e.y + 17 && P.y + C.BODY_H > e.y - 17)) continue;
       const kill = (vy) => { e.dead = true; e.vy = vy; };
-      if (P.rocket > 0 || w.hero) { kill(300); emit(w, 'stomp', e.x, e.y, 0); continue; }
+      if (w.feverT > 0) { kill(300); w.runCoins += 3; w.stomps++; e.missed = true; emit(w, 'stomp', e.x, e.y, 3); continue; }
+      if (P.rocket > 0 || w.hero) { kill(300); e.missed = true; emit(w, 'stomp', e.x, e.y, 0); continue; }
       if (P.vy < 0 && prevY >= e.y) {                 // دعسة من فوك
-        kill(0); P.vy = C.JUMP * 1.1; P.squash = 1; w.runCoins += 3; w.stomps++;
+        kill(0); e.missed = true; P.vy = C.JUMP * 1.1; P.squash = 1; w.runCoins += 3; w.stomps++; addFever(w, 0.2);
         emit(w, 'stomp', e.x, e.y, 3); continue;
       }
       if (P.invul > 0) continue;
@@ -242,6 +263,7 @@
       else { e.vy -= C.G * dt; e.y += e.vy * dt; e.rot += dt * 8; }
     }
 
+    for (const c of w.coins) if (c.vy && !c.taken) c.y += c.vy * dt; // مطر العملات
     P.squash = Math.max(0, P.squash - dt * 5);
     P.flip = Math.max(0, P.flip - dt * 1.6);
     P.invul = Math.max(0, P.invul - dt);
@@ -251,6 +273,8 @@
       P.vx += (target - P.vx) * Math.min(1, dt * 12);
       if (Math.abs(dir) > 0.15) P.face = dir > 0 ? 1 : -1;
       P.x += P.vx * dt;
+      const ev = w.ev;
+      if (ev && ev.type === 'wind') P.x += ev.dir * (95 + 55 * Math.sin(ev.t * 1.7)) * ev.k * dt; // الرياح تدفعك
       if (P.x < 0) P.x += C.W; else if (P.x >= C.W) P.x -= C.W;
 
       const prevY = P.y;
@@ -259,15 +283,22 @@
         P.vy += (C.ROCKET_V - P.vy) * Math.min(1, dt * 6);
         if (P.rocket <= 0) { P.rocket = 0; P.invul = Math.max(P.invul, 0.6); emit(w, 'rocketEnd', P.x, P.y); }
       } else {
-        P.vy = Math.max(P.vy - C.G * dt, -C.MAX_FALL);
+        const gs = ev && ev.type === 'lowgrav' ? 1 - 0.38 * ev.k : 1; // الجاذبية الخفيفة
+        P.vy = Math.max(P.vy - C.G * gs * dt, -C.MAX_FALL);
       }
       P.y += P.vy * dt;
       if (P.vy < 0 && P.rocket <= 0) landCheck(w, prevY);
-      pickups(w);
+      pickups(w, dt);
       enemyCheck(w, prevY);
       // وضع البطل: شبكة ذهبية بأسفل الشاشة تردّه لفوك بدل ما يطيح
       if (w.hero && P.vy < 0 && P.rocket <= 0 && P.y < w.camY + 12) {
         P.y = w.camY + 12; P.vy = C.TRAMP; P.squash = 1; emit(w, 'jump', P.x, P.y, 'net');
+      }
+
+      if (!w.demo) {
+        if (w.feverT > 0) { w.feverT -= dt; if (w.feverT <= 0) { w.feverT = 0; P.invul = Math.max(P.invul, 0.8); emit(w, 'feverEnd', P.x, P.y); } }
+        else w.fever = Math.max(0, w.fever - 0.02 * dt);
+        if (w.comboT > 0) { w.comboT -= dt; if (w.comboT <= 0) w.combo = 0; }
       }
 
       // الكاميرا تصعد ويا اللاعب وما تنزل أبداً
@@ -280,7 +311,7 @@
         const m = Math.floor(score(w) / 1000);
         if (m > w.milestone) { w.milestone = m; emit(w, 'milestone', P.x, P.y, m * 1000); }
       }
-      if (P.state === 'alive' && P.y < w.camY - 30) { P.state = 'fall'; P.deadT = 0; P.rocket = 0; emit(w, 'fall', P.x, P.y); }
+      if (P.state === 'alive' && P.y < w.camY - 30) { P.state = 'fall'; P.deadT = 0; P.rocket = 0; w.camAtFall = w.camY; emit(w, 'fall', P.x, P.y); }
     } else {
       // اللاعب طايح: جاذبية بس، بلا اصطدام
       P.deadT += dt;
@@ -294,6 +325,8 @@
       } else if (P.y < w.camY - 80 && !w.over) { w.over = true; emit(w, 'over', P.x, P.y); }
     }
 
+    updateEvents(w, dt);
+
     if (P.state === 'alive') {
       genUntil(w, w.camY + w.viewH + 300);
       // نمسح اللي نزل بعيد تحت الشاشة
@@ -306,6 +339,107 @@
     }
   }
 
+  // ================================================================ الحماس والكومبو
+  /** يملّي عدّاد الحماس، ولما يتملّى يشتغل وضع الحماس: ما تموت من الوحوش، عملات مضاعفة، ومغناطيس */
+  function addFever(w, v) {
+    if (w.demo || w.feverT > 0) return;
+    w.fever = Math.min(1, w.fever + v);
+    if (w.fever >= 1) { w.fever = 0; w.feverT = C.FEVER_T; w.fevers++; emit(w, 'fever', w.player.x, w.player.y); }
+  }
+  function landed(w, p, kind, fallV) {
+    const P = w.player;
+    if (kind === 'spring' || kind === 'tramp') { w.springs++; addFever(w, 0.08); }
+    // نجاة بأعجوبة: لزمت منصة وإنت طايح بسرعة بأسفل الشاشة
+    if (p.type !== 'g' && fallV < -900 && p.y < w.camY + 70) { w.clutches++; addFever(w, 0.15); emit(w, 'clutch', P.x, p.y); }
+    if (p.y > w.lastLandY + 20) { // كل منصة أعلى من اللي قبلها تزيد الكومبو
+      w.combo = w.comboT > 0 ? w.combo + 1 : 1; w.comboT = 1.7;
+      if (w.combo > w.maxCombo) w.maxCombo = w.combo;
+      addFever(w, 0.03 + Math.min(0.03, w.combo * 0.003));
+      if (w.combo >= 5 && w.combo % 5 === 0) { w.runCoins += 1; emit(w, 'combo', P.x, p.y, w.combo); }
+    } else if (p.y < w.lastLandY - 30) { w.combo = 0; w.comboT = 0; }
+    w.lastLandY = p.y;
+  }
+
+  // ================================================================ الأحداث المفاجئة
+  const EVENT_TYPES = ['wind', 'meteors', 'lowgrav', 'coinrain'];
+  function startEvent(w, type) {
+    if (!type) {
+      if (w.evCount === 0) type = 'coinrain'; // أول حدث هدية حتى تتعود
+      else {
+        if (!w.evOrder.length) {
+          w.evOrder = EVENT_TYPES.slice();
+          for (let i = w.evOrder.length - 1; i > 0; i--) { const j = (w.erng() * (i + 1)) | 0; [w.evOrder[i], w.evOrder[j]] = [w.evOrder[j], w.evOrder[i]]; }
+          if (w.lastEv && w.evOrder[w.evOrder.length - 1] === w.lastEv) w.evOrder.unshift(w.evOrder.pop());
+        }
+        type = w.evOrder.pop();
+      }
+    }
+    w.ev = { type, t: 0, dur: C.EVENT_T, k: 0, spawn: 0.6, dir: w.erng() < 0.5 ? -1 : 1 };
+    w.evCount++; w.lastEv = type;
+    emit(w, 'eventStart', w.player.x, w.player.y, type);
+  }
+  function spawnMeteor(w) {
+    const P = w.player, aim = w.erng() < 0.55;
+    const x = aim ? clamp(P.x + (w.erng() * 2 - 1) * 40, 15, C.W - 15) : 15 + w.erng() * (C.W - 30);
+    w.meteors.push({ id: w.nextId++, x, y: w.camY + w.viewH + 70, vx: (w.erng() * 2 - 1) * 40, vy: -620, warn: 1.0, dead: false });
+    emit(w, 'meteorWarn', x, 0);
+  }
+  function updateEvents(w, dt) {
+    if (w.demo) return;
+    const P = w.player;
+    if (!w.ev && P.state === 'alive' && score(w) >= w.nextEv) startEvent(w);
+    const ev = w.ev;
+    if (ev) {
+      ev.t += dt;
+      ev.k = Math.max(0, Math.min(1, ev.t / 0.8, (ev.dur - ev.t) / 0.8));
+      if (ev.type === 'meteors' && ev.t < ev.dur - 1.6) {
+        ev.spawn -= dt;
+        if (ev.spawn <= 0) { ev.spawn = lerp(1.05, 0.6, difficulty(w.maxY)) * (0.8 + 0.4 * w.erng()); spawnMeteor(w); }
+      }
+      if (ev.type === 'coinrain' && ev.t < ev.dur - 1) {
+        ev.spawn -= dt;
+        if (ev.spawn <= 0) { ev.spawn = 0.22; w.coins.push({ x: 20 + w.erng() * (C.W - 40), y: w.camY + w.viewH + 30, taken: false, vy: -150 - w.erng() * 60, rain: true }); }
+      }
+      if (ev.t >= ev.dur) {
+        if (P.state === 'alive') { w.evSurvived++; if (ev.type === 'meteors') w.meteorsSurvived++; }
+        emit(w, 'eventEnd', P.x, P.y, ev.type);
+        w.ev = null; w.nextEv = score(w) + 1400 + Math.floor(w.erng() * 600);
+      }
+    }
+    // النيازك: إنذار ثانية وحدة بمكانها، بعدين تنزل
+    for (const m of w.meteors) {
+      if (m.warn > 0) { m.warn -= dt; m.y = w.camY + w.viewH + 70; if (m.warn <= 0) emit(w, 'meteorFall', m.x, m.y); continue; }
+      m.x += m.vx * dt; m.y += m.vy * dt;
+      if (m.dead || P.state !== 'alive') continue;
+      const dx = wrapDx(P.x, m.x), dy = P.y + 21 - m.y;
+      if (dx * dx + dy * dy < 30 * 30) {
+        m.dead = true;
+        if (P.rocket > 0 || w.hero || w.feverT > 0 || P.invul > 0) emit(w, 'meteorBlock', m.x, m.y);
+        else if (P.shield) { P.shield = false; P.invul = 1; emit(w, 'shieldBreak', P.x, P.y + 20); }
+        else { P.state = 'hit'; P.vx = 0; P.vy = 250; P.deadT = 0; emit(w, 'hit', P.x, P.y + 20, 'meteor'); }
+      }
+    }
+    if (w.meteors.length) w.meteors = w.meteors.filter((m) => !m.dead && m.y > w.camY - 120);
+  }
+
+  // ================================================================ فرصة ثانية
+  /** يرجّع اللاعب للحياة فوك منصة إنقاذ، ويشيل الخطر القريب */
+  function revive(w) {
+    const P = w.player;
+    if (P.state === 'alive') return false;
+    if (w.camAtFall != null) { w.camY = Math.max(w.camY, w.camAtFall); w.camAtFall = null; } // نرجّع الكاميرا لمكانها قبل الطيحة
+    const y = w.camY + w.viewH * 0.22;
+    const p = addPlatform(w, clamp(P.x - C.PW / 2, 0, C.W - C.PW), y, 'n', 0);
+    p.rescue = true;
+    Object.assign(P, { state: 'alive', deadT: 0, x: p.x + C.PW / 2, y, vx: 0, vy: C.SPRING, invul: 3, rocket: 0, squash: 1, flip: 0 });
+    w.over = false; w.revives++; w.lastLandY = y; w.combo = 0;
+    for (const e of w.enemies) if (!e.dead && Math.abs(e.y - y) < 600) { e.dead = true; e.vy = 200; }
+    w.meteors = [];
+    if (w.ev && w.ev.type === 'meteors') w.ev.t = Math.max(w.ev.t, w.ev.dur - 1.6);
+    emit(w, 'revive', P.x, y);
+    return true;
+  }
+
   /** وضع البطل: صاروخ وقت ما تريد */
   function turbo(w) {
     const P = w.player;
@@ -314,7 +448,7 @@
     return true;
   }
 
-  const Core = { C, createWorld, step, score, difficulty, mulberry32, wrapDx, overlapX, genUntil, turbo };
+  const Core = { C, createWorld, step, score, difficulty, mulberry32, wrapDx, overlapX, genUntil, turbo, revive, addFever, startEvent };
   if (typeof module === 'object' && module.exports) module.exports = Core;
   else root.NattaCore = Core;
 })(typeof self !== 'undefined' ? self : this);
