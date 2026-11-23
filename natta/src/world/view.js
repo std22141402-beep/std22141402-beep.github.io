@@ -11,6 +11,7 @@ import {
   TAU, clamp, lerp, smooth, damp, rng, hash2, vnoise, fbm, paint, tf, along, merge, mix, canvasTex, _c, _ca, _cb, angDiff, dampAngle,
   phong, shadowAll, makeSky, glowTexture, waterNormalTexture, swayMat, seeThroughMat, palmGeo, treeGeo, bushGeo, rockGeo, reedGeo, tuftGeo, makeHero, makeMan,
 } from '../lib3d.js';
+import { createIslandView } from './viewIsland.js';
 
 const D2R = Math.PI / 180;
 
@@ -18,8 +19,8 @@ export function createView(cfg, G, sim) {
   const renderer = cfg.renderer, M = G.M, V = G.V, S = sim.S;
   const scene = new Scene();
   const FOG = new Color('#CFDFE8');
-  scene.background = FOG; scene.fog = new Fog(FOG, 60, 400);
-  const camera = new PerspectiveCamera(62, 0.5, 0.1, 2600);
+  scene.background = FOG; scene.fog = new Fog(FOG, 320, 3600);
+  const camera = new PerspectiveCamera(62, 0.5, 0.25, 7000);
   const U = { time: { value: 0 }, wind: { value: 0 }, see: { value: new Vector4(0, 0, 0, 0) } };
   const R = rng(4242);
   const hemi = new HemisphereLight('#D2E6FF', '#6A8A4E', 1.0); scene.add(hemi);
@@ -57,7 +58,7 @@ export function createView(cfg, G, sim) {
       if (r > 190) out.lerp(_ca.set('#5E8F3E'), smooth(190, 205, r));
       return out;
     }
-    // السهل والحدود
+    return null; // الباقي: ألوان الجزيرة (viewIsland)
     const e = Math.max(Math.abs(x), Math.abs(z));
     mix(out, '#5E8F3E', '#9BBF5C', fbm(x * 0.02 + 9, z * 0.02) * 1.25 - 0.15);
     out.lerp(_ca.set('#C8B87A'), smooth(0.55, 0.85, vnoise(x * 0.01 + 3, z * 0.01)) * 0.45);
@@ -65,41 +66,8 @@ export function createView(cfg, G, sim) {
     if (y > 40) out.lerp(_ca.set('#F2F5F8'), smooth(40, 60, y + (vnoise(x * 0.05, z * 0.05) - 0.5) * 16) * smooth(380, 430, e));
     return out;
   }
-  const tChunks = [];
-  function buildChunk(ci, cj, step) {
-    const x0 = X0 + ci * CH, z0 = X0 + cj * CH, n = Math.round(CH / step) + 1, ext = n + 2;
-    const Hs = new Float32Array(ext * ext);
-    for (let j = 0; j < ext; j++) for (let i = 0; i < ext; i++) Hs[j * ext + i] = G.H(x0 + (i - 1) * step, z0 + (j - 1) * step);
-    const hAt = (i, j) => Hs[(j + 1) * ext + (i + 1)];
-    const pos = [], col = [], idx = [], nor = [];
-    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-      const x = x0 + i * step, z = z0 + j * step, y = hAt(i, j);
-      const gx = (hAt(i + 1, j) - hAt(i - 1, j)) / (2 * step), gz = (hAt(i, j + 1) - hAt(i, j - 1)) / (2 * step), sl = Math.hypot(gx, gz), nl = Math.hypot(gx, 1, gz);
-      pos.push(x, y, z); nor.push(-gx / nl, 1 / nl, -gz / nl); colorAt(x, y, z, sl, _c); col.push(_c.r, _c.g, _c.b);
-      if (i < n - 1 && j < n - 1) { const a = j * n + i; idx.push(a, a + n, a + 1, a + 1, a + n, a + n + 1); }
-    }
-    // تنّورة حول القطعة حتى ما تبين شقوق بين الدرجات
-    const ring = []; for (let i = 0; i < n; i++) ring.push(i); for (let j = 1; j < n; j++) ring.push(j * n + n - 1); for (let i = n - 2; i >= 0; i--) ring.push((n - 1) * n + i); for (let j = n - 2; j > 0; j--) ring.push(j * n);
-    const base = pos.length / 3;
-    ring.forEach((v) => { pos.push(pos[v * 3], pos[v * 3 + 1] - (step > 3 ? 6 : 2.5), pos[v * 3 + 2]); col.push(col[v * 3], col[v * 3 + 1], col[v * 3 + 2]); nor.push(nor[v * 3], nor[v * 3 + 1], nor[v * 3 + 2]); });
-    for (let k = 0; k < ring.length; k++) { const a = ring[k], b = ring[(k + 1) % ring.length], c2 = base + k, d2 = base + ((k + 1) % ring.length); idx.push(a, c2, b, b, c2, d2, a, b, c2, b, d2, c2); }
-    const g = new BufferGeometry(); g.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3)); g.setAttribute('normal', new BufferAttribute(new Float32Array(nor), 3)); g.setAttribute('color', new BufferAttribute(new Float32Array(col), 3)); g.setIndex(idx); g.computeBoundingSphere();
-    const m = new Mesh(g, matVC); m.receiveShadow = true; m.matrixAutoUpdate = false; scene.add(m); return m;
-  }
-  for (let i = 0; i < NC; i++) for (let j = 0; j < NC; j++) {
-    const cx = X0 + (i + 0.5) * CH, cz = X0 + (j + 0.5) * CH;
-    const lo = buildChunk(i, j, 8), c = { i, j, x: cx, z: cz, lo, hi: null };
-    tChunks.push(c);
-  }
-  let hiPending = tChunks.slice();
-  /** نبني التفاصيل القريبة شوية شوية (أو كلها مرة وحدة) */
-  function buildHi(budgetMs, fx, fz) {
-    if (!hiPending.length) return true;
-    if (fx != null) hiPending.sort((a, b) => ((a.x - fx) ** 2 + (a.z - fz) ** 2) - ((b.x - fx) ** 2 + (b.z - fz) ** 2));
-    const t0 = performance.now();
-    while (hiPending.length && performance.now() - t0 < budgetMs) { const c = hiPending.shift(); c.hi = buildChunk(c.i, c.j, 2); c.hi.visible = false; }
-    return !hiPending.length;
-  }
+  let IV = null; // 🏝️ رسم الجزيرة (ينبني تحت بعد ما تجهز النباتات والماي)
+  function buildHi() { return !IV || !IV.pending(); }
   // شريط التراب على الطرق
   {
     const tex = canvasTex(64, 256, (g, w, h) => {
@@ -176,9 +144,9 @@ export function createView(cfg, G, sim) {
   // الوادي
   const palmGeos = [palmGeo(rng(3), 1.1, 9), palmGeo(rng(8), -0.8, 10), palmGeo(rng(15), 0.5, 8)];
   const palmLod = merge([paint(tf(new CylinderGeometry(0.25, 0.4, 8, 5), 0, 4, 0), '#8B6A3E'), paint(tf(new IcosahedronGeometry(1.6, 0), 0, 8.4, 0, 0, 0, 0, 1, 0.55, 1), '#3A7F34')]);
-  palmGeos.forEach((geo, i) => scatterChunks(geo, mats.palm, vg.palm[i], { cast: true, lod: palmLod, lodAt: 70, far: 260 }));
+  palmGeos.forEach((geo, i) => scatterChunks(geo, mats.palm, vg.palm[i].map((it) => ({ ...it, s: it.s * 2.2 })), { cast: true, lod: palmLod, lodAt: 70, far: 260 }));
   const fruitGeos = [treeGeo(rng(21), '#E8443A', ['#2F8A3C', '#7CCB55']), treeGeo(rng(33), null, ['#3B9447', '#8AD460']), treeGeo(rng(41), '#FFB52E', ['#2C7F3A', '#6FC24F'])];
-  fruitGeos.forEach((geo, i) => scatterChunks(geo, mats.tree, vg.fruit[i], { cast: true, far: 220 }));
+  fruitGeos.forEach((geo, i) => scatterChunks(geo, mats.tree, vg.fruit[i].map((it) => ({ ...it, s: it.s * 1.5 })), { cast: true, far: 220 }));
   scatterChunks(bushGeo(), matFlat, vg.vbush, { size: 30, far: 90, small: true });
   scatterChunks(rockGeo(), matFlat, vg.vrock, { size: 30, far: 70, small: true });
   scatterChunks(paint(new DodecahedronGeometry(0.5, 1), (c, x, y, z) => mix(c, '#9C7A56', '#D2B387', 0.45 + y * 0.9 + (hash2(x * 5, z * 5) - 0.5) * 0.4)), matFlat, vg.boulder, { size: 40, far: 260 });
@@ -211,16 +179,13 @@ export function createView(cfg, G, sim) {
     }));
     scatterChunks(fernGeo, swayMat(new MeshLambertMaterial({ vertexColors: true, side: DoubleSide }), 0.35, 0, U), ferns, { size: 30, far: 50, small: true });
   }
-  // غيوم وجبال بعيدة (برّة حدود العالم)
+  // ☁️ غيوم فوك الجزيرة، و🏝️ الجزيرة نفسها (أرض تتحمّل، شجر حقيقي، بحر، أنهار، مباني)
   const clouds = new Group(); scene.add(clouds);
   {
     const ctex = canvasTex(256, 128, (g, w, h) => { g.clearRect(0, 0, w, h); const r2 = rng(3); for (let i = 0; i < 22; i++) { const x = w * (0.18 + r2() * 0.64), y = h * (0.42 + r2() * 0.28), rr = 18 + r2() * 30; const gr = g.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(250,252,255,.55)'); gr.addColorStop(1, 'rgba(240,246,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr, 0, TAU); g.fill(); } });
-    for (let i = 0; i < 50; i++) { let a = R() * TAU; if (Math.abs(angDiff(a, 0)) < 0.5) a += 1.3; const r = 420 + R() * 420, sp = new Sprite(new SpriteMaterial({ map: ctex, transparent: true, opacity: 0.7 + R() * 0.3, depthWrite: false, fog: false })); const w = 70 + R() * 110; sp.scale.set(w, w * 0.42, 1); sp.position.set(Math.cos(a) * r, 60 + R() * 70, Math.sin(a) * r); clouds.add(sp); }
-    const list = [];
-    const mountain = (x, z, h, rr, seed, snowAt) => { let g = new ConeGeometry(rr, h, 28, 10); const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const px = p.getX(i), py = p.getY(i), pz = p.getZ(i), a = Math.atan2(pz, px), k = (py + h / 2) / h; const d = 1 + (vnoise(a * 2.2 + seed, k * 3.5) - 0.5) * 0.45 * (1 - k * 0.4); p.setXYZ(i, px * d, py, pz * d); } g = paint(g, (c, px, py, pz) => { const k = (py + h / 2) / h, n = vnoise(Math.atan2(pz, px) * 6 + seed, k * 9); mix(c, '#A9BCD2', '#D3DEEA', k * 0.9 + n * 0.35); if (snowAt < 1 && k > snowAt - 0.06 + n * 0.08) c.set('#F4F8FC'); }); list.push(tf(g, x, h / 2 - 20, z)); };
-    for (let i = 0; i < 26; i++) { const a = (i / 26) * TAU + Math.sin(i * 3.1) * 0.06, r = 820 + (i % 3) * 140; mountain(Math.cos(a) * r, Math.sin(a) * r, 150 + (i % 4) * 40, 230 + (i % 3) * 60, i * 2.1, i % 3 ? 0.7 : 2); }
-    scene.add(new Mesh(merge(list), new MeshLambertMaterial({ vertexColors: true, flatShading: true, fog: false })));
+    for (let i = 0; i < 46; i++) { const a = R() * TAU, r = 600 + R() * 6200, sp = new Sprite(new SpriteMaterial({ map: ctex, transparent: true, opacity: 0.45 + R() * 0.35, depthWrite: false, fog: false })); const w = 380 + R() * 520; sp.scale.set(w, w * 0.38, 1); sp.position.set(Math.cos(a) * r, G.SEA + 1400 + R() * 800, Math.sin(a) * r); clouds.add(sp); } // غيوم حقيقية (1.4–2.2 كم فوك البحر)
   }
+  IV = createIslandView({ scene, G, U, camera, waterN, glowTex, colorBase: colorAt });
   // ================================================================ الجسور، الحجار، الدرج، اللافتات، الاستراحات، صخور الجرف، الجذوع
   const signTex = (text, w = 256, h = 64, size = 34) => canvasTex(w, h, (g) => { g.fillStyle = '#8B5A2B'; g.fillRect(0, 0, w, h); g.strokeStyle = '#E8C170'; g.lineWidth = Math.max(4, h / 16); g.strokeRect(4, 4, w - 8, h - 8); g.fillStyle = '#FFF3D6'; g.font = `900 ${size}px -apple-system, "Geeza Pro", system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; try { g.direction = 'rtl'; } catch (e) { /* */ } g.fillText(text, w / 2, h / 2 + 2); });
   const flags = new Map();
@@ -418,6 +383,7 @@ export function createView(cfg, G, sim) {
       legs.push({ hip, knee, front, s });
     }
     shadowAll(root); scene.add(root);
+    root.scale.setScalar(1.15); // ذيب ~0.9 م وخنزير ~1 م (مقاسات حقيقية)
     return { root, body, head, tail, legs, yaw: 0 };
   }
   const beastV = sim.beasts.map((b) => ({ e: b, m: makeBeast(b.kind) }));
@@ -463,12 +429,14 @@ export function createView(cfg, G, sim) {
   })();
   const mer = makeMan(); scene.add(mer.root);
   let hero = null;
+  // البطل بطول إنسان حقيقي (~1.72 م): شكل «حبّاية» أطول من عرضها حتى يمر من الجسور (1.24 م)
+  const HERO_W = 1.15, HERO_H = 1.6;
   function ensureHero(sk) {
     if (hero && hero.id === sk.id) return;
     if (hero) for (const o of [hero.root, hero.chute, hero.drop, hero.rope]) scene.remove(o);
-    hero = makeHero(sk, glowTex); scene.add(hero.root, hero.chute, hero.drop, hero.rope); hero.turn = 0; hero.blink = 0; hero.nextBlink = 2;
+    hero = makeHero(sk, glowTex); hero.root.scale.set(HERO_W, HERO_H, HERO_W); scene.add(hero.root, hero.chute, hero.drop, hero.rope); hero.turn = 0; hero.blink = 0; hero.nextBlink = 2;
   }
-  function placeCampVisual() { const c = S.vq.camp; campG.position.set(V.x + c.x, V.VF + c.base, V.z + c.z); campG.rotation.y = c.rot; zone.position.set(S.vq.zoneW.x, G.H(S.vq.zoneW.x, S.vq.zoneW.z), S.vq.zoneW.z); mer.root.rotation.y = c.rot; mer.yaw = c.rot; }
+  function placeCampVisual() { const c = S.vq.camp; campG.visible = false; campG.position.set(V.x + c.x, V.VF + c.base, V.z + c.z); campG.rotation.y = c.rot; zone.position.set(S.vq.zoneW.x, G.H(S.vq.zoneW.x, S.vq.zoneW.z), S.vq.zoneW.z); mer.root.rotation.y = c.rot; mer.yaw = c.rot; }
   // طيور وفراشات وذرات ضو بالوادي
   const birds = [], butterflies = [];
   {
@@ -487,10 +455,10 @@ export function createView(cfg, G, sim) {
     const h = S.hero; if (!h) return;
     if (S.scope) { const ex = M.x + RP + 4.75, ey = HS + 1.45, ez = M.z, yaw = cam.scopeYaw, pt = cam.scopePitch; cam.pos.set(ex, ey, ez); cam.tgt.set(ex + Math.cos(yaw) * 100 * Math.cos(pt), ey + Math.sin(pt) * 100, ez + Math.sin(yaw) * 100 * Math.cos(pt)); return; }
     const f = S.focus, story = h.mode === 'lift' || h.mode === 'carry', glide = h.mode === 'glide';
-    _ct.set(f && f.x != null ? f.x : h.x, h.y + (story || glide ? 0.6 : 1.45), f && f.z != null ? f.z : h.z);
+    _ct.set(f && f.x != null ? f.x : h.x, h.y + (story || glide ? 0.9 : 1.6), f && f.z != null ? f.z : h.z);
     if (f) cam.yaw = dampAngle(cam.yaw, f.yaw, 2.2, dt);
     if (h.mode === 'carry') cam.yaw = dampAngle(cam.yaw, Math.atan2(h.z - cam.pos.z, h.x - cam.pos.x), 1.5, dt);
-    const wantDist = f ? f.dist : h.mode === 'carry' ? 11 : story ? 7 : glide ? 9 : S.summit ? 6.4 : 5.6;
+    const wantDist = f ? f.dist : h.mode === 'carry' ? 11 : story ? 7 : glide ? 9 : S.summit ? 6.8 : 6.3;
     if (!cam.init) { cam.tgt.copy(_ct); cam.dist = wantDist; cam.effPitch = null; cam.effDist = null; cam.init = true; }
     const k = h.mode === 'faint' ? 2 : story ? 6 : 14;
     cam.tgt.x = damp(cam.tgt.x, _ct.x, k, dt); cam.tgt.z = damp(cam.tgt.z, _ct.z, k, dt); cam.tgt.y = damp(cam.tgt.y, _ct.y, h.air && !story && !glide ? 6 : 10, dt);
@@ -603,7 +571,7 @@ export function createView(cfg, G, sim) {
     const r = hero.rope; r.visible = S.vq.caught && !S.vq.delivered && gzM.root.visible;
     if (!r.visible) return;
     hero.root.updateMatrixWorld(); gzM.root.updateMatrixWorld();
-    const e = S.hero, a = tmp.set(e.x - Math.cos(e.face) * 0.3, hero.root.position.y + 0.5, e.z - Math.sin(e.face) * 0.3), b = gzM.collar.getWorldPosition(tmp2), mid = a.clone().lerp(b, 0.5); mid.y = Math.min(a.y, b.y) - 0.25;
+    const e = S.hero, a = tmp.set(e.x - Math.cos(e.face) * 0.3, hero.root.position.y + 0.8, e.z - Math.sin(e.face) * 0.3), b = gzM.collar.getWorldPosition(tmp2), mid = a.clone().lerp(b, 0.5); mid.y = Math.min(a.y, b.y) - 0.25;
     r.geometry.dispose(); r.geometry = new TubeGeometry(new QuadraticBezierCurve3(a.clone(), mid, b.clone()), 18, 0.016, 5);
   }
   function animatePlaza(t, dt) {
@@ -662,7 +630,8 @@ export function createView(cfg, G, sim) {
     updateCamera(dt);
     // الضباب: كثيف بالغابة، خفيف بالسهل والوادي، ويصفى بالعالي
     const r = M.rad(e.x, e.z), inForest = smooth(195, 170, r) * smooth(78, 62, e.y), alt = smooth(50, 95, e.y) * smooth(200, 120, r);
-    const fNear = S.scope ? 380 : lerp(lerp(70, 22, inForest), 110, alt), fFar = S.scope ? 1500 : lerp(lerp(430, 120, inForest), 900, alt);
+    const altSea = Math.max(0, camera.position.y - G.SEA), hiK = smooth(20, 420, altSea);
+    const fNear = S.scope ? 900 : lerp(lerp(320, 90, inForest), 900, hiK), fFar = S.scope ? 6500 : lerp(lerp(3600, 1200, inForest), 6200, hiK);
     scene.fog.near = damp(scene.fog.near, fNear, 2, dt); scene.fog.far = damp(scene.fog.far, fFar, 2, dt);
     fx.scope.visible = !S.scope; camera.fov = S.scope ? 13 : 62; camera.updateProjectionMatrix();
     camera.position.copy(cam.pos); camera.lookAt(cam.tgt);
@@ -673,8 +642,7 @@ export function createView(cfg, G, sim) {
       const d2 = (c.x - cx) ** 2 + (c.z - cz) ** 2, far = c.small ? c.far : c.far + bonus, vis = d2 < far * far;
       if (c.lo) { const near = d2 < c.lodAt * c.lodAt && !S.scope; c.m.visible = vis && near; c.lo.visible = vis && !near; } else c.m.visible = vis;
     }
-    const hiR = S.scope ? 0 : 150;
-    for (const c of tChunks) { const d2 = (c.x - cx) ** 2 + (c.z - cz) ** 2, hi = c.hi && d2 < hiR * hiR; if (c.hi) c.hi.visible = hi; c.lo.visible = !hi; }
+    IV.update(t, dt, camera.position, e, opts.budget != null ? opts.budget : 6);
     const sx = Math.round(e.x / 0.25) * 0.25, sz = Math.round(e.z / 0.25) * 0.25;
     sun.target.position.set(sx, e.y, sz); sun.position.set(sx + SUN.x * 90, e.y + SUN.y * 90, sz + SUN.z * 90);
     updateSee(e);
@@ -685,10 +653,10 @@ export function createView(cfg, G, sim) {
     const see = U.see.value;
     if (S.scope || e.mode === 'lift' || e.mode === 'carry') { see.w = 0; return; }
     camera.updateMatrixWorld();
-    _sv.set(e.x, e.y + 0.75, e.z).applyMatrix4(camera.matrixWorldInverse); const depth = -_sv.z;
+    _sv.set(e.x, e.y + 0.9, e.z).applyMatrix4(camera.matrixWorldInverse); const depth = -_sv.z;
     if (depth < 0.3) { see.w = 0; return; }
-    _sv.set(e.x, e.y + 0.75, e.z).project(camera); renderer.getDrawingBufferSize(_sb);
-    const rad = (1.35 / (depth * Math.tan((camera.fov * Math.PI) / 360))) * (_sb.y / 2);
+    _sv.set(e.x, e.y + 0.9, e.z).project(camera); renderer.getDrawingBufferSize(_sb);
+    const rad = (1.6 / (depth * Math.tan((camera.fov * Math.PI) / 360))) * (_sb.y / 2);
     see.set((_sv.x * 0.5 + 0.5) * _sb.x, (_sv.y * 0.5 + 0.5) * _sb.y, depth, rad);
   }
   const _p = new Vector3();
@@ -701,7 +669,6 @@ export function createView(cfg, G, sim) {
     pc.position.copy(hp).addScaledVector(fwd, 1.75).add(new Vector3(0, 0.05, 0)); pc.lookAt(hp.x, hp.y - 0.02, hp.z);
     sky.position.copy(pc.position); sun.target.position.copy(hp); sun.position.set(hp.x + SUN.x * 60, hp.y + SUN.y * 60, hp.z + SUN.z * 60);
     const was = [hero && hero.root.visible, gzM.root.visible]; if (hero) hero.root.visible = false; gzM.root.visible = false;
-    for (const c of tChunks) { c.lo.visible = true; if (c.hi) c.hi.visible = false; }
     renderer.render(scene, pc);
     if (hero) hero.root.visible = was[0]; gzM.root.visible = was[1];
     const out = document.createElement('canvas'); out.width = out.height = size;
@@ -709,27 +676,9 @@ export function createView(cfg, G, sim) {
     return out.toDataURL('image/jpeg', 0.9);
   }
   /** صورة العالم كله من فوك (راس الصورة = +x = الشرق صوب الوادي... الشمال بالبوصلة). الكائنات والخيمة مخفية: إنت تدوّرهم وتأشّرهم */
-  function mapShot(size = 1024) {
-    buildHi(1e9); U.see.value.w = 0;
-    const oc = new OrthographicCamera(-HALF, HALF, HALF, -HALF, 1, 900);
-    oc.position.set(0, 600, 0); oc.up.set(1, 0, 0); oc.lookAt(0, 0, 0);
-    const hide = [campG, mer.root, gzM.root, coinMesh, zone, clouds, ...birds, ...butterflies, ...beastV.map((b) => b.m.root), ...(hero ? [hero.root, hero.chute, hero.drop, hero.rope] : [])];
-    const vis = hide.map((o) => o.visible); hide.forEach((o) => { o.visible = false; });
-    for (const c of tChunks) { c.lo.visible = false; c.hi.visible = true; }
-    for (const c of chunks) { c.m.visible = !c.small; if (c.lo) { c.m.visible = false; c.lo.visible = true; } }
-    const fn = scene.fog.near, ff = scene.fog.far; scene.fog.near = 1e5; scene.fog.far = 2e5;
-    const ss = sun.shadow.camera.right; Object.assign(sun.shadow.camera, { left: -HALF, right: HALF, top: HALF, bottom: -HALF }); sun.shadow.camera.updateProjectionMatrix();
-    sun.target.position.set(0, 0, 0); sun.position.set(SUN.x * 400, SUN.y * 400, SUN.z * 400);
-    const opr = renderer.getPixelRatio(); renderer.setPixelRatio(1); renderer.setSize(size, size, false);
-    renderer.render(scene, oc);
-    const out = document.createElement('canvas'); out.width = out.height = size; out.getContext('2d').drawImage(renderer.domElement, 0, 0, size, size);
-    renderer.setPixelRatio(opr); renderer.setSize(cssW, cssH, false);
-    Object.assign(sun.shadow.camera, { left: -ss, right: ss, top: ss, bottom: -ss }); sun.shadow.camera.updateProjectionMatrix();
-    scene.fog.near = fn; scene.fog.far = ff; hide.forEach((o, i) => { o.visible = vis[i]; });
-    return { canvas: out, x0: -HALF, x1: HALF, z0: -HALF, z1: HALF };
-  }
+  const mapShot = (size = 1024) => IV.mapShot(size);
   const pourTea = () => { for (const n of npcs) if (n.kind === 'seller') { n.pour = 1.4; n.talk = 3; } };
   const talkNpc = (kind) => { const g = npcs.filter((n) => n.kind === kind); if (g.length) g[Math.floor(Math.random() * g.length)].talk = 3; };
   const ringBell = () => { fx.bell.v += 2.4; };
-  return { setSize, render, project, heading, cam, portrait, mapShot, buildHi, setHero: ensureHero, pourTea, talkNpc, ringBell, renderer, scene, camera, U, fx, npcs, get pr() { return pr; }, get hiLeft() { return hiPending.length; } };
+  return { IV, setSize, render, project, heading, cam, portrait, mapShot, buildHi, setHero: ensureHero, pourTea, talkNpc, ringBell, renderer, scene, camera, U, fx, npcs, get pr() { return pr; }, get hiLeft() { return IV.pending(); } };
 }

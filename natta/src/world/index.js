@@ -16,7 +16,8 @@ export function createWorld(canvas, cfg = {}) {
   function enter(sk, opts = {}) {
     view.setHero(sk);
     const info = sim.enter(sk.id, opts);
-    cam.yaw = S.hero.face; cam.pitch = opts.at === 'valley' ? 0.5 : 0.26; cam.init = false;
+    cam.yaw = S.hero.face; cam.pitch = 0.26; cam.init = false;
+    view.IV.warm(S.hero.x, S.hero.z, S.hero.y + 3);
     return info;
   }
   function step(dt, inp = {}) {
@@ -25,11 +26,11 @@ export function createWorld(canvas, cfg = {}) {
     const jx = inp.jx || 0, jy = inp.jy || 0, cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
     const cmd = { mx: cy * jy - sy * jx, mz: sy * jy + cy * jx, mag: inp.mag || 0, jump: !!inp.jump, sneak: !!inp.sneak };
     const ev = sim.step(dt, cmd);
-    for (const e of ev) if (Array.isArray(e) && e[0] === 'respawn') { cam.yaw = S.hero.face; cam.init = false; }
+    for (const e of ev) if (Array.isArray(e) && e[0] === 'respawn') { cam.yaw = S.hero.face; cam.init = false; view.IV.warm(S.hero.x, S.hero.z, S.hero.y + 3); }
     return ev;
   }
   function interact(id) {
-    if (id === 'scope') { sim.interact('scope'); cam.scopeYaw = 0.0; cam.scopePitch = -0.38; return S.scope; }
+    if (id === 'scope') { sim.interact('scope'); cam.scopeYaw = 0.0; cam.scopePitch = -0.2; return S.scope; } // التلسكوب يباوع على خليج الفجر
     if (id === 'tea') { sim.interact('tea'); view.pourTea(); return true; }
     if (id === 'chat') { view.talkNpc('tea'); return true; }
     if (id === 'bell') { view.ringBell(); return true; }
@@ -41,7 +42,7 @@ export function createWorld(canvas, cfg = {}) {
     render: view.render, setSize: view.setSize, project: view.project, heading: view.heading,
     nearInteract: sim.nearInteract, skipWait: sim.skipWait, objective: sim.objective, respawn: sim.respawn,
     mapShot: view.mapShot, portrait: view.portrait, ground: G.H,
-    info: { HALF: G.HALF, M: G.M, V: G.V, rest: G.restPoints, buildMs, geoMs: Math.round(tGeo) },
+    warm: (x, z, y) => view.IV.warm(x, z, y), info: { HALF: G.HALF, M: G.M, V: G.V, I: G.I, SEA: G.SEA, rest: G.restPoints, buildMs, geoMs: Math.round(tGeo) },
     renderer: view.renderer, scene: view.scene, camera: view.camera, U: view.U, get pr() { return view.pr; },
   };
 }

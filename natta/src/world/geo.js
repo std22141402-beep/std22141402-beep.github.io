@@ -3,6 +3,7 @@
 // العالم يتبنى من «تعريف خريطة» (mapdef): كل جبل أو وادي «معلم» بمكانه، فتضيف معالم جديدة بدون ما تغيّر المحرك.
 import { Vector3, CatmullRomCurve3 } from 'three';
 import { TAU, clamp, lerp, smooth, rng, hash2, vnoise, fbm, angDiff } from '../lib3d.js';
+import { buildIsland, NATTA_ISLAND } from './island.js';
 
 const D2R = Math.PI / 180;
 const gk = (cx, cz) => cx * 100003 + cz;
@@ -14,6 +15,7 @@ function makeGrid(cell) {
     cell,
     add(o, x = o.x, z = o.z) { const k = gk(Math.floor(x / cell), Math.floor(z / cell)); let l = m.get(k); if (!l) { l = []; m.set(k, l); } l.push(o); },
     remove(o, x = o.x, z = o.z) { const l = m.get(gk(Math.floor(x / cell), Math.floor(z / cell))); if (l) { const i = l.indexOf(o); if (i >= 0) l.splice(i, 1); } },
+    addArea(o, x0, z0, x1, z1) { for (let i = Math.floor(x0 / cell); i <= Math.floor(x1 / cell); i++) for (let j = Math.floor(z0 / cell); j <= Math.floor(z1 / cell); j++) { const k = gk(i, j); let l = m.get(k); if (!l) { l = []; m.set(k, l); } l.push(o); } },
     each(x, z, reach, f) { const cx = Math.floor(x / cell), cz = Math.floor(z / cell); for (let i = -reach; i <= reach; i++) for (let j = -reach; j <= reach; j++) { const l = m.get(gk(cx + i, cz + j)); if (l) for (const o of l) if (f(o) === true) return true; } return false; },
   };
 }
@@ -276,25 +278,17 @@ function buildValley(def) {
 }
 
 // ======================================================================= 🌍 العالم
-export const NATTA_MAP = {
-  id: 'natta-1', name: 'جبل الغابة ووادي الغزلان', half: 500, seed: 9091,
-  features: [{ type: 'mountain', id: 'M1', x: 0, z: 0 }, { type: 'valley', id: 'V1', x: 258, z: 0, floor: -35 }],
-  spawn: 'cp0',
-};
+export const NATTA_MAP = NATTA_ISLAND;
 
-export function buildGeo(map = NATTA_MAP) {
+export function buildGeo(map = NATTA_ISLAND) {
   const R = rng(map.seed || 1);
   const HALF = map.half || 500;
   const M = buildMountain(map.features.find((f) => f.type === 'mountain'), R);
-  const V = buildValley(map.features.find((f) => f.type === 'valley'));
-  // السهل: تلال هادئة وسلسلة جبال على الحدود
-  const plains = (x, z) => {
-    const e = Math.max(Math.abs(x), Math.abs(z)) + (fbm(x * 0.008 + 1, z * 0.008 + 5) - 0.5) * 70; // حدود متعرجة مو حايط مستقيم
-    const lx = x - V.x, nearV = smooth(140, 70, Math.max(Math.abs(z - V.z), lx < 0 ? -lx : lx > V.VL ? lx - V.VL : 0));
-    let h = -14 + ((fbm(x * 0.006 + 7, z * 0.006) - 0.5) * 16 + (fbm(x * 0.025, z * 0.025 + 3) - 0.5) * 2.5) * (1 - nearV * 0.85);
-    h += Math.pow(smooth(395, 492, e), 1.6) * 85 + (fbm(x * 0.03, z * 0.03) - 0.5) * 14 * smooth(400, 470, e);
-    return h;
-  };
+  const vdef = map.features.find((f) => f.type === 'valley');
+  const I = buildIsland(map, M, vdef); // 🏝️ الجزيرة: الساحل والجبال والأنهار والمناطق والطرق والمباني
+  const SEA = I.SEA;
+  const V = buildValley({ ...vdef, floor: SEA + I.A(I.valley.x, I.valley.z) - 21 }); // الوادي محفور بمصطبته على كتف الجبل
+  const plains = (x, z) => I.H(x, z); // برّة المخروط: أرض الجزيرة
   function H(x, z) {
     const r = M.rad(x, z);
     let h = r < 245 ? (r > 200 ? lerp(M.H(x, z), plains(x, z), smooth(200, 245, r)) : M.H(x, z)) : plains(x, z);
@@ -311,24 +305,6 @@ export function buildGeo(map = NATTA_MAP) {
   // ---------------- الغطاء النباتي (مشترك: المحاكاة تحتاج الجذوع، والرسم يحتاج الأماكن)
   const veg = { pineA: [], pineB: [], oak: [], hedge: [], bush: [], rock: [], palm: [[], [], []], fruit: [[], [], []], boulder: [], vbush: [], vrock: [], rim: [] };
   const clearOfTrail = (x, z, extra) => { if (M.rad(x, z) < M.RP + 3) return false; const q = M.nearest(x, z, null, 2); if (q && q.d < q.p.hw + extra) return false; for (const c of M.rest) if (Math.hypot(x - c.x, z - c.z) < 4.6) return false; return true; };
-  // غابة الجبل
-  for (let x = -195; x <= 195; x += 2.3) for (let z = -195; z <= 195; z += 2.3) {
-    const wx = M.x + x, wz = M.z + z, r = Math.hypot(x, z); if (r > 192) continue;
-    const jx = wx + (R() - 0.5) * 2, jz = wz + (R() - 0.5) * 2;
-    if (M.inMaze(jx, jz)) continue; // المتاهة إلها سياج كثيف لحالها
-    const q = M.nearest(jx, jz, null, 6), nearT = q ? q.d : 99;
-    if (nearT > 26 && R() < 0.5) continue;
-    if (!clearOfTrail(jx, jz, 1.05)) continue;
-    const y = H(jx, jz); let kind = R(), s = 0.8 + R() * 0.55;
-    if (y > 84) { if (R() < 0.3 && clearOfTrail(jx, jz, 0.4)) veg.rock.push({ x: jx, y: y + 0.05, z: jz, rx: R() * 3, ry: R() * 3, rz: R() * 3, s3: [0.8 + R() * 1.4, 0.5 + R() * 0.8, 0.8 + R() * 1.4] }); else if (R() < 0.35) veg.bush.push({ x: jx, y, z: jz, ry: R() * TAU, s: 0.5 + R() * 0.6 }); continue; }
-    if (y > 72) { if (R() < 0.45) continue; s *= lerp(1, 0.6, smooth(72, 84, y)); }
-    if (Math.abs(angDiff(M.ang(jx, jz), M.DECK_A)) < 0.55 && y + 9 * s > M.HS - 7) continue;
-    if (y > 48) kind *= 0.86;
-    const it = { x: jx, y: y - 0.15, z: jz, ry: R() * TAU, s };
-    if (kind < 0.46) veg.pineA.push(it); else if (kind < 0.82) veg.pineB.push(it); else veg.oak.push({ ...it, s: s * 0.95 });
-    addColl({ x: jx, z: jz, r: 0.42 * s, tall: 1, tree: 1 });
-    if (nearT < 9 && R() < 0.5) { const bx = jx + (R() - 0.5) * 1.6, bz = jz + (R() - 0.5) * 1.6; if (clearOfTrail(bx, bz, 0.25)) veg.bush.push({ x: bx, y: H(bx, bz), z: bz, ry: R() * TAU, s: 0.5 + R() * 0.7 }); }
-  }
   // سياج المتاهة: شجيرات كثيفة ما تنعبر (والممرات بس مفتوحة)، وشجر عالي فوكها
   for (let x = -125; x <= 125; x += 1.25) for (let z = -125; z <= 125; z += 1.25) {
     const jx = M.x + x + (R() - 0.5) * 0.4, jz = M.z + z + (R() - 0.5) * 0.4;
@@ -337,20 +313,6 @@ export function buildGeo(map = NATTA_MAP) {
     veg.hedge.push({ x: jx, y: y - 0.1, z: jz, ry: R() * TAU, s: 0.95 + R() * 0.45 });
     addColl({ x: jx, z: jz, r: 0.62, hedge: 1 });
     if (R() < 0.16 && clearOfTrail(jx, jz, 2.2)) { const it = { x: jx, y: y - 0.15, z: jz, ry: R() * TAU, s: 0.85 + R() * 0.4 }; (R() < 0.5 ? veg.pineA : veg.oak).push(it); }
-  }
-  // السهل: بساتين وأشجار متفرقة وصخور
-  for (let x = -HALF + 10; x <= HALF - 10; x += 6) for (let z = -HALF + 10; z <= HALF - 10; z += 6) {
-    const jx = x + (R() - 0.5) * 5, jz = z + (R() - 0.5) * 5;
-    if (M.rad(jx, jz) < 205) continue;
-    const lx = jx - V.x, lz = jz - V.z; if (lx > -100 && lx < V.VL + 70 && Math.abs(lz) < 60) continue;
-    const grove = vnoise(jx * 0.012 + 4, jz * 0.012), e = Math.max(Math.abs(jx), Math.abs(jz));
-    if (e > 470) continue;
-    const p = grove > 0.62 ? 0.75 : e > 400 ? 0.25 : 0.05;
-    if (R() > p) { if (R() < 0.03) veg.rock.push({ x: jx, y: H(jx, jz) + 0.05, z: jz, rx: R() * 3, ry: R() * 3, rz: R() * 3, s3: [0.7 + R() * 1.6, 0.4 + R() * 0.9, 0.7 + R() * 1.6] }); continue; }
-    if (slope(jx, jz) > 0.8) continue;
-    const s = 0.8 + R() * 0.6, it = { x: jx, y: H(jx, jz) - 0.15, z: jz, ry: R() * TAU, s };
-    (e > 400 ? (R() < 0.6 ? veg.pineB : veg.pineA) : R() < 0.55 ? veg.oak : veg.pineA).push(it);
-    addColl({ x: jx, z: jz, r: 0.42 * s, tall: 1, tree: 1 });
   }
   // الوادي: نخل، شجر فاكهة، شجيرات، صخور (بإحداثيات محلية ← العالم)
   {
@@ -376,8 +338,78 @@ export function buildGeo(map = NATTA_MAP) {
   }
   // ---------------- كثافة الغابة (تبطّي المشي)
   const dgrid = new Map();
-  for (const c of colliders) if (c.tree) { const k = gk(Math.floor(c.x / 6), Math.floor(c.z / 6)); dgrid.set(k, (dgrid.get(k) || 0) + 1); }
-  const forestAt = (x, z) => (dgrid.get(gk(Math.floor(x / 6), Math.floor(z / 6))) || 0) / 7; // ~1 = غابة كثيفة
+  const dAdd = (c, k1) => { const k = gk(Math.floor(c.x / 6), Math.floor(c.z / 6)); dgrid.set(k, (dgrid.get(k) || 0) + k1); };
+  for (const c of colliders) if (c.tree) dAdd(c, 1);
+
+  // ---------------- 🏠 المباني: عوائق مستطيلة (تدور ويه البناية) ودائرية، والأرصفة سطوح تمشي عليها
+  const plats = [], platGrid = makeGrid(16);
+  const addBox = (b) => { b.box = true; b.c = Math.cos(b.rot || 0); b.s = Math.sin(b.rot || 0); const rr = Math.hypot(b.hw, b.hd); colliders.push(b); cgrid.addArea(b, b.x - rr, b.z - rr, b.x + rr, b.z + rr); return b; };
+  for (const st of I.sites) {
+    st.y = I.H(st.x, st.z);
+    const k = st.kind, rot = st.rot || 0;
+    if (['house', 'hut', 'reedhut', 'mudhif', 'teahouse', 'stall', 'board', 'logs', 'fwall'].includes(k)) addBox({ x: st.x, z: st.z, hw: st.w / 2, hd: st.d / 2, rot, tall: 1, h: st.h, site: st });
+    else if (k === 'lighthouse') addColl({ x: st.x, z: st.z, r: 3.1, tall: 1 });
+    else if (k === 'fountain') addColl({ x: st.x, z: st.z, r: st.r });
+    else if (k === 'well' || k === 'ftower') addColl({ x: st.x, z: st.z, r: st.r, tall: k === 'ftower' ? 1 : 0 });
+    else if (k === 'lamp' || k === 'signpost') addColl({ x: st.x, z: st.z, r: 0.14 });
+    else if (k === 'palm') addColl({ x: st.x, z: st.z, r: 0.3, tall: 1, tree: 1 });
+    else if (k === 'gate') for (const sd of [-1, 1]) addColl({ x: st.x - Math.sin(rot) * sd * 4.6, z: st.z + Math.cos(rot) * sd * 4.6, r: 0.55, tall: 1 });
+    else if (k === 'pier') { const lake = st.lake ? I.lakes[0] : null, y = lake ? SEA + lake.lv + 0.55 : SEA + 0.95; const pl = { x: st.x, z: st.z, c: Math.cos(rot), s: Math.sin(rot), hw: st.w / 2, hd: st.d / 2, y }; st.y = y; plats.push(pl); platGrid.addArea(pl, st.x - st.d, st.z - st.d, st.x + st.d, st.z + st.d); }
+  }
+  /** نطلّع الأرصفة: إذا داخل الرصيف يرجّع ارتفاعه */
+  function platAt(x, z) { let hit = null; platGrid.each(x, z, 0, (p) => { const dx = x - p.x, dz = z - p.z; if (Math.abs(dx * p.c + dz * p.s) < p.hw + 0.05 && Math.abs(-dx * p.s + dz * p.c) < p.hd) hit = p; }); return hit; }
+
+  // ---------------- 🌲 الغطاء النباتي: يتولد قطعة قطعة (32 م) حوالين اللاعب، ونفسه دايماً (بذرة ثابتة)، بمقاسات حقيقية
+  const VC = 32, vcells = new Map(), vseed = (map.seed || 1) * 2654435761;
+  const inValleyBox = (x, z) => { const lx = x - V.x, lz = z - V.z; return lx > -66 && lx < V.VL + 30 && Math.abs(lz) < 46; };
+  function vegCell(ci, cj) {
+    const key = gk(ci, cj); let c = vcells.get(key); if (c) return c;
+    c = { ci, cj, x: (ci + 0.5) * VC, z: (cj + 0.5) * VC, items: [], colls: [], on: false };
+    const r = rng(((ci * 73856093) ^ (cj * 19349663) ^ vseed) >>> 0);
+    const x0 = ci * VC, z0 = cj * VC;
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+      const x = x0 + (i + 0.5) * 8 + (r() - 0.5) * 5, z = z0 + (j + 0.5) * 8 + (r() - 0.5) * 5, roll = r(), sp = r(), sc = r(), ry = r() * TAU;
+      if (Math.abs(x) > HALF - 20 || Math.abs(z) > HALF - 20 || inValleyBox(x, z)) continue;
+      const mr = M.rad(x, z);
+      if (mr < 250) { if (mr < M.RP + 3 || M.inMaze(x, z) || !clearOfTrail(x, z, 1.4) || bridgeAt(x, z)) continue; }
+      if (I.reserved(x, z)) continue;
+      const y = H(x, z), a = y - SEA;
+      if (a > -1 && a < 0.35 && roll > 0.6) { const fl = I.flora(x, z, a, 0, 0); if (fl.reed > 0 && r() < fl.reed) c.items.push({ t: 'reed', x, y: y - 0.1, z, s: 0.8 + sc * 0.6, ry }); continue; }
+      if (a < 0.35) continue;
+      const sl = Math.hypot(H(x + 1.5, z) - y, H(x, z + 1.5) - y) / 1.5;
+      const fl = I.flora(x, z, a, I.coastS(x, z), sl);
+      if (mr < 250 && y > 60) fl.t *= 0.35; // راس المخروط صخري
+      if (roll < fl.t) {
+        const w = fl.pine + fl.oak + fl.palm + fl.olive || 1; let u = sp * w, t;
+        if ((u -= fl.pine) < 0) t = 'pine'; else if ((u -= fl.oak) < 0) t = 'oak'; else if ((u -= fl.palm) < 0) t = 'palm'; else t = 'olive';
+        const s = t === 'pine' ? 0.85 + sc * 0.4 : t === 'oak' ? 0.8 + sc * 0.4 : t === 'palm' ? 0.85 + sc * 0.35 : 0.8 + sc * 0.5;
+        c.items.push({ t, x, y: y - 0.12, z, s, ry });
+        c.colls.push({ x, z, r: (t === 'pine' ? 0.34 : t === 'oak' ? 0.45 : t === 'palm' ? 0.28 : 0.3) * s, tall: 1, tree: 1 });
+      } else if (roll < fl.t + fl.b) c.items.push({ t: 'bush', x, y, z, s: 0.7 + sc * 0.9, ry });
+      else if (roll < fl.t + fl.b + fl.rock) {
+        const big = sc > 0.7, k = big ? 1.6 + sp * 2.4 : 0.5 + sp * 0.9;
+        c.items.push({ t: big ? 'boulder' : 'rock', x, y: y - k * 0.25, z, s: k, ry, rx: sp * 3, rz: sc * 3 });
+        if (k > 1.1) c.colls.push({ x, z, r: k * 0.5 });
+      }
+    }
+    vcells.set(key, c); return c;
+  }
+  let vegAt = null;
+  /** نفعّل عوائق الشجر حوالين نقطة (وننطّي البعيدة)، ونمسح الذاكرة البعيدة كلش */
+  function ensureVeg(x, z, rad = 170) {
+    if (vegAt && Math.hypot(x - vegAt[0], z - vegAt[1]) < 12) return; vegAt = [x, z];
+    const ci0 = Math.floor((x - rad) / VC), ci1 = Math.floor((x + rad) / VC), cj0 = Math.floor((z - rad) / VC), cj1 = Math.floor((z + rad) / VC);
+    for (let i = ci0; i <= ci1; i++) for (let j = cj0; j <= cj1; j++) {
+      const c = vegCell(i, j); if (c.on) continue; c.on = true;
+      for (const k of c.colls) { colliders.push(k); cgrid.add(k); if (k.tree) dAdd(k, 1); }
+    }
+    for (const c of vcells.values()) {
+      const d = Math.hypot(c.x - x, c.z - z);
+      if (c.on && d > rad + 80) { c.on = false; for (const k of c.colls) { cgrid.remove(k); if (k.tree) dAdd(k, -1); } }
+      if (!c.on && d > 1900) vcells.delete(gk(c.ci, c.cj));
+    }
+  }
+  const forestAt = (x, z) => (dgrid.get(gk(Math.floor(x / 6), Math.floor(z / 6))) || 0) / 3; // غابة مفتوحة (ببجي): الشجر بعيد عن بعضه
 
   // ---------------- المنصّات: الجسور والحجار وسطيحة الإطلالة
   const bgrid = makeGrid(4); for (const b of M.bridges) for (let k = b.i; k <= b.j; k++) bgrid.add(b.seg.pts[k]);
@@ -406,6 +438,7 @@ export function buildGeo(map = NATTA_MAP) {
     const b = bridgeAt(x, z); if (b && b.y != null && b.y <= up && b.y > y - 0.01) { y = b.y; kind = 'bridge'; plat = b; }
     for (const s of M.stones) { const d = Math.hypot(x - s.x, z - s.z); if (d < s.r + (air ? 0.5 : 0) && s.y <= up && s.y > y) { y = s.y; kind = 'stone'; plat = s; } }
     if (x > deck.x0 && x < deck.x1 && z > deck.z0 && z < deck.z1 && deck.y <= up && deck.y >= y - 0.2) { y = deck.y; kind = 'deck'; }
+    const pl = platAt(x, z); if (pl && pl.y <= up && pl.y > y) { y = pl.y; kind = 'deck'; }
     return { y, kind, plat, b };
   }
   /** نوع الأرض (للصوت والسرعة) */
@@ -414,6 +447,12 @@ export function buildGeo(map = NATTA_MAP) {
     if (r < M.RP + 0.5 && Math.abs(y - M.HS) < 0.6) return 'plaza';
     if (r < 200) { const q = M.nearest(x, z, y, 1); if (q && q.d < q.p.hw) return q.p.kind === 'stones' ? 'trail' : q.p.kind; }
     const [lx, lz] = V.toL(x, z); if (lx > -2 && lx < V.VL + 2 && Math.abs(lz) < V.FLOOR + 1) return 'grass';
+    if (r > 245) {
+      const a = y - SEA, rd = I.nearRoad(x, z);
+      if (rd && rd.d < rd.hw + 0.3) return 'trail';
+      if (Math.hypot(x - I.fajr.x, z - I.fajr.z) < 50) return 'plaza';
+      if (a < 3.5 && I.coastS(x, z) < 150) return 'sand';
+    }
     if (slope(x, z) > 0.85) return 'rock';
     return forestAt(x, z) > 0.55 ? 'forest' : 'grass';
   }
@@ -422,14 +461,26 @@ export function buildGeo(map = NATTA_MAP) {
     const [lx, lz] = V.toL(x, z);
     if (lx > -6 && lx < V.VL + 6 && Math.abs(lz - V.riverZ(lx)) < 0.95) { const lv = V.waterLevel(lx); if (y < lv + 0.3) return { kind: 'river', level: lv }; }
     const g = M.stream, r = M.rad(x, z);
+    if (r > 245) return I.water(x, z, y);
     if (r > g.r0 + 1 && r < g.r1 - 1) { const lat = Math.abs(angDiff(g.a, M.ang(x, z))) * r; if (lat < 2.1) { const lv = M.Hnat(x, z) + 0.5; if (y < lv + 0.25) return { kind: 'torrent', level: lv, dx: Math.cos(g.a), dz: Math.sin(g.a) }; } }
     return null;
   }
   /** نطلّع الدايرة من العوائق (يرجّع الموقع الجديد) */
+  let cstamp = 0;
   function collide(x, z, r, filter) {
     for (let it = 0; it < 2; it++) {
+      const st = ++cstamp;
       cgrid.each(x, z, 1, (c) => {
+        if (c._st === st) return; c._st = st;
         if (filter && !filter(c)) return;
+        if (c.box) { // مستطيل دوّار: نطلع لأقرب وجه
+          const dx = x - c.x, dz = z - c.z; let u = dx * c.c + dz * c.s, v = -dx * c.s + dz * c.c;
+          const eu = u - clamp(u, -c.hw, c.hw), ev = v - clamp(v, -c.hd, c.hd), d2 = eu * eu + ev * ev;
+          if (d2 >= r * r) return;
+          if (d2 > 1e-8) { const d = Math.sqrt(d2), k = (r - d) / d; u += eu * k; v += ev * k; }
+          else { const pu = c.hw - Math.abs(u), pv = c.hd - Math.abs(v); if (pu < pv) u = (u < 0 ? -1 : 1) * (c.hw + r); else v = (v < 0 ? -1 : 1) * (c.hd + r); }
+          x = c.x + u * c.c - v * c.s; z = c.z + u * c.s + v * c.c; return;
+        }
         const dx = x - c.x, dz = z - c.z, rr = r + c.r, d2 = dx * dx + dz * dz;
         if (d2 < rr * rr && d2 > 1e-8) { const d = Math.sqrt(d2), k = (rr - d) / d; x += dx * k; z += dz * k; }
       });
@@ -437,9 +488,9 @@ export function buildGeo(map = NATTA_MAP) {
     return [clamp(x, -HALF + 3, HALF - 3), clamp(z, -HALF + 3, HALF - 3)];
   }
   const tallNear = (x, z, f) => cgrid.each(x, z, 1, (c) => c.tall && f(c));
-  const restPoints = [...M.rest, ...V.rest];
+  const restPoints = [...I.rest.map((p) => ({ ...p, y: H(p.x, p.z) })), ...M.rest, ...V.rest]; // أول وحدة = ساحة الفجر (البداية)
   return {
     map, HALF, M, V, H, slope, plains, surfaceAt, groundKind, water, collide, colliders, addColl, removeColl: (c) => { cgrid.remove(c); const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }, tallNear, cgrid,
-    veg, forestAt, restPoints, bridgeAt, deck,
+    veg, forestAt, restPoints, bridgeAt, deck, I, SEA, VC, vegCell, ensureVeg, platAt, zoneAt: I.zoneAt,
   };
 }

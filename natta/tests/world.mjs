@@ -1,4 +1,4 @@
-// فحص العالم المفتوح 🌍 بمتصفح بمقاس آيفون: جبل + قمة + وادي بعالم واحد بلا قطع، حركة حرة، صحة، حيوانات، مهام، خريطة.
+// فحص جزيرة نطّة 🏝️ بمتصفح بمقاس آيفون: جزيرة 75 كم² بمناطق مسمّاة، جبل بالنص، حركة حرة، صحة ونفَس وسباحة، حيوانات، التاجر بالقمة، خريطة.
 // التشغيل: node natta/tests/world.mjs   (الصور بـ /tmp/natta-world)
 import http from 'node:http';
 import fs from 'node:fs';
@@ -48,12 +48,17 @@ ok(await until(() => window.__natta.r3State === 'ready', 30000), 'ملف الع�
 // 1) العالم: خريطة وحدة بيها الجبل والوادي
 await page.tap('#play', { force: true });
 ok(await until(() => window.__natta.state === 'world', 60000), 'زر «العب» يفتح العالم المفتوح');
-const info = await G(() => { const W = window.__natta.WD, M = W.info.M, V = W.info.V; let len = 0; for (const s of M.segs) for (let k = 1; k < s.pts.length; k++) len += Math.hypot(s.pts[k].x - s.pts[k - 1].x, s.pts[k].z - s.pts[k - 1].z); return { half: W.info.HALF, HS: M.HS, plaza: Math.round(Math.PI * M.RP * M.RP), len: Math.round(len), bridges: M.bridges.length, stones: M.stones.length, rest: W.info.rest.length, beasts: W.sim.beasts.map((b) => b.kind), valley: [V.VL, V.FLOOR * 2], vdist: Math.round(V.x - M.x), build: W.info.buildMs }; });
-ok(info.half * 2 >= 1000, `خريطة وحدة ${info.half * 2}×${info.half * 2} م (بناء ${info.build} مللي ثانية)`);
-ok(info.HS === 95 && info.plaza > 500 && info.plaza < 600, `الجبل ${info.HS} م وساحة القمة ${info.plaza} م²`);
-ok(info.valley[0] * info.valley[1] >= 2500 && info.vdist < 300, `الوادي ${info.valley[0]}×${info.valley[1]} م بنفس العالم، ${info.vdist} م من نص الجبل`);
-ok(info.len > 1000 && info.bridges >= 2 && info.stones >= 3, `طرق ${info.len} م، ${info.bridges} جسور، ${info.stones} حجار`);
-ok(info.beasts.filter((k) => k === 'wolf').length >= 4 && info.beasts.includes('boar'), `حيوانات: ${info.beasts.join('، ')}`);
+const info = await G(() => { const W = window.__natta.WD, M = W.info.M, V = W.info.V, I = W.G.I, SEA = W.G.SEA; let len = 0; for (const s of M.segs) for (let k = 1; k < s.pts.length; k++) len += Math.hypot(s.pts[k].x - s.pts[k - 1].x, s.pts[k].z - s.pts[k - 1].z); let road = 0; for (const r of I.roads) for (let k = 1; k < r.pts.length; k++) road += Math.hypot(r.pts[k].x - r.pts[k - 1].x, r.pts[k].z - r.pts[k - 1].z); const h = W.S.hero; return { half: W.info.HALF, summit: Math.round(M.HS - SEA), plaza: Math.round(Math.PI * M.RP * M.RP), len: Math.round(len), road: Math.round(road / 100) / 10, bridges: M.bridges.length, stones: M.stones.length, zones: I.zones.length, rivers: I.rivers.length, lakes: I.lakes.length, falls: I.falls.filter((f) => f.top - f.bot > 4).length, sites: I.sites.length, rest: W.info.rest.filter((r) => r.fire).length, beasts: W.sim.beasts.map((b) => b.kind), valley: [V.VL, V.FLOOR * 2], vdist: Math.round(Math.hypot(V.x - M.x, V.z - M.z)), build: W.info.buildMs, startZone: W.G.zoneAt(h.x, h.z).name, startAlt: Math.round(h.y - SEA) }; });
+const area = (info.half * 2 / 1000) ** 2;
+ok(area >= 74 && area <= 76, `خريطة ${(info.half * 2 / 1000).toFixed(2)}×${(info.half * 2 / 1000).toFixed(2)} كم = ${area.toFixed(1)} كم² (بناء ${info.build} مللي ثانية)`);
+ok(info.zones >= 20 && info.rivers >= 2 && info.lakes >= 1 && info.falls >= 1, `${info.zones} منطقة بأسمائها، ${info.rivers} أنهار، بحيرة، ${info.falls} شلال، ${info.sites} بناية`);
+ok(info.summit > 380 && info.summit < 410 && info.plaza > 500 && info.plaza < 600, `قمة السحاب ${info.summit} م فوك البحر وساحتها ${info.plaza} م²`);
+ok(info.startZone === 'ساحة الفجر' && info.startAlt < 30, `البداية بـ «${info.startZone}» (${info.startAlt} م فوك البحر)`);
+ok(info.valley[0] * info.valley[1] >= 2500 && info.vdist > 1000 && info.vdist < 1700, `وادي الغزلان ${info.valley[0]}×${info.valley[1]} م على كتف الجبل، ${info.vdist} م من القمة`);
+ok(info.len > 1000 && info.road > 15 && info.bridges >= 2 && info.stones >= 3 && info.rest >= 15, `درب القمة ${info.len} م، طرق ترابية ${info.road} كم، ${info.rest} نار استراحة`);
+ok(info.beasts.filter((k) => k === 'wolf').length >= 6 && info.beasts.filter((k) => k === 'boar').length >= 6, `حيوانات: ${info.beasts.length} (ذيابة وخنازير بمناطقها)`);
+const hero = await G(() => { const W = window.__natta.WD; W.camera.updateMatrixWorld(); const r = W.scene.getObjectByName ? 1 : 1; return { r: W.S.hero.r }; });
+ok(hero.r >= 0.45, `البطل بطول إنسان (~1.72 م) وعرضه يناسب الجسور (نص قطر ${hero.r} م)`);
 await until(() => !document.getElementById('jumpBtn').hidden, 5000);
 const ui = await G(() => ({ jump: !document.getElementById('jumpBtn').hidden, map: !document.getElementById('vMap').hidden, obj: document.getElementById('vobj').textContent, g3d: !document.getElementById('g3d').hidden }));
 ok(ui.jump && ui.map && ui.g3d && ui.obj.includes('قمة'), `الواجهة: نطة، خريطة، والهدف «${ui.obj}»`);
@@ -79,6 +84,10 @@ const free = await G(() => { const W = window.__natta.WD, h = W.S.hero, x0 = h.x
 ok(free[0] > 8, `يمشي بحرية بالسهل وبالغابة (${free[0].toFixed(1)} م، الأرض: ${free[1]})`);
 const cliff = await G(() => { const W = window.__natta.WD, M = W.info.M, h = W.S.hero, a = 200 * Math.PI / 180, r0 = 51; Object.assign(h, { x: M.x + Math.cos(a) * r0, z: M.z + Math.sin(a) * r0, air: false, vx: 0, vz: 0, mode: 'walk' }); h.y = W.G.H(h.x, h.z); const r1 = Math.hypot(h.x, h.z); for (let i = 0; i < 240; i++) W.sim.step(1 / 60, { mx: -Math.cos(a), mz: -Math.sin(a), mag: 1 }); return [r1, Math.hypot(h.x, h.z)]; });
 ok(cliff[1] > 46.5, `حزام الصخر حوالين المخروط ما ينصعد (${cliff[0].toFixed(1)} ← ${cliff[1].toFixed(1)} م من النص)`);
+const swim = await G(() => { const W = window.__natta.WD, sh = W.G.I.shBay, h = W.S.hero; Object.assign(h, { x: sh.x + 60, z: sh.z, y: W.G.SEA, air: false, vx: 0, vz: 0, mode: 'walk', st: 100 }); for (let i = 0; i < 240; i++) W.sim.step(1 / 60, { mx: 1, mz: 0, mag: 1 }); return { swim: h.swim, y: +(h.y - W.G.SEA).toFixed(2), st: Math.round(h.st), x: h.x - sh.x - 60 }; });
+ok(swim.swim && swim.y < 0 && swim.st < 100 && swim.x > 3, `🏊 بالبحر يسبح (يطفو ${swim.y} م، يمشي ${swim.x.toFixed(1)} م، النفَس ${swim.st}%)`);
+const run = await G(() => { const W = window.__natta.WD, h = W.S.hero, f = W.G.I.fajr; Object.assign(h, { x: f.x - 60, z: f.z, y: W.G.H(f.x - 60, f.z), air: false, vx: 0, vz: 0, mode: 'walk', st: 100, swim: false }); for (let i = 0; i < 300; i++) W.sim.step(1 / 60, { mx: -1, mz: 0.3, mag: 1 }); return Math.round(h.st); });
+ok(run < 70, `💨 الركض يخلّص النفَس (${run}%)`);
 
 // 4) الضرر: فتحة الجسر توكّعك بالوادي ← تغيب وتصحى بالاستراحة. والذيب ينقّص صحتك
 await G(() => { for (const b of window.__natta.WD.sim.beasts) b.cool = 1e9; });
@@ -87,7 +96,7 @@ await fast(3);
 ok(await until(() => window.__natta.WD.S.hero.mode === 'faint', 8000), 'من فتحة الجسر يوكع للوادي ويغيب (الصحة خلصت)');
 ok(await until(() => window.__natta.WD.S.hero.mode === 'walk' && window.__natta.WD.S.hero.hp === 100, 10000), 'يصحى بآخر استراحة وصحته كاملة');
 await fast(0);
-ok((await G(() => document.getElementById('toast').textContent)).includes('صحيت'), `رسالة: ${await G(() => document.getElementById('toast').textContent)}`);
+ok(/صحيت|رجعت/.test(await G(() => document.getElementById('toast').textContent)), `رسالة: ${await G(() => document.getElementById('toast').textContent)}`);
 await G(() => { const W = window.__natta.WD, w = W.sim.beasts[0]; w.cool = 0; w.state = 'idle'; Object.assign(W.S.hero, { x: w.x + 2.5, z: w.z, y: W.G.H(w.x + 2.5, w.z), hp: 100, mode: 'walk', air: false }); });
 await fast(2); await until(() => window.__natta.WD.S.hero.hp < 100, 8000); await fast(0);
 ok(await G(() => window.__natta.WD.S.hero.hp < 100), `الذيب لزمه ونقّص صحته (${Math.round(await G(() => window.__natta.WD.S.hero.hp))} ❤️)`);
@@ -103,6 +112,7 @@ const climb = await G(() => {
   let pts = [...M.A.pts, ...M.entrySeg.pts]; for (const [, s, rev] of path) pts = pts.concat(rev ? [...s.pts].reverse() : s.pts);
   pts = pts.concat(M.exitSeg.pts, M.C2.pts, [{ x: M.x, z: M.z - 3 }]);
   const sim = W.sim; sim.enter('classic', { seed: 7 }); for (const b of sim.beasts) b.cool = 1e9;
+  Object.assign(S.hero, { x: pts[0].x, z: pts[0].z, y: pts[0].y, air: false }); // من أول درب القمة
   let i = 3, t = 0, jumps = 0, hurts = 0, rests = 0, lastI = 0, stuck = 0;
   while (t < 400) {
     const P = S.hero; if (P.mode !== 'walk') { sim.step(1 / 60, {}); t += 1 / 60; continue; }
@@ -159,21 +169,20 @@ ok(await G(() => window.__natta.state === 'pause' && !document.getElementById('r
 await page.tap('#resume', { force: true });
 ok(await until(() => window.__natta.state === 'world', 5000), 'بعد العد يرجع للعالم');
 
-// 9) الريح تشيله ← يطير فوك السهل ← مظلة ← ينزل بالوادي (نفس العالم، بلا قطع ولا تحميل)
-ok(await until(() => !document.getElementById('skip').hidden, 8000), 'زر «تخطّى» بساحة الانتظار');
-await page.tap('#skip', { force: true });
-await fast(3);
-ok(await until(() => window.__natta.WD.S.hero.mode === 'lift', 15000), '💨 الريح هبّت وشالت البطل بس');
-await fast(0); await wait(600); await shot('06-lift'); await fast(3);
-ok(await until(() => window.__natta.WD.S.hero.mode === 'carry', 8000), '🌪️ يطير بالهوا فوك السهل');
-await fast(1); await wait(1500); await shot('07-carry'); await fast(3);
-ok(await until(() => window.__natta.WD.S.hero.mode === 'glide', 15000), '🪂 انفتحت المظلة فوك الوادي');
-await fast(1); await wait(800); await shot('08-glide'); await fast(4);
-ok(await until(() => window.__natta.WD.S.hero.mode === 'walk', 30000), 'نزل بالوادي');
-await fast(0);
-const land = await G(() => { const W = window.__natta.WD, V = W.info.V, h = W.S.hero; return { lx: h.x - V.x, y: h.y - V.VF, state: window.__natta.state, obj: document.getElementById('vobj').textContent }; });
-ok(land.state === 'world' && land.lx > 0 && land.lx < 120 && land.y < 3, `نفس العالم: نزل بقاع الوادي (${land.lx.toFixed(0)} م من المدخل)، الهدف «${land.obj}»`);
-await wait(1200); await shot('09-valley');
+// 9) أبو جاسم بساحة القمة: يصيحك ويطلب غزال من وادي الغزلان (ماكو ريح ولا مظلة)
+ok(await G(() => document.getElementById('skip').hidden), 'ماكو زر «تخطّى» ولا ريح بالقمة');
+await G(() => { const W = window.__natta.WD, mw = W.S.vq.merW, M = W.info.M, h = W.S.hero; Object.assign(h, { x: M.x - 2, z: M.z + 2, y: M.HS, air: false, vx: 0, vz: 0 }); W.cam.yaw = Math.atan2(mw.z - h.z, mw.x - h.x); W.cam.init = false; });
+await fast(1); await page.keyboard.down('KeyW');
+const met = await until(() => window.__natta.WD.S.vq.met, 15000);
+await page.keyboard.up('KeyW'); await fast(0);
+ok(met, '👳 يمشي لأبو جاسم بالقمة ويتعرف عليه' + (met ? '' : ' ' + JSON.stringify(await G(() => { const W = window.__natta.WD, h = W.S.hero, mw = W.S.vq.merW; return { dm: Math.hypot(h.x - mw.x, h.z - mw.z), mode: h.mode, st: window.__natta.state }; }))));
+await wait(600);
+const mt = await G(() => ({ obj: document.getElementById('vobj').textContent, who: document.getElementById('dlgName').textContent, txt: window.__natta.WS.dlg ? window.__natta.WS.dlg.text : '' }));
+ok(mt.who.includes('أبو جاسم') && mt.txt.includes('وادي الغزلان') && mt.obj.includes('غزال'), `يطلب: «${mt.obj}»`);
+await shot('06-merchant');
+await G(() => { const W = window.__natta.WD, V = W.info.V; window.__natta.WS.zone = null; Object.assign(W.S.hero, { x: V.x + 30, z: V.z + V.riverZ(30) + 3, air: false }); W.S.hero.y = W.G.H(W.S.hero.x, W.S.hero.z); W.warm(W.S.hero.x, W.S.hero.z, W.S.hero.y); W.cam.init = false; });
+ok(await until(() => document.getElementById('bnTitle').textContent.includes('وادي الغزلان'), 8000), '🏷️ اسم المنطقة يطلع لمن تدخلها (وادي الغزلان)');
+await wait(800); await shot('07-valley');
 
 // 10) الخريطة: العالم كله، علامات
 await page.tap('#vMap', { force: true }); await wait(400);
@@ -181,6 +190,8 @@ ok(await G(() => !document.getElementById('mapv').hidden), 'الخريطة تن�
 const mapBox = await page.locator('#mapC').boundingBox();
 await page.mouse.click(mapBox.x + mapBox.width * 0.5, mapBox.y + mapBox.height * 0.3); await wait(200);
 ok(await G(() => window.__natta.WS.pins.length === 1), 'تحط علامة عالخريطة');
+const z0 = await G(() => window.__natta.WS.mz); await page.mouse.wheel(0, -400); await wait(200);
+ok((await G(() => window.__natta.WS.mz)) > z0, 'الخريطة تتكبّر (أصابع/عجلة)');
 await shot('10-map');
 await page.tap('#mapX', { force: true }); await wait(200);
 
@@ -190,19 +201,19 @@ await wait(900);
 ok(await G(() => window.__natta.state === 'world'), '🦌 عدّاد شك الغزال يبين لما تقرب منه'); await shot('11-gazelle');
 await G(() => { const W = window.__natta.WD, g = W.sim.gz; g.state = 'graze'; g.sus = 0; Object.assign(W.S.hero, { x: g.x - 0.8, z: g.z, y: W.G.H(g.x - 0.8, g.z), air: false }); });
 ok(await until(() => window.__natta.WD.S.vq.caught, 6000), '🦌 لزم الغزال');
-await G(() => { const W = window.__natta.WD, zw = W.S.vq.zoneW; Object.assign(W.S.hero, { x: zw.x, z: zw.z, y: W.G.H(zw.x, zw.z), air: false }); });
-ok(await until(() => window.__natta.WD.S.vq.delivered, 6000), '🏕️ سلّمه لأبو جاسم');
+await G(() => { const W = window.__natta.WD, zw = W.S.vq.zoneW; Object.assign(W.S.hero, { x: zw.x, z: zw.z, y: W.info.M.HS, air: false }); });
+ok(await until(() => window.__natta.WD.S.vq.delivered, 6000), '🏔️ رجّعه لأبو جاسم بالقمة وسلّمه');
 await fast(3); ok(await until(() => window.__natta.state === 'ending', 20000), 'شاشة نهاية المغامرة'); await fast(0);
 ok(await G(() => !document.getElementById('eCont').hidden), 'بيها «كمّل تمشّى بالعالم»');
 await page.tap('#eCont', { force: true }); await wait(400);
-ok(await G(() => window.__natta.state === 'world' && document.getElementById('vobj').textContent.includes('تمشّى')), 'يرجع للعالم المفتوح ويكمل');
+ok(await G(() => window.__natta.state === 'world' && document.getElementById('vobj').textContent.includes('استكشف')), 'يرجع للجزيرة ويكمل («استكشف الجزيرة»)');
 
 // 12) الانتقال السريع (بكود سري) يوديك للقمة وللوادي بنفس العالم، وما يكسر الأرقام
 await G(() => window.__natta.goHome());
 const rec0 = await G(() => [window.__natta.save.mtSummits || 0, window.__natta.save.mtBest || 0]);
 await G(() => { window.__natta.unlockWarp(); window.__natta.openCode(); });
 await page.tap('#warpValley', { force: true });
-ok(await until(() => window.__natta.state === 'world' && window.__natta.WD.S.hero.mode === 'glide', 20000), 'الانتقال السريع: كبل للوادي (نازل بالمظلة)');
+ok(await until(() => window.__natta.state === 'world' && window.__natta.WD.G.zoneAt(window.__natta.WD.S.hero.x, window.__natta.WD.S.hero.z).id === 'valley', 20000), 'الانتقال السريع: كبل لوادي الغزلان');
 await G(() => window.__natta.goHome()); await G(() => window.__natta.openCode()); await page.tap('#warpSummit', { force: true });
 ok(await until(() => window.__natta.state === 'world' && window.__natta.WD.S.summit, 20000), 'الانتقال السريع: كبل لساحة القمة');
 const rec1 = await G(() => [window.__natta.save.mtSummits || 0, window.__natta.save.mtBest || 0]);

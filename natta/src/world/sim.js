@@ -23,7 +23,8 @@ export function createSim(G, opts = {}) {
     const e = { id: nextId++, kind, x, z, y: G.H(x, z), vx: 0, vy: 0, vz: 0, face: 0, air: false, peak: 0, r: 0.4, speed: 0, run: false, hopPh: 0, landT: 0, stun: 0, rot: 0, surf: null, ...extra };
     ents.push(e); return e;
   }
-  const beasts = M.beasts.map((b) => spawn(b.kind, b.home.x + (b.ox || 0), b.home.z, { home: b.home, r: b.kind === 'boar' ? 0.45 : 0.38, state: 'idle', t: Math.random() * 2, cool: 0, tx: b.home.x, tz: b.home.z, charge: null, ph: 0, face: Math.random() * TAU }));
+  const homes = [...M.beasts, ...G.I.beasts.map((b) => ({ kind: b.kind, home: { x: b.x, z: b.z, y: G.H(b.x, b.z) } }))];
+  const beasts = homes.map((b) => spawn(b.kind, b.home.x + (b.ox || 0), b.home.z, { home: b.home, r: b.kind === 'boar' ? 0.52 : 0.44, state: 'idle', t: Math.random() * 2, cool: 0, tx: b.home.x, tz: b.home.z, charge: null, ph: 0, face: Math.random() * TAU }));
   const gz = spawn('gazelle', V.x + 60, V.z, { r: 0.42, state: 'graze', t: 0, gt: 2.5, sus: 0, stamina: 4, ph: 0, triedLeap: false, tx: 0, tz: 0, fx: 1, fz: 0, stuck: 0, hy: 0 });
   const merchant = spawn('merchant', V.x + 20, V.z, { r: 0.42 });
 
@@ -75,7 +76,7 @@ export function createSim(G, opts = {}) {
 
   // ---------------------------------------------------------------- البطل
   function makeHero(skinId, at) {
-    const h = spawn('hero', at.x, at.z, { skin: skinId, hp: 100, maxHp: 100, lastHurt: -99, mode: 'walk', chute: 0, airSpd: 0, water: null, inTorrent: 0, faintT: 0, face: at.face || 0 });
+    const h = spawn('hero', at.x, at.z, { r: 0.5, skin: skinId, hp: 100, maxHp: 100, st: 100, stT: 0, swim: false, lastHurt: -99, mode: 'walk', chute: 0, airSpd: 0, water: null, inTorrent: 0, faintT: 0, face: at.face || 0 });
     h.y = at.y != null ? at.y : G.H(at.x, at.z);
     h.onLand = (drop, s) => {
       emit(s.kind === 'stone' ? 'landStone' : 'land');
@@ -89,9 +90,32 @@ export function createSim(G, opts = {}) {
     emit(['hurt', dmg, cause, e.hp]);
     if (e.hp <= 0) { e.mode = 'faint'; e.faintT = 0; e.vx = e.vz = 0; emit(['faint', cause]); }
   }
+  function stamina(h, drain, dt) {
+    if (drain > 0) { h.st = Math.max(0, h.st - drain * dt); h.stT = 0; if (h.st <= 0 && !h.outBreath) { h.outBreath = true; emit('breath'); } }
+    else { h.stT += dt; if (h.stT > 0.8) h.st = Math.min(100, h.st + dt * (h.speed < 0.3 ? 22 : 13)); }
+    if (h.st > 30) h.outBreath = false;
+  }
+  /** 🏊 سباحة: بطيئة وتخلّص النفَس، وإذا خلص تبدي تغرگ */
+  function swim(h, c, dt, w, mag, fast) {
+    h.swim = true; h.air = false; h.vy = 0;
+    const ml = Math.hypot(c.mx || 0, c.mz || 0), wx = ml > 1e-4 ? c.mx / ml : 0, wz = ml > 1e-4 ? c.mz / ml : 0;
+    const sp = mag < 0.08 ? 0 : fast ? 2.5 : 1.6;
+    h.vx = damp(h.vx, wx * sp, 4, dt); h.vz = damp(h.vz, wz * sp, 4, dt);
+    let nx = h.x + h.vx * dt, nz = h.z + h.vz * dt;
+    if (G.I.coastS(nx, nz) < -700) { nx = h.x; nz = h.z; h.vx *= -0.3; h.vz *= -0.3; if (!h.farWarn) { h.farWarn = true; emit('farSea'); } } else h.farWarn = false;
+    [nx, nz] = G.collide(nx, nz, h.r); h.x = nx; h.z = nz;
+    h.y = Math.max(w.level - 0.7 + Math.sin(S.t * 2.2) * 0.05, G.H(nx, nz));
+    h.speed = Math.hypot(h.vx, h.vz); h.surf = 'water';
+    if (h.speed > 0.3) h.face = dampAngle(h.face, Math.atan2(h.vz, h.vx), 6, dt);
+    stamina(h, mag > 0.08 ? (fast ? 9 : 4) : 1.5, dt);
+    if (h.st <= 0) { h.sinkT = (h.sinkT || 0) + dt; if (h.sinkT > 1) { h.sinkT = 0; hurt(h, 8, 'water'); } } else h.sinkT = 0;
+    const prev = h.hopPh || 0; h.hopPh = h.speed < 0.3 ? 0 : prev + h.speed * dt * 1.6;
+    if (h.hopPh && Math.floor(prev / Math.PI) !== Math.floor(h.hopPh / Math.PI)) emit('splash');
+    if (S.t - h.lastHurt > 6 && h.hp < h.maxHp) h.hp = Math.min(h.maxHp, h.hp + dt * 3);
+  }
   function respawn(e, why) {
     const r = S.rest || G.restPoints[0];
-    Object.assign(e, { x: r.x, z: r.z, y: G.H(r.x, r.z), vx: 0, vy: 0, vz: 0, air: false, stun: 0, rot: 0, mode: 'walk', face: r.face || 0, inTorrent: 0, surf: null });
+    Object.assign(e, { x: r.x, z: r.z, y: G.H(r.x, r.z), vx: 0, vy: 0, vz: 0, air: false, stun: 0, rot: 0, mode: 'walk', face: r.face || 0, inTorrent: 0, surf: null, st: 100, swim: false });
     if (r.plaza) e.y = M.HS;
     if (why === 'faint') { e.hp = e.maxHp; const lose = Math.ceil(S.coinsGot * 0.2); S.coinsGot -= lose; emit(['respawn', r.name, lose]); }
     else emit(['respawn', r.name, 0]);
@@ -105,7 +129,15 @@ export function createSim(G, opts = {}) {
     if (h.stun > 0) { h.stun -= dt; mag = 0; }
     const run = mag > 0.62 && !c.sneak;
     let spd = mag < 0.08 ? 0 : run ? 5.6 : 2.3 * clamp(mag / 0.62, 0.4, 1);
+    G.ensureVeg(h.x, h.z);
     const w = G.water(h.x, h.z, h.y); h.water = w ? w.kind : null;
+    const deep = w && (w.kind === 'sea' || w.kind === 'lake' || w.kind === 'marsh') ? w.level - G.H(h.x, h.z) : 0;
+    // 💨 النفَس: الركض والصعود الحاد والسباحة تخلّصه، والوكفة ترجّعه
+    const tired = h.st <= 0.5;
+    if (tired && spd > 2.4) spd = 2.4;
+    if (deep > 1.15 && !h.air) return swim(h, c, dt, w, mag, run && !tired);
+    if (deep > 0.25) spd *= lerp(1, 0.5, clamp(deep / 1.15, 0, 1));
+    h.swim = false;
     const gk = !h.air ? (h.surf && h.surf !== 'path' ? h.surf : G.groundKind(h.x, h.z, h.y)) : null;
     if (gk === 'forest') spd *= 0.78; else if (gk === 'rock') spd *= 0.85;
     if (w && w.kind === 'river') spd *= 0.6;
@@ -119,7 +151,11 @@ export function createSim(G, opts = {}) {
       h.airSpd = mag > 0.08 ? Math.max(3.4, hs) : 0;
     }
     const ml = Math.hypot(c.mx || 0, c.mz || 0), wx = ml > 1e-4 ? c.mx / ml : 0, wz = ml > 1e-4 ? c.mz / ml : 0;
+    const y0 = h.y;
     moveChar(h, wx, wz, spd, dt, { pushX, pushZ });
+    const climb = !h.air && h.speed > 0.5 ? (h.y - y0) / (h.speed * dt) : 0;
+    const drain = (run && h.speed > 3 ? 9 : 0) + (climb > 0.3 ? 7 * clamp((climb - 0.3) / 0.4, 0, 1) : 0);
+    stamina(h, drain, dt);
     h.run = run && h.speed > 3;
     if (h.speed > 0.3 && !h.air) h.face = dampAngle(h.face, Math.atan2(h.vz - pushZ, h.vx - pushX), 12, dt);
     else if (h.air && Math.hypot(h.vx, h.vz) > 0.5) h.face = dampAngle(h.face, Math.atan2(h.vz, h.vx), 8, dt);
@@ -130,8 +166,8 @@ export function createSim(G, opts = {}) {
     if (S.t - h.lastHurt > 6 && h.hp < h.maxHp) h.hp = Math.min(h.maxHp, h.hp + dt * 3); // ترتاح وترجع صحتك شوية شوية
     // نقاط الاستراحة
     for (const r of G.restPoints) if (!r.dyn || r.on) {
-      if (Math.hypot(h.x - r.x, h.z - r.z) < (r.plaza ? M.RP - 1 : 3.2) && Math.abs(h.y - (r.plaza ? M.HS : r.y)) < 2.5) {
-        if (S.rest !== r) { S.rest = r; if (!S.reached.has(r.id)) { S.reached.add(r.id); if (r.flag || r.id === 'valley') emit(['rest', r.name, r.id]); } }
+      if (Math.hypot(h.x - r.x, h.z - r.z) < (r.plaza ? M.RP - 1 : r.fire ? 6 : 3.2) && Math.abs(h.y - (r.plaza ? M.HS : r.y)) < 2.5) {
+        if (S.rest !== r) { S.rest = r; if (!S.reached.has(r.id)) { S.reached.add(r.id); if (r.flag || r.fire || r.id === 'valley') emit(['rest', r.name, r.id]); } }
       }
     }
     // العملات
@@ -183,7 +219,7 @@ export function createSim(G, opts = {}) {
   function updateSummit(dt) {
     const sm = S.summit; if (!sm || S.carry) return;
     sm.t += dt;
-    if (sm.phase === 'wait' && sm.t >= 45) { sm.phase = 'wind'; sm.t = 0; emit('windStart'); }
+    if (sm.phase === 'wait' && sm.t >= 45 && S.windStory) { sm.phase = 'wind'; sm.t = 0; emit('windStart'); }
     if (sm.phase === 'wind') {
       sm.wind = clamp(sm.t / 7, 0, 1); S.wind = sm.wind;
       if (sm.t > 8.5) { // تشيل البطل بس
@@ -206,7 +242,7 @@ export function createSim(G, opts = {}) {
     }
     return best || [60, V.riverZ(60) + 5];
   }
-  function skipWait() { if (S.summit && S.summit.phase === 'wait') S.summit.t = 45; }
+  function skipWait() { if (S.summit && S.summit.phase === 'wait' && S.windStory) S.summit.t = 45; }
 
   // ---------------------------------------------------------------- الحيوانات البرية (حركة حرة: تطاردك بالغابة)
   function updateBeasts(dt) {
@@ -242,7 +278,7 @@ export function createSim(G, opts = {}) {
           break;
       }
       b.ph += dt * (b.state === 'chase' || b.state === 'charge' ? 16 : b.speed > 0.3 ? 8 : 0);
-      if ((b.state === 'chase' || b.state === 'charge') && d < 0.95 && dy < 1.2 && h.stun <= 0 && alive) {
+      if ((b.state === 'chase' || b.state === 'charge') && d < 1.25 && dy < 1.4 && h.stun <= 0 && alive) {
         const l = d || 1; h.vx = (dx / l) * 6; h.vz = (dz / l) * 6; h.stun = 0.9; h.landT = 0.3;
         b.state = 'return'; b.cool = 6;
         const dmg = wolf ? 18 : 25; emit(['bitten', b.kind, dmg]); hurt(h, dmg, b.kind);
@@ -258,13 +294,15 @@ export function createSim(G, opts = {}) {
   const campRest = { id: 'camp', x: 0, z: 0, y: 0, name: 'خيمة أبو جاسم', face: 0, flag: false, dyn: true, on: false };
   G.restPoints.push(campRest);
   function campToWorld(c, lx, lz) { const cs = Math.cos(c.rot), sn = Math.sin(c.rot); return { x: V.x + c.x + lx * cs + lz * sn, z: V.z + c.z - lx * sn + lz * cs }; }
-  function placeCamp(c) {
+  /** أبو جاسم بساحة القمة: بسطة صغيرة بين الجرس والمصطبة، ودائرة التسليم يمّه */
+  const MER_A = 80 * Math.PI / 180, ZONE_A = 60 * Math.PI / 180;
+  function placeCamp() {
     for (const k of campColl) G.removeColl(k);
-    S.vq.camp = c;
-    S.vq.merW = campToWorld(c, ...CAMP_LOCAL.mer); S.vq.zoneW = campToWorld(c, ...CAMP_LOCAL.zone); S.vq.penW = campToWorld(c, ...CAMP_LOCAL.pen);
-    campColl = CAMP_COLL.map(([x, z, r]) => G.addColl({ ...campToWorld(c, x, z), r }));
-    Object.assign(merchant, { x: S.vq.merW.x, z: S.vq.merW.z, y: V.VF + c.base, face: c.rot });
-    const f = campToWorld(c, 0, 3.2); Object.assign(campRest, { x: f.x, z: f.z, y: G.H(f.x, f.z), face: c.rot + Math.PI / 2 });
+    const mx = M.x + Math.cos(MER_A) * 8.7, mz = M.z + Math.sin(MER_A) * 8.7, face = Math.atan2(M.z - mz, M.x - mx);
+    S.vq.camp = { summit: true, rot: Math.PI / 2 - face, base: M.HS - V.VF, x: 0, z: 0 };
+    S.vq.merW = { x: mx, z: mz }; S.vq.zoneW = { x: M.x + Math.cos(ZONE_A) * 7.2, z: M.z + Math.sin(ZONE_A) * 7.2 }; S.vq.penW = { x: M.x + Math.cos(ZONE_A + 0.25) * 9.2, z: M.z + Math.sin(ZONE_A + 0.25) * 9.2 };
+    campColl = [G.addColl({ x: M.x + Math.cos(MER_A) * 10, z: M.z + Math.sin(MER_A) * 10, r: 1.1 })];
+    Object.assign(merchant, { x: mx, z: mz, y: M.HS, face });
   }
   function startFlee(g) { g.state = 'flee'; g.t = 0; g.stuck = 0; const h = S.hero, d = Math.hypot(g.x - h.x, g.z - h.z) || 1; g.fx = (g.x - h.x) / d; g.fz = (g.z - h.z) / d; emit('snort'); }
   function updateGazelle(dt) {
@@ -370,7 +408,7 @@ export function createSim(G, opts = {}) {
       }
     }
     g.y = G.H(g.x, g.z) + (g.hy || 0);
-    if (!vq.caught && h.mode === 'walk' && ['graze', 'look', 'walk', 'alert', 'tired', 'cornered'].includes(g.state) && d < 1.2 && (g.hy || 0) < 0.25 && Math.abs(h.y - g.y) < 1.5) {
+    if (!vq.caught && h.mode === 'walk' && ['graze', 'look', 'walk', 'alert', 'tired', 'cornered'].includes(g.state) && d < 1.55 && (g.hy || 0) < 0.25 && Math.abs(h.y - g.y) < 1.5) {
       vq.caught = true; g.state = 'follow'; g.vx = g.vz = 0; g.sus = 0;
       S.focus = { t: 2.2, dist: 5.2, yaw: Math.atan2(g.z - h.z, g.x - h.x) - Math.PI / 2 };
       emit('catch');
@@ -380,9 +418,9 @@ export function createSim(G, opts = {}) {
     const h = S.hero, vq = S.vq;
     if (h.mode !== 'walk') return;
     const dm = Math.hypot(h.x - vq.merW.x, h.z - vq.merW.z), c = vq.camp;
-    const talkYaw = Math.atan2(-Math.cos(c.rot), -Math.sin(c.rot));
+    const talkYaw = Math.atan2(vq.merW.z - M.z, vq.merW.x - M.x);
     if (!vq.called && dm < 24 && Math.abs(h.y - merchant.y) < 8) { vq.called = true; emit('call'); }
-    if (!vq.met && dm < 4.2) { vq.met = true; campRest.on = true; S.focus = { t: 3.4, dist: 6.2, x: (h.x + vq.merW.x) / 2, z: (h.z + vq.merW.z) / 2, yaw: talkYaw, talk: true }; emit('meet'); }
+    if (!vq.met && dm < 4.2) { vq.met = true; S.focus = { t: 3.4, dist: 6.2, x: (h.x + vq.merW.x) / 2, z: (h.z + vq.merW.z) / 2, yaw: talkYaw, talk: true }; emit('meet'); }
     if (vq.caught && !vq.delivered && Math.hypot(h.x - vq.zoneW.x, h.z - vq.zoneW.z) < 1.7) {
       vq.delivered = true; gz.state = 'pen';
       S.focus = { t: 4.6, dist: 6.6, x: (h.x + vq.merW.x) / 2, z: (h.z + vq.merW.z) / 2, yaw: talkYaw, talk: true };
@@ -397,10 +435,10 @@ export function createSim(G, opts = {}) {
     const r = rng(S.seed);
     ents.length = 0; ents.push(...beasts, gz, merchant);
     for (const b of beasts) Object.assign(b, { x: b.home.x, z: b.home.z, y: b.home.y, vx: 0, vz: 0, vy: 0, air: false, state: 'idle', cool: 0, t: Math.random() * 2 });
-    placeCamp(V.CAMPS[Math.floor(r() * V.CAMPS.length)]);
+    placeCamp();
     // مكان الغزال: بعيد عن الخيمة وعن مدخل الوادي
     let gx = 60, gzz = 0;
-    for (let k = 0; k < 400; k++) { const lx = 6 + r() * (V.VL - 12), lz = (r() - 0.5) * 2 * (V.FLOOR - 2.5); if (lx < 22 || Math.hypot(lx - S.vq.camp.x, lz - S.vq.camp.z) < 24 || Math.abs(lz - V.riverZ(lx)) < 2.2 || !V.onFloor(lx, lz)) continue; gx = lx; gzz = lz; break; }
+    for (let k = 0; k < 400; k++) { const lx = 6 + r() * (V.VL - 12), lz = (r() - 0.5) * 2 * (V.FLOOR - 2.5); if (lx < 22 || Math.abs(lz - V.riverZ(lx)) < 2.2 || !V.onFloor(lx, lz)) continue; gx = lx; gzz = lz; break; }
     Object.assign(gz, { x: V.x + gx, z: V.z + gzz, vx: 0, vz: 0, state: 'graze', t: 0, gt: 2.5, sus: 0, stamina: 4, triedLeap: false, hy: 0, face: r() * TAU });
     gz.y = G.H(gz.x, gz.z);
     Object.assign(S.vq, { met: false, called: false, caught: false, delivered: false }); campRest.on = false;
@@ -413,10 +451,8 @@ export function createSim(G, opts = {}) {
     S.hero = makeHero(skinId, start); ents.push(S.hero);
     const h = S.hero;
     if (o.at === 'summit') { Object.assign(h, { x: M.x - M.RP + 2.5, z: M.z + 2, y: M.HS }); S.rest = G.restPoints.find((p) => p.id === 'summit'); S.climb.done = true; }
-    if (o.at === 'valley') { // نازل بالمظلة على الوادي
-      const [lx, lz] = pickLanding(); Object.assign(h, { x: V.x + lx, z: V.z + lz, y: V.VF + V.H0(lx, lz) + 34, mode: 'glide', air: true, chute: 0.01, vy: -3 }); S.carry = { t: 0 }; S.climb.done = true; dropSkyCoins(h); emit('chute');
-    }
-    return { camp: V.CAMPS.indexOf(S.vq.camp), gazelle: [gz.x, gz.z], start: [h.x, h.z] };
+    if (o.at === 'valley') { const vr = G.restPoints.find((p) => p.id === 'valley'); Object.assign(h, { x: vr.x, z: vr.z, y: vr.y, face: 0 }); S.rest = vr; }
+    return { camp: 0, gazelle: [gz.x, gz.z], start: [h.x, h.z] };
   }
   function interact(id) {
     if (id === 'scope') { S.scope = !S.scope; return true; }
@@ -430,14 +466,13 @@ export function createSim(G, opts = {}) {
     return best;
   }
   function objective() {
-    const h = S.hero, vq = S.vq, [lx, lz] = L(h.x, h.z), inV = lx > -70 && lx < V.VL + 25 && Math.abs(lz) < 45;
-    if (h.mode === 'lift' || h.mode === 'carry') return '🌪️ الريح شالتك!';
-    if (h.mode === 'glide') return '🪂 انزل بالمظلة';
+    const h = S.hero, vq = S.vq;
     if (h.mode === 'faint') return '😵 …';
-    if (S.summit) return S.summit.phase === 'wait' ? '☕ استريح بالساحة' : '💨 الريح!';
-    if (inV || (S.climb.done && !vq.delivered)) return vq.delivered ? '🌍 تمشّى بالعالم' : !vq.caught ? (vq.called && !vq.met ? '🔎 دوّر على الغزال والتاجر' : '🔎 دوّر على الغزال') : vq.met ? '🏕️ رجّعه لأبو جاسم' : '🔎 دوّر على التاجر';
-    if (!S.climb.done) return '⛰️ اطلع للقمة';
-    return '🌍 تمشّى بالعالم';
+    if (vq.delivered) return '🌍 استكشف الجزيرة';
+    if (vq.caught) return '🏔️ رجّع الغزال لأبو جاسم بالقمة';
+    if (vq.met) return '🦌 جيب غزال من وادي الغزلان';
+    if (S.summit) return vq.called ? '👳 كلّم أبو جاسم' : '☕ ساحة القمة';
+    return '⛰️ اطلع للقمة: أبو جاسم ينتظرك';
   }
 
   // ---------------------------------------------------------------- خطوة وحدة

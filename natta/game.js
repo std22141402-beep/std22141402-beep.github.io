@@ -1911,7 +1911,7 @@
     $('a2hs').hidden = !(isIOS && !standalone && !save.a2hs);
     $('hHero').hidden = !save.hero;
     $('hSum').textContent = save.mtSummits ? `⛰️ ×${save.mtSummits}${save.mtBest ? ' • ⏱️ ' + fmtTime(save.mtBest) : ''}` : '⛰️ 95م';
-    $('tag').textContent = 'عالم مفتوح… اطلع للقمة إذا تكدر! ⛰️';
+    $('tag').textContent = 'جزيرة مفتوحة… اطلع للقمة إذا تكدر! 🏝️';
   }
   function clearSky() { squads.length = 0; bolts.length = 0; squadT = rnd(5, 8); }
   function newDemo() { world = Core.createWorld(rand32(), { viewH, demo: true }); parts.length = 0; texts.length = 0; clearSky(); }
@@ -2856,6 +2856,8 @@
     $('vbar').hidden = true; $('dlg').hidden = true; $('jumpBtn').hidden = true; $('actBtn').hidden = true;
     $('eCoins').textContent = '+' + (WS ? WS.endCoins || 500 : 500 + V.coinsGot);
     $('eCont').hidden = !WS;
+    const ep = document.querySelector('#ending .e-path'), el = document.querySelector('#ending .card > .lbl');
+    if (ep && el) { ep.textContent = WS ? '🌅 ⛰️ 🦌 🏔️ 🎁' : '🏔️ 💨 🪂 🦌 🏕️'; el.textContent = WS ? 'طلعت للقمة، جبت الغزال من وادي الغزلان، وسلّمته لأبو جاسم' : 'وصلت أعلى قمة، طرت بالمظلة، ولزمت الغزال لأبو جاسم'; }
     $('eWear').hidden = save.skin === 'explorer';
     show('ending'); Sfx.record();
   }
@@ -3307,20 +3309,21 @@
     $('g3d').hidden = false; $('vign').hidden = false; $('app').classList.add('v3d');
     $('vbar').hidden = false; $('vMap').hidden = false; $('jumpBtn').hidden = false; $('actBtn').hidden = true; $('skip').hidden = true;
     J.id = null; CAMD.id = null; uparts.length = 0; ptr.clear();
-    makeMap();
+    WS.map = null; WS.preTrail = []; WS.zone = null; WS.zoneSeen = {};
     try { WS.portrait = `<img alt="" src="${WD.portrait()}">`; } catch (e) { WS.portrait = null; }
     Music.reset(); Music.setMode('play'); Sfx.click();
     if (opts.at === 'summit') toast('🚀 للقمة!', 1300);
     else if (opts.at === 'valley') toast('🚀 للوادي!', 1300);
     else {
-      banner('⛰️', 'جبل الغابة', 'اطلع للقمة 95م — والعالم كله مفتوح إلك 🌍', 'gold', 3400);
+      banner('🏝️', 'جزيرة نطّة', '🌅 ساحة الفجر — أبو جاسم ينتظرك بقمة الجبل ⛰️', 'gold', 3600);
       setTimeout(() => { if (WS && state === 'world' && !WS.usedJ) toast('🕹️ إبهامك اليسار يمشي، ودفعة كاملة = ركض', 3400); }, 3600);
-      setTimeout(() => { if (WS && state === 'world' && !WD.S.summit) toast('🦘 زر النطة للألواح الناقصة والحجار', 3200); }, 7400);
+      setTimeout(() => { if (WS && state === 'world' && !WD.S.summit) toast('🧭 اتبع «طريق الفجر» وعلامة 🏔️ بالبوصلة للقمة', 3400); }, 7400);
     }
   }
   function makeMap() {
-    WS.map = WD.mapShot(1024); WS.mapHi = !WD.view.hiLeft;
-    if (!WS.fog) { WS.fog = document.createElement('canvas'); WS.fog.width = WS.map.canvas.width; WS.fog.height = WS.map.canvas.height; const fg = WS.fog.getContext('2d'); fg.fillStyle = 'rgba(14,20,38,0.9)'; fg.fillRect(0, 0, WS.fog.width, WS.fog.height); }
+    WS.map = WD.mapShot(1024); WS.mapHi = true;
+    if (!WS.fog) { WS.fog = document.createElement('canvas'); WS.fog.width = WS.map.canvas.width; WS.fog.height = WS.map.canvas.height; const fg = WS.fog.getContext('2d'); fg.fillStyle = 'rgba(14,20,38,0.55)'; fg.fillRect(0, 0, WS.fog.width, WS.fog.height); }
+    for (const [x, z] of WS.preTrail || []) revealAt(x, z, 130); WS.preTrail = [];
   }
   function payCoins() { const S3 = WD.S, due = Math.max(0, S3.coinsGot - WS.paid); if (due) { save.coins += due; WS.paid += due; persist(); } return due; }
   function leaveWorld() {
@@ -3388,7 +3391,7 @@
           sparkleAt(h.x, h.y + 1.5, h.z, ['#FFD23F', '#FF5D8F', '#7FD1FF', '#8DE26B'], 'star', 26, 1.4);
         }
         banner('🏔️', 'وصلت القمة!', sub, 'gold', 4200);
-        setTimeout(() => { if (WS && state === 'world' && WD.S.summit && WD.S.summit.phase === 'wait') say('هلا بيك بالقمة يا بطل! 🏔️ تعال اشرب استكان شاي ☕ وباوع بالتلسكوب عالوادي 🔭', 6, TEA_SELLER); }, 2600);
+        setTimeout(() => { if (WS && state === 'world' && WD.S.summit && WD.S.vq.met && !WS.dlg) say('هلا بيك بالقمة يا بطل! 🏔️ تعال اشرب استكان شاي ☕ ويرد الروح بعد هالطلعة 😄', 6, TEA_SELLER); }, 2600);
         break;
       }
       case 'windStart': Sfx.wind(9); banner('💨', 'الريح هبّت!', 'كلشي ديتحرك… تمسّك!', 'danger', 3200); if (m.dlg) m.dlg.t = Math.min(m.dlg.t, 0.5); break;
@@ -3401,18 +3404,18 @@
         setTimeout(() => { if (WS && state === 'world' && !WD.S.vq.caught) toast('🗺️ الخريطة فوك: أشّر بيها الأماكن اللي تلگاها', 3400); }, 3600);
         break;
       case 'snort': Sfx.snort(); break;
+      case 'breath': toast('😮‍💨 نفَسك خلص! امشِ بهدوء أو وكّف شوية', 2200); break;
+      case 'farSea': toast('🌊 بعيد كلش عن الساحل… ارجع للجزيرة', 2200); break;
       case 'tired': toast('الغزال تعب! 😮‍💨 هسه فرصتك', 2400); break;
-      case 'call': say('يا بطل! 👋 آني أبو جاسم التاجر… تعال لخيمتي، عندي إلك شغلة وجائزة 🎁', 6, MERCHANT); break;
+      case 'call': say(S3.vq.caught ? 'هاااا! 🦌 جبت الغزال؟ تعال يمّي يا بطل!' : 'يا هلا! 👋 آني أبو جاسم التاجر… تعال يمّي، عندي إلك شغلة وجائزة 🎁', 6, MERCHANT); break;
       case 'meet':
-        if (!S3.vq.caught) say('هلا بيك يا بطل! 🤝 بالوادي اكو غزال 🦌، إذا تلزمه جيبه لهنا لخيمتي وأنطيك جائزة كبيرة 🎁. أشّر مكاني بالخريطة 🗺️ حتى ما تضيع', 8, MERCHANT);
-        else say('عفية عليك! 👏 جيبه لهنا، للدائرة الصفرة اللي يم الخيمة', 5, MERCHANT);
-        if (!m.pins.some((p) => p.type === 'camp')) setTimeout(() => { if (WS && state === 'world' && !WS.pins.some((p) => p.type === 'camp')) toast('🗺️ افتح الخريطة وأشّر مكان التاجر 🏕️', 3000); }, 4200);
+        if (!S3.vq.caught) { say('هلا بيك يا بطل! 🤝 أحتاج غزال 🦌 من «وادي الغزلان» شرق الجبل. جيبه لهنا للقمة وأنطيك 500 عملة 💰 وقبعة المغامر 🤠. وانتبه: إذا ركضت يمّه يهرب!', 9, MERCHANT); setTimeout(() => { if (WS && state === 'world' && !WD.S.vq.caught) toast('🦌 علامة الغزال بالبوصلة توديك للوادي', 3200); }, 9500); }
+        else say('عفية عليك! 👏 جيبه لهنا، للدائرة الصفرة اللي يمّي', 5, MERCHANT);
         break;
       case 'catch': {
         Sfx.catchIt(); shake = 0.12;
-        banner('🦌', 'لزمته!', S3.vq.met ? 'رجّعه لخيمة أبو جاسم 🏕️' : 'هسه دوّر على أبو جاسم التاجر 🔎', 'gold', 3000);
+        banner('🦌', 'لزمته!', 'رجّعه لأبو جاسم بقمة السحاب 🏔️', 'gold', 3000);
         const g = WD.sim.gz; sparkleAt(g.x, g.y + 1.2, g.z, ['#FF5D8F', '#FFD23F', '#FFFFFF'], 'heart', 14);
-        if (S3.vq.met) setTimeout(() => { if (WS && !WS.delivered) say('عفية عليك! 👏 هسه جيبه لخيمتي', 4, MERCHANT); }, 1600);
         break;
       }
       case 'deliver': {
@@ -3429,16 +3432,30 @@
       }
     }
   }
-  function revealFog() {
-    const mp = WS.map, h = WD.S.hero;
-    if (!mp || (WS.lastReveal && Math.hypot(h.x - WS.lastReveal[0], h.z - WS.lastReveal[1]) < 2)) return;
-    WS.lastReveal = [h.x, h.z];
-    const g = WS.fog.getContext('2d'), Wd = WS.fog.width, Hh = WS.fog.height, ppm = Wd / (mp.z1 - mp.z0);
-    const u = ((h.z - mp.z0) / (mp.z1 - mp.z0)) * Wd, vv = ((mp.x1 - h.x) / (mp.x1 - mp.x0)) * Hh, rad = (h.mode === 'walk' ? 26 : h.mode === 'glide' ? 40 : 60) * ppm;
+  function revealAt(x, z, radM) {
+    const mp = WS.map, g = WS.fog.getContext('2d'), Wd = WS.fog.width, Hh = WS.fog.height, ppm = Wd / (mp.z1 - mp.z0);
+    const u = ((z - mp.z0) / (mp.z1 - mp.z0)) * Wd, vv = ((mp.x1 - x) / (mp.x1 - mp.x0)) * Hh, rad = radM * ppm;
     g.save(); g.globalCompositeOperation = 'destination-out';
-    const gr = g.createRadialGradient(u, vv, rad * 0.5, u, vv, rad); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    const gr = g.createRadialGradient(u, vv, rad * 0.45, u, vv, rad); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = gr; g.beginPath(); g.arc(u, vv, rad, 0, TAU); g.fill(); g.restore();
-    WS.revealed++;
+  }
+  function revealFog() {
+    const h = WD.S.hero;
+    if (WS.lastReveal && Math.hypot(h.x - WS.lastReveal[0], h.z - WS.lastReveal[1]) < 10) return;
+    WS.lastReveal = [h.x, h.z]; WS.revealed++;
+    const r = 130 + Math.max(0, h.y - WD.G.SEA - 60) * 0.6; // من فوك تشوف أبعد
+    if (!WS.map) { WS.preTrail.push([h.x, h.z]); return; }
+    revealAt(h.x, h.z, r);
+  }
+  /** 🏷️ دخلت منطقة: اسمها يطلع، وأول مرة تنحسب «منطقة جديدة» */
+  function onZone(zz) {
+    if (!zz || zz.id === 'wild' || zz.id === 'coast' || zz.id === 'sea') return;
+    save.zones = save.zones || [];
+    const total = WD.G.I.zones.length, now = WS.t;
+    if (zz.river) { if (!WS.zoneSeen[zz.id] || now - WS.zoneSeen[zz.id] > 60) toast(`${zz.icon} ${zz.name}`, 1800); WS.zoneSeen[zz.id] = now; return; }
+    if (!save.zones.includes(zz.id)) { save.zones.push(zz.id); persist(); Sfx.mission(); banner(zz.icon, zz.name, `✨ منطقة جديدة — ${save.zones.length}/${total}`, 'gold', 3000); }
+    else if (!WS.zoneSeen[zz.id] || now - WS.zoneSeen[zz.id] > 45) banner(zz.icon, zz.name, zz.sub || '', '', 2200);
+    WS.zoneSeen[zz.id] = now;
   }
   function updateWorld(dt) {
     const m = WS, S3 = WD.S;
@@ -3457,7 +3474,9 @@
         if (!WS) return;
       }
     }
-    if (m.map && !m.mapHi && !WD.view.hiLeft) makeMap(); // الخريطة تتحسّن لمن تخلص التفاصيل
+    if (!m.map && !WD.view.hiLeft && m.t > 2) makeMap(); // الخريطة تنبني لمن تخلص الأرض القريبة
+    m.zoneT = (m.zoneT || 0) - dt;
+    if (m.zoneT <= 0 && S3.hero.mode === 'walk' && state === 'world') { m.zoneT = 0.5; const zz = WD.G.zoneAt(S3.hero.x, S3.hero.z); if (zz.id !== m.zone) { m.zone = zz.id; if (m.t > 4) onZone(zz); } }
     // زر الفعالية والنطة والتخطّي
     const it = state === 'world' ? WD.nearInteract() : null;
     m.act = it ? it.id : null;
@@ -3465,7 +3484,7 @@
     const ab = $('actBtn');
     if (state === 'world' && label) { if (ab.hidden || ab.textContent !== label) { ab.textContent = label; ab.hidden = false; } } else if (!ab.hidden) ab.hidden = true;
     $('jumpBtn').hidden = !(state === 'world' && !S3.scope && S3.hero.mode === 'walk' && !(S3.summit && S3.summit.phase !== 'wait'));
-    const sk = state === 'world' && S3.summit && S3.summit.phase === 'wait' && S3.summit.t > 3;
+    const sk = state === 'world' && S3.windStory && S3.summit && S3.summit.phase === 'wait' && S3.summit.t > 3;
     if ($('skip').hidden === !!sk) $('skip').hidden = !sk;
     const obj = WD.objective(); if (m.obj !== obj) { m.obj = obj; $('vobj').textContent = obj; }
     m.threat = WD.threats().length;
@@ -3485,33 +3504,48 @@
   let pinTool = 'camp';
   const mapUV = (m, x, z) => [(z - m.z0) / (m.z1 - m.z0), (m.x1 - x) / (m.x1 - m.x0)];
   function openMap() {
-    if (!WS || !WS.map || state !== 'world') return;
+    if (!WS || state !== 'world') return;
+    if (!WS.map) makeMap();
     WS.mapOpen = true; J.id = null; CAMD.id = null;
+    const h = WD.S.hero, [u, v] = mapUV(WS.map, h.x, h.z); WS.mz = WS.mz || 3; WS.mc = [u, v]; // تنفتح على مكانك، وبالأصابع تكبّر وتصغّر
     $('mapv').hidden = false; Sfx.click();
     drawFullMap();
   }
   function closeMap() { if (!WS) return; WS.mapOpen = false; $('mapv').hidden = true; }
+  /** إطار الخريطة بالشاشة، والتكبير والتحريك */
   function mapFit() {
     const cv = $('mapC'), m = WS.map, r = cv.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
     if (cv.width !== Math.round(r.width * d) || cv.height !== Math.round(r.height * d)) { cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
-    const k = Math.min(cv.width / m.canvas.width, cv.height / m.canvas.height);
-    return { cv, d, k, ox: (cv.width - m.canvas.width * k) / 2, oy: (cv.height - m.canvas.height * k) / 2 };
+    const k = Math.min(cv.width / m.canvas.width, cv.height / m.canvas.height), fw = m.canvas.width * k, fh = m.canvas.height * k, fx = (cv.width - fw) / 2, fy = (cv.height - fh) / 2;
+    const Z = WS.mz || 1, W = fw * Z, H = fh * Z;
+    const cu = clamp(WS.mc ? WS.mc[0] : 0.5, 0.5 / Z, 1 - 0.5 / Z), cvv = clamp(WS.mc ? WS.mc[1] : 0.5, 0.5 / Z, 1 - 0.5 / Z); if (WS.mc) { WS.mc[0] = cu; WS.mc[1] = cvv; }
+    return { cv, d, k, fx, fy, fw, fh, W, H, ox: fx + fw / 2 - cu * W, oy: fy + fh / 2 - cvv * H, Z };
   }
   function drawFullMap() {
     if (!WS || !WS.mapOpen) return;
-    const m = WS.map, f = mapFit(), g = f.cv.getContext('2d'), p = WD.S.hero, W = m.canvas.width * f.k, Hh = m.canvas.height * f.k;
+    const m = WS.map, f = mapFit(), g = f.cv.getContext('2d'), p = WD.S.hero;
     g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, f.cv.width, f.cv.height);
-    g.save(); rr(g, f.ox, f.oy, W, Hh, 18 * f.d); g.clip();
-    g.drawImage(m.canvas, f.ox, f.oy, W, Hh); g.drawImage(WS.fog, f.ox, f.oy, W, Hh);
-    g.restore();
-    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 2 * f.d; rr(g, f.ox, f.oy, W, Hh, 18 * f.d); g.stroke();
-    const at = (x, z) => { const [u, v] = mapUV(m, x, z); return [f.ox + u * W, f.oy + v * Hh]; };
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    for (const pin of WS.pins) { const [x, y] = at(pin.x, pin.z); g.font = `${24 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText(PIN_ICON[pin.type], x, y - 10 * f.d); g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y + 3 * f.d, 6 * f.d, 2.5 * f.d, 0, 0, TAU); g.fill(); }
+    g.save(); rr(g, f.fx, f.fy, f.fw, f.fh, 18 * f.d); g.clip();
+    g.imageSmoothingEnabled = true; g.drawImage(m.canvas, f.ox, f.oy, f.W, f.H); g.drawImage(WS.fog, f.ox, f.oy, f.W, f.H);
+    const at = (x, z) => { const [u, v] = mapUV(m, x, z); return [f.ox + u * f.W, f.oy + v * f.H]; };
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+    for (const zz of WD.G.I.zones) { // 🏷️ أسماء المناطق
+      const px = zz.r / (m.x1 - m.x0) * f.W; if (px < 16 * f.d && zz.r < 600) continue;
+      if (zz.id === 'shoulder' && f.Z < 4) continue;
+      const [x, y] = at(zz.x, zz.z), fs = clamp(px / 9, 10 * f.d, 15 * f.d);
+      g.font = `900 ${fs}px -apple-system,system-ui,sans-serif`; g.strokeStyle = 'rgba(16,24,48,.85)'; g.lineWidth = 3.2 * f.d; g.fillStyle = '#FFFFFF';
+      const yy = zz.id === 'mount' ? y + 34 * f.d : y; const t = `${zz.icon} ${zz.name}`;
+      g.strokeText(t, x, yy); g.fillText(t, x, yy);
+    }
+    for (const pin of WS.pins) { const [x, y] = at(pin.x, pin.z); g.font = `${24 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText(PIN_ICON[pin.type], x, y - 10 * f.d); g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y + 3 * f.d, 6 * f.d, 2.5 * f.d, 0, 0, TAU); g.fill(); g.fillStyle = '#FFFFFF'; }
     const [px, py] = at(p.x, p.z);
     drawArrow(g, px, py, p.face, 11 * f.d, '#FFD23F');
-    g.font = `900 ${13 * f.d}px -apple-system,system-ui,sans-serif`; g.fillStyle = '#FFFFFF';
-    g.fillText('⬆ ش', f.cv.width / 2, f.oy + 16 * f.d);
+    g.restore();
+    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 2 * f.d; rr(g, f.fx, f.fy, f.fw, f.fh, 18 * f.d); g.stroke();
+    g.font = `900 ${13 * f.d}px -apple-system,system-ui,sans-serif`; g.fillStyle = '#FFFFFF'; g.textAlign = 'center';
+    g.fillText('⬆ ش', f.cv.width / 2, f.fy + 16 * f.d);
+    g.font = `${11 * f.d}px -apple-system,system-ui,sans-serif`; g.fillStyle = 'rgba(255,255,255,.8)';
+    g.fillText(`🔍 ×${f.Z.toFixed(1)} — اسحب وكبّر بإصبعين`, f.cv.width / 2, f.fy + f.fh - 14 * f.d);
   }
   function drawArrow(g, x, y, face, s, col) {
     const a = Math.atan2(-Math.cos(face), Math.sin(face));
@@ -3524,10 +3558,11 @@
     if (!WS || !WS.mapOpen) return;
     const f = mapFit(), r = f.cv.getBoundingClientRect(), m = WS.map;
     const cx = (e.clientX - r.left) * f.d, cy = (e.clientY - r.top) * f.d;
-    const u = (cx - f.ox) / (m.canvas.width * f.k), v = (cy - f.oy) / (m.canvas.height * f.k);
+    if (cx < f.fx || cx > f.fx + f.fw || cy < f.fy || cy > f.fy + f.fh) return;
+    const u = (cx - f.ox) / f.W, v = (cy - f.oy) / f.H;
     if (u < 0 || u > 1 || v < 0 || v > 1) return;
     const z = m.z0 + u * (m.z1 - m.z0), x = m.x1 - v * (m.x1 - m.x0);
-    const near = WS.pins.findIndex((pin) => { const [pu, pv] = mapUV(m, pin.x, pin.z); return Math.hypot((pu - u) * m.canvas.width * f.k, (pv - v) * m.canvas.height * f.k) < 28 * f.d; });
+    const near = WS.pins.findIndex((pin) => { const [pu, pv] = mapUV(m, pin.x, pin.z); return Math.hypot((pu - u) * f.W, (pv - v) * f.H) < 28 * f.d; });
     if (near >= 0 && (pinTool === 'del' || WS.pins[near].type === pinTool)) { WS.pins.splice(near, 1); Sfx.click(); }
     else if (pinTool !== 'del') {
       if (pinTool === 'camp') WS.pins = WS.pins.filter((pin) => pin.type !== 'camp');
@@ -3535,9 +3570,22 @@
     }
     drawFullMap();
   }
-  $('mapC').addEventListener('pointerdown', (e) => { e.preventDefault(); mapTap(e); });
+  // لمس الخريطة: ضغطة = علامة، سحب = تحريك، إصبعين = تكبير/تصغير
+  const mptr = new Map(); let mpMoved = false, mpPinch = 0;
+  $('mapC').addEventListener('pointerdown', (e) => { e.preventDefault(); try { $('mapC').setPointerCapture(e.pointerId); } catch (er) { /* */ } mptr.set(e.pointerId, [e.clientX, e.clientY]); if (mptr.size === 1) mpMoved = false; else { const [a, b] = [...mptr.values()]; mpPinch = Math.hypot(a[0] - b[0], a[1] - b[1]); mpMoved = true; } });
+  $('mapC').addEventListener('pointermove', (e) => {
+    if (!WS || !WS.mapOpen || !mptr.has(e.pointerId)) return;
+    const prev = mptr.get(e.pointerId), dx = e.clientX - prev[0], dy = e.clientY - prev[1]; mptr.set(e.pointerId, [e.clientX, e.clientY]);
+    const f = mapFit();
+    if (mptr.size >= 2) { const [a, b] = [...mptr.values()], dd = Math.hypot(a[0] - b[0], a[1] - b[1]); if (mpPinch > 0) WS.mz = clamp((WS.mz || 1) * dd / mpPinch, 1, 10); mpPinch = dd; }
+    else if (Math.abs(dx) + Math.abs(dy) > 0.5) { if (!mpMoved && Math.hypot(dx, dy) < 3) return; mpMoved = true; WS.mc[0] -= (dx * f.d) / f.W; WS.mc[1] -= (dy * f.d) / f.H; }
+    drawFullMap();
+  });
+  const mpUp = (e) => { if (!mptr.has(e.pointerId)) return; const was = mptr.size; mptr.delete(e.pointerId); if (was === 1 && !mpMoved) mapTap(e); if (mptr.size < 2) mpPinch = 0; };
+  $('mapC').addEventListener('pointerup', mpUp); $('mapC').addEventListener('pointercancel', (e) => mptr.delete(e.pointerId));
+  $('mapC').addEventListener('wheel', (e) => { if (!WS || !WS.mapOpen) return; e.preventDefault(); WS.mz = clamp((WS.mz || 1) * Math.exp(-e.deltaY * 0.0015), 1, 10); drawFullMap(); }, { passive: false });
   $('mapX').onclick = () => { Sfx.click(); closeMap(); };
-  $('vMap').onclick = () => { if (WS && state === 'world') { if (WS.map) openMap(); else toast('⏳ الخريطة تتجهز…'); } };
+  $('vMap').onclick = () => { if (WS && state === 'world') openMap(); };
   document.querySelectorAll('#mapv .pin').forEach((b) => { b.onclick = () => { pinTool = b.dataset.t; document.querySelectorAll('#mapv .pin').forEach((o) => o.classList.toggle('on', o === b)); Sfx.click(); }; });
 
   // ---------------------------------------------------------------- الرسم فوك المشهد: جويستك، بوصلة، خريطة صغيرة، صحة، تهديدات
@@ -3581,7 +3629,9 @@
     }
     ctx.font = '15px -apple-system,system-ui,sans-serif';
     const marks = [...WS.pins.map((pin) => [pin.x, pin.z, PIN_ICON[pin.type]])];
-    if (!WD.S.climb.done) marks.push([WD.info.M.x, WD.info.M.z, '🏔️']);
+    const vq = WD.S.vq;
+    if (!vq.delivered && (!vq.met || vq.caught)) marks.push([WD.info.M.x, WD.info.M.z, '🏔️']);
+    if (vq.met && !vq.caught) marks.push([WD.G.I.valley.x, WD.G.I.valley.z, '🦌']);
     for (const [mx, mz, ic] of marks) {
       const b = ((Math.atan2(mz - p.z, mx - p.x) * 180) / Math.PI + 360) % 360, d = ((b - hd + 540) % 360) - 180;
       if (Math.abs(d) > 58) continue;
@@ -3593,7 +3643,7 @@
   function drawMinimap() {
     const m = WS.map; if (!m) return;
     const cx = MINI.x(), cy = MINI.y(), r = MINI.r, p = WD.S.hero, Wd = m.canvas.width, Hh = m.canvas.height;
-    const ppmMap = Wd / (m.z1 - m.z0), view = 55, sc = r / view / ppmMap;
+    const ppmMap = Wd / (m.z1 - m.z0), view = 140, sc = r / view / ppmMap;
     const [u, v] = mapUV(m, p.x, p.z);
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fillStyle = 'rgba(14,20,38,.85)'; ctx.fill(); ctx.clip();
@@ -3623,19 +3673,24 @@
     ctx.fillStyle = 'rgba(255,255,255,.18)'; rr(ctx, hx - hw / 2 + 24, y + 9, hw - 32, 8, 4); ctx.fill();
     ctx.fillStyle = k > 0.5 ? '#5BD46B' : k > 0.25 ? '#FFC23D' : '#FF4D4D'; if (k > 0) { rr(ctx, hx - hw / 2 + 24, y + 9, (hw - 32) * k, 8, 4); ctx.fill(); }
     ctx.fillText(WS.hurtT > 0 && Math.sin(time * 40) > 0 ? '💔' : '❤️', hx - hw / 2 + 13, y + 13.5);
-    const onMt = WD.info.M.rad(h.x, h.z) < 230 && h.y > 0; // الارتفاع بس على الجبل (الوادي تحت مستوى السهل)
-    chip(`🪙 ${WD.S.coinsGot}`, onMt ? C.W / 2 + 22 : C.W / 2 + 40);
-    if (onMt) chip(`⛰️ ${Math.round(h.y)}م`, C.W / 2 + 82);
+    chip(`🪙 ${WD.S.coinsGot}`, C.W / 2 + 22);
+    chip(`⛰️ ${Math.max(0, Math.round(h.y - WD.G.SEA))}م`, C.W / 2 + 84); // الارتفاع فوك البحر
+    if (h.st < 99.5) { // 💨 النفَس
+      const sw = 96, sx = hx - sw / 2, k2 = clamp(h.st / 100, 0, 1), low = h.st < 25;
+      ctx.fillStyle = 'rgba(20,28,56,.5)'; rr(ctx, sx, y + 30, sw, 16, 8); ctx.fill();
+      ctx.fillStyle = low && Math.sin(time * 14) > 0 ? '#FF7A7A' : '#7FD1FF'; if (k2 > 0) { rr(ctx, sx + 22, y + 35, (sw - 30) * k2, 6, 3); ctx.fill(); }
+      ctx.font = '11px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFFFFF'; ctx.fillText(h.swim ? '🏊' : '💨', sx + 11, y + 38.5);
+    }
     ctx.restore();
   }
-  function drawAltitude() { // شريط الطلعة على اليمين (بس على الجبل)
-    const h = WD.S.hero, M = WD.info.M; if (M.rad(h.x, h.z) > 200 || WD.S.climb.done) return;
-    const alt = clamp((h.y - 9) / 86, 0, 1), x = C.W - 24, y0 = 240, y1 = 430, cy = (k) => y1 - (y1 - y0) * k;
+  function drawAltitude() { // شريط الارتفاع على اليمين: من البحر لقمة السحاب (395 م)
+    const h = WD.S.hero, M = WD.info.M, SEA = WD.G.SEA, TOP = M.HS - SEA; if (WD.S.summit) return;
+    const alt = clamp((h.y - SEA) / TOP, 0, 1), x = C.W - 24, y0 = 240, y1 = 430, cy = (k) => y1 - (y1 - y0) * k;
     ctx.save();
     ctx.fillStyle = 'rgba(20,28,56,.42)'; rr(ctx, x - 9, y0 - 26, 18, y1 - y0 + 40, 9); ctx.fill();
     const g = ctx.createLinearGradient(0, y1, 0, y0); g.addColorStop(0, '#4FB86A'); g.addColorStop(0.6, '#9BD86B'); g.addColorStop(1, '#FFFFFF');
     ctx.fillStyle = g; rr(ctx, x - 4, cy(alt), 8, Math.max(4, y1 - cy(alt)), 4); ctx.fill();
-    for (const c of M.rest) { if (!c.flag) continue; const k = clamp((c.y - 9) / 86, 0, 1); ctx.fillStyle = WD.S.reached.has(c.id) ? '#FFD23F' : 'rgba(255,255,255,.55)'; ctx.fillRect(x - 8, cy(k) - 1, 16, 2.5); }
+    for (const c of M.rest) { if (!c.flag) continue; const k = clamp((c.y - SEA) / TOP, 0, 1); ctx.fillStyle = WD.S.reached.has(c.id) ? '#FFD23F' : 'rgba(255,255,255,.55)'; ctx.fillRect(x - 8, cy(k) - 1, 16, 2.5); }
     ctx.font = '15px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🏔️', x, y0 - 14);
     ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(x, cy(alt), 6.5, 0, TAU); ctx.fill(); ctx.fillStyle = '#FF7A3D'; ctx.beginPath(); ctx.arc(x, cy(alt), 4, 0, TAU); ctx.fill();
     ctx.restore();
@@ -3688,13 +3743,12 @@
   /** شنو لازم تعزف الموسيقى هسه: النمط حسب العالم والارتفاع، والحماس حسب النتيجة والصاروخ */
   function musicInfo() {
     if (!world) return { style: 'day', intensity: 0.6, bpm: 92 };
-    if (inWorld()) {
-      const S3 = WD.S, sm = S3.summit, h = S3.hero, V3 = WD.info.V, lx = h.x - V3.x, inV = lx > -70 && lx < V3.VL + 25 && Math.abs(h.z - V3.z) < 45;
-      if (h.mode === 'lift' || h.mode === 'carry') return { style: 'summit', intensity: 3.6, bpm: 118, riser: true };
-      if (sm) return { style: 'summit', intensity: sm.phase === 'wait' ? 1.1 : 1 + (sm.wind || 1) * 2.6, bpm: sm.phase === 'wait' ? 86 : 84 + (sm.wind || 1) * 34, riser: sm.phase !== 'wait' };
-      if (h.mode === 'glide' || inV) { const g = WD.sim.gz.state, vq = S3.vq; return { style: 'valley', intensity: vq.delivered || state === 'ending' ? 3.6 : h.mode === 'glide' ? 1.3 : g === 'flee' || g === 'leap' ? 3.2 : vq.caught ? 2.6 : 1.9, bpm: g === 'flee' ? 116 : 104 }; }
-      const chase = WS.threat > 0, alt = clamp((h.y - 9) / 86, 0, 1);
-      return { style: 'forest', intensity: 1.5 + alt * 1.3 + (chase ? 1.3 : 0), bpm: 98 + alt * 10 + (chase ? 12 : 0), riser: chase };
+    if (inWorld()) { // الموسيقى حسب المكان: ساحة القمة، الوادي، الهور والساحل، الغابة (وتشتد بالطلعة والمطاردة)
+      const S3 = WD.S, h = S3.hero, zone = WS.zone || '', chase = WS.threat > 0, alt = clamp((h.y - WD.G.SEA) / 395, 0, 1);
+      if (S3.summit) return { style: 'summit', intensity: state === 'ending' ? 3.4 : 1.1, bpm: 86, riser: false };
+      if (zone === 'valley') { const g = WD.sim.gz.state, vq = S3.vq; return { style: 'valley', intensity: vq.caught ? 2.6 : g === 'flee' || g === 'leap' ? 3.2 : 1.9, bpm: g === 'flee' ? 116 : 104 }; }
+      if (['fajr', 'village', 'groves', 'marsh', 'mudhif', 'pearl', 'bay', 'light'].includes(zone)) return { style: 'valley', intensity: 1.4 + (chase ? 1.3 : 0), bpm: 98 };
+      return { style: 'forest', intensity: 1.4 + alt * 1.5 + (chase ? 1.3 : 0), bpm: 96 + alt * 12 + (chase ? 12 : 0), riser: chase };
     }
     if (inValley()) { const g = V.gz.state; return { style: 'valley', intensity: V.delivered || state === 'ending' ? 3.6 : V.phase !== 'walk' ? 1.3 : g === 'flee' || g === 'leap' ? 3.2 : V.caught ? 2.6 : 1.9, bpm: g === 'flee' ? 116 : 104 }; }
     if (state === 'summit' && SUM) return { style: 'summit', intensity: 1 + SUM.wind * 2.6, bpm: 84 + SUM.wind * 34, riser: SUM.wind > 0.15 };
