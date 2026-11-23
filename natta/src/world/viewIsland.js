@@ -2,7 +2,7 @@
 // البحر والبحيرة والهور والأنهار والشلالات، المباني (بيوت طين، أكواخ، مضيف قصب، منارة، حصن)، ساحة الفجر، نيران الاستراحة، وصورة الخريطة.
 import {
   Mesh, Group, InstancedMesh, Object3D, Vector3, Color, BufferGeometry, BufferAttribute, PlaneGeometry, CircleGeometry, CylinderGeometry, ConeGeometry,
-  IcosahedronGeometry, DodecahedronGeometry, BoxGeometry, SphereGeometry, MeshLambertMaterial, MeshPhongMaterial, MeshBasicMaterial, Sprite, SpriteMaterial,
+  IcosahedronGeometry, DodecahedronGeometry, BoxGeometry, SphereGeometry, TubeGeometry, CatmullRomCurve3, MeshLambertMaterial, MeshPhongMaterial, MeshBasicMaterial, Sprite, SpriteMaterial,
   AdditiveBlending, DoubleSide, RepeatWrapping,
 } from 'three';
 import { TAU, clamp, lerp, smooth, rng, hash2, vnoise, fbm, paint, tf, merge, mix, canvasTex, swayMat, seeThroughMat, palmGeo, bushGeo, rockGeo, reedGeo, tuftGeo, makeMan } from '../lib3d.js';
@@ -303,8 +303,8 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
     } else if (k === 'lamp') {
       P.push(cyl(0.06, 0.09, 3.3, '#2E2E2E', 0, 1.65, 0, 6));
     } else if (k === 'pier') {
-      P.push(paint(tf(new BoxGeometry(st.w, 0.22, st.d), 0, 0, 0), (c, x, y, z) => mix(c, '#7E5B3A', '#A47A50', (Math.floor((z + 50) * 1.6) % 2) * 0.6 + 0.2)));
-      for (let i = 0; i <= Math.floor(st.d / 4); i++) for (const sx of [-1, 1]) P.push(cyl(0.12, 0.12, 4, '#5B3F27', sx * (st.w / 2 - 0.1), -2, -st.d / 2 + i * 4, 6));
+      P.push(paint(tf(new BoxGeometry(st.w, 0.22, st.d), 0, 0, 0), (c, x, y, z) => mix(c, '#7E5B3A', '#A47A50', (Math.floor((x + 50) * 1.6) % 2) * 0.6 + 0.2)));
+      for (let i = 0; i <= Math.floor(st.w / 4); i++) for (const sz of [-1, 1]) P.push(cyl(0.12, 0.12, 4, '#5B3F27', -st.w / 2 + i * 4, -2, sz * (st.d / 2 - 0.1), 6));
     } else if (k === 'boat' || k === 'canoe') {
       const L = k === 'canoe' ? 6.5 : 5.2, W = k === 'canoe' ? 0.85 : 1.7;
       P.push(paint(tf(new SphereGeometry(1, 14, 6, 0, TAU, Math.PI / 2, Math.PI / 2), 0, 0.42, 0, 0, 0, 0, L / 2, 0.5, W / 2), k === 'canoe' ? '#3B2A1E' : (c, x, y) => mix(c, '#2A6F97', '#F1ECE2', y * -2 + 0.2)));
@@ -374,6 +374,30 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
     grp.position.set(x, M.HS + 0.01, z); grp.rotation.y = -Math.atan2(M.z - z, M.x - x); scene.add(grp);
   }
 
+  // ================================================================ 🚡 الحبال المنزلقة، 🧗 حبال التسلّق، 🎣 السنارة
+  const steel = new MeshLambertMaterial({ color: '#3A3A3A' }), woodM = new MeshLambertMaterial({ color: '#7B5534' });
+  const frame = (x, y, z, hgt, ang) => { const g = new Group(); for (const s of [-1, 1]) { const p = new Mesh(new CylinderGeometry(0.14, 0.18, hgt, 6), woodM); p.position.set(-Math.sin(ang) * s * 1.3, hgt / 2, Math.cos(ang) * s * 1.3); p.castShadow = true; g.add(p); } const bar = new Mesh(new BoxGeometry(0.22, 0.22, 2.9), woodM); bar.position.y = hgt; bar.rotation.y = -ang; g.add(bar); g.position.set(x, y, z); scene.add(g); return g; };
+  for (const z of G.zips) {
+    const pts = []; for (let s = 0; s <= z.L; s += 6) { const p = z.at(s); pts.push(new Vector3(p.x, p.y, p.z)); } const e = z.at(z.L); pts.push(new Vector3(e.x, e.y, e.z));
+    const cable = new Mesh(new TubeGeometry(new CatmullRomCurve3(pts), pts.length, 0.04, 4, false), steel); scene.add(cable);
+    const ang = Math.atan2(z.uz, z.ux);
+    frame(z.S.x, M.HS - 1, z.S.z, 5.6, ang); frame(z.E.x, G.H(z.E.x, z.E.z) - 0.2, z.E.z, 4.6, ang);
+    for (const T of z.pts) if (T.tower) { const g = new Group(); for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const leg = new Mesh(new CylinderGeometry(0.12, 0.16, 12.6, 5), steel); leg.position.set(sx * 0.9, 6.1, sz * 0.9); leg.rotation.set(sz * 0.07, 0, -sx * 0.07); g.add(leg); } const top = new Mesh(new BoxGeometry(2.4, 0.3, 0.6), steel); top.position.y = 12; top.rotation.y = -ang + Math.PI / 2; g.add(top); g.position.set(T.x, G.H(T.x, T.z) - 0.3, T.z); scene.add(g); }
+    const sg = new Mesh(new PlaneGeometry(2.4, 0.6), new MeshLambertMaterial({ map: signTex(`🚡 ${z.name} ${z.icon}`, 512, 128, 56), side: DoubleSide })); sg.position.set(z.stand.x, M.HS + 2.2, z.stand.z); sg.rotation.y = -Math.atan2(z.stand.z - M.z, z.stand.x - M.x) + Math.PI / 2; scene.add(sg);
+    const sp = new Mesh(new CylinderGeometry(0.06, 0.06, 2.4, 6), woodM); sp.position.set(z.stand.x, M.HS + 1.2, z.stand.z); scene.add(sp);
+  }
+  const trolley = new Group(); { const wheel = new Mesh(new CylinderGeometry(0.16, 0.16, 0.1, 12), steel); wheel.rotation.x = Math.PI / 2; wheel.position.y = 2.1; trolley.add(wheel); for (const s of [-1, 1]) { const st = new Mesh(new CylinderGeometry(0.02, 0.02, 1.2, 4), new MeshLambertMaterial({ color: '#E63946' })); st.position.set(0, 1.45, s * 0.25); st.rotation.x = s * 0.2; trolley.add(st); } const bar = new Mesh(new CylinderGeometry(0.03, 0.03, 0.9, 6), steel); bar.rotation.x = Math.PI / 2; bar.position.y = 0.88; trolley.add(bar); }
+  trolley.visible = false; scene.add(trolley);
+  const ropeM = new MeshLambertMaterial({ color: '#C8A46A' }), flagM = new MeshLambertMaterial({ color: '#E63946', side: DoubleSide });
+  for (const a of G.anchors) { // 🧗 حبل معلّق على الجرف وعلامة حمرة تحت
+    const rp = new Mesh(new TubeGeometry(new CatmullRomCurve3([new Vector3(a.top.x, a.top.y + 0.8, a.top.z), new Vector3((a.top.x + a.bot.x) / 2, (a.top.y + a.bot.y) / 2, (a.top.z + a.bot.z) / 2), new Vector3(a.bot.x, a.bot.y + 0.2, a.bot.z)]), 12, 0.035, 4, false), ropeM); scene.add(rp);
+    const peg = new Mesh(new CylinderGeometry(0.06, 0.06, 1.1, 6), steel); peg.position.set(a.top.x, a.top.y + 0.5, a.top.z); scene.add(peg);
+    const pole = new Mesh(new CylinderGeometry(0.03, 0.03, 1.8, 5), woodM); pole.position.set(a.bot.x, a.bot.y + 0.9, a.bot.z); scene.add(pole);
+    const fl = new Mesh(new PlaneGeometry(0.5, 0.32), flagM); fl.position.set(a.bot.x + 0.25, a.bot.y + 1.6, a.bot.z); scene.add(fl);
+  }
+  const rod = new Group(); { const stick = new Mesh(new CylinderGeometry(0.015, 0.03, 2.6, 5), woodM); stick.rotation.z = -1.0; stick.position.set(1.1, 1.6, 0); rod.add(stick); const line = new Mesh(new CylinderGeometry(0.004, 0.004, 2.4, 3), new MeshBasicMaterial({ color: '#EEEEEE' })); line.position.set(2.2, 0.95, 0); rod.add(line); const bob = new Mesh(new SphereGeometry(0.06, 8, 6), new MeshLambertMaterial({ color: '#E63946' })); bob.position.set(2.2, -0.2, 0); rod.add(bob); rod.userData.bob = bob; }
+  rod.visible = false; scene.add(rod);
+
   // ================================================================ 🗺️ صورة الخريطة: تنحسب شوية شوية (كل الجزيرة)
   const MAPN = 360, mapA = new Float32Array(MAPN * MAPN), mapF = new Float32Array(MAPN * MAPN); let mapRow = 0, mapCanvas = null;
   function mapRows(budget) {
@@ -414,6 +438,7 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
   // ================================================================ كل فريم
   let waterT = 0;
   function update(t, dt, cam, hero, budget) {
+    if (hero) { trolley.visible = hero.mode === 'zip'; if (trolley.visible) { trolley.position.set(hero.x, hero.y, hero.z); trolley.rotation.y = -hero.face; } rod.visible = hero.mode === 'fish'; if (rod.visible) { rod.position.set(hero.x, hero.y, hero.z); rod.rotation.y = -hero.face; rod.userData.bob.position.y = -0.2 + Math.sin(t * 3) * 0.05 - (G.S && 0); } }
     selectTerrain(cam.x, cam.z, cam.y);
     const left = buildSome(budget * 0.45);
     updateVeg(cam.x, cam.z, budget * 0.4);

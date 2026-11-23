@@ -3,7 +3,7 @@
 // بالمستقبل أوامر اللاعبين الثانيين تجي من الإنترنت بنفس الشكل، والمحاكاة تشتغل على السيرفر (ما بيها رسم).
 import { TAU, clamp, lerp, smooth, damp, rng, angDiff, dampAngle } from '../lib3d.js';
 
-const GRAV = 14, SLOPE_MAX = 1.0, SLIDE = 1.15;
+const GRAV = 14, SLOPE_MAX = 1.0, SLIDE = 1.15, BOOT_SLOPE = 1.45, BOOT_SLIDE = 1.6; // 🥾 جزمة الجبل: تصعد منحدرات أشد
 
 export function createSim(G, opts = {}) {
   const M = G.M, V = G.V;
@@ -45,8 +45,9 @@ export function createSim(G, opts = {}) {
       let s = G.surfaceAt(nx, nz, e.y + 0.4);
       const dist = Math.hypot(nx - e.x, nz - e.z), dh = s.y - e.y;
       const STEP = s.kind === 'path' ? 0.75 : 0.35; // على الطريق تكدر تصعد درجة (لفّات الزكزاك الضيقة)
-      if (dist > 1e-5 && dh > STEP && dh > dist * SLOPE_MAX) { // صعدة شديدة: ننزلق ويا الحايط
-        const tryM = (ax, az) => { const s2 = G.surfaceAt(ax, az, e.y + 0.4), d2 = Math.hypot(ax - e.x, az - e.z), h2 = s2.y - e.y; return h2 <= (s2.kind === 'path' ? 0.75 : 0.35) || h2 <= d2 * SLOPE_MAX ? [ax, az, s2] : null; };
+      const SMX = e.boots ? BOOT_SLOPE : SLOPE_MAX;
+      if (dist > 1e-5 && dh > STEP && dh > dist * SMX) { // صعدة شديدة: ننزلق ويا الحايط
+        const tryM = (ax, az) => { const s2 = G.surfaceAt(ax, az, e.y + 0.4), d2 = Math.hypot(ax - e.x, az - e.z), h2 = s2.y - e.y; return h2 <= (s2.kind === 'path' ? 0.75 : 0.35) || h2 <= d2 * SMX ? [ax, az, s2] : null; };
         const r1 = tryM(nx, e.z) || tryM(e.x, nz);
         if (r1) { nx = r1[0]; nz = r1[1]; s = r1[2]; } else { nx = e.x; nz = e.z; s = G.surfaceAt(nx, nz, e.y); e.vx *= 0.3; e.vz *= 0.3; }
       }
@@ -57,7 +58,7 @@ export function createSim(G, opts = {}) {
       } else { e.x = nx; e.z = nz; e.y = s.y; e.surf = s.kind; e.plat = s.plat; }
       if (!e.air && !e.surf && !o.noSlide) { // منحدر شديد: ينزلق لجوه
         const hx = G.H(e.x + 0.4, e.z) - G.H(e.x - 0.4, e.z), hz = G.H(e.x, e.z + 0.4) - G.H(e.x, e.z - 0.4), sl = Math.hypot(hx, hz) / 0.8;
-        if (sl > SLIDE) { const k = (sl - SLIDE) * 9 * dt; e.vx -= (hx / 0.8) * k; e.vz -= (hz / 0.8) * k; }
+        const SLD = e.boots ? BOOT_SLIDE : SLIDE; if (sl > SLD) { const k = (sl - SLD) * 9 * dt; e.vx -= (hx / 0.8) * k; e.vz -= (hz / 0.8) * k; }
       }
     } else {
       e.vy -= GRAV * dt;
@@ -121,8 +122,39 @@ export function createSim(G, opts = {}) {
     else emit(['respawn', r.name, 0]);
     S.focus = null;
   }
+  // ---------------------------------------------------------------- 🚡 حبل منزلق، 🧗 تسلّق بالحبل، 🎣 صيد
+  function startZip(z) { const h = S.hero; S.zip = { z, s: 0, v: 4 }; S.scope = false; h.mode = 'zip'; h.air = true; h.vy = 0; emit(['zipStart', z.name, z.icon]); }
+  function stepZip(h, dt) {
+    const Z = S.zip, z = Z.z, a = z.at(Z.s), b = z.at(Z.s + 1.5), sl = (b.y - a.y) / 1.5;
+    Z.v += (-9.8 * sl * 0.85 - 0.0016 * Z.v * Z.v) * dt; Z.v = clamp(Z.v, 3.5, 27);
+    const brake = smooth(z.L - 70, z.L - 12, Z.s); if (brake > 0) Z.v = lerp(Z.v, 3.2, clamp(brake * dt * 4, 0, 1));
+    Z.s += Z.v * dt; Z.t = (Z.t || 0) + dt;
+    const p = z.at(Z.s), q = z.at(Z.s + 2);
+    h.x = p.x; h.y = p.y - 2.1; h.z = p.z; h.face = Math.atan2(q.z - p.z, q.x - p.x); h.vx = Math.cos(h.face) * Z.v; h.vz = Math.sin(h.face) * Z.v; h.speed = Z.v;
+    if (Z.s >= z.L - 0.4) { const e = z.end; Object.assign(h, { x: e.x, z: e.z, y: G.H(e.x, e.z), mode: 'walk', air: false, vx: 0, vz: 0, vy: 0, surf: null, peak: 0 }); S.zip = null; emit(['zipEnd', z.name]); }
+  }
+  function startClimb(a) { const h = S.hero; S.climbing = { a, t: 0, dur: Math.max(3, a.h / 2.6) }; h.mode = 'climb'; h.vx = h.vz = 0; h.face = Math.atan2(a.top.z - a.bot.z, a.top.x - a.bot.x); emit(['climbStart', a.name, Math.round(a.h)]); }
+  function stepClimb(h, dt) {
+    const C = S.climbing, a = C.a; C.t += dt; const k = clamp(C.t / C.dur, 0, 1), kk = smooth(0, 1, k);
+    h.x = lerp(a.bot.x, a.top.x, smooth(0.75, 1, k)); h.z = lerp(a.bot.z, a.top.z, smooth(0.75, 1, k)); h.y = lerp(a.bot.y, a.top.y, kk) + Math.sin(k * Math.PI) * 0.4;
+    stamina(h, 5, dt);
+    if (k >= 1) { Object.assign(h, { x: a.top.x, z: a.top.z, y: G.H(a.top.x, a.top.z), mode: 'walk', air: false, surf: null }); S.climbing = null; emit(['climbEnd', a.name]); }
+  }
+  function startFish(w) { const h = S.hero; S.fishing = { t: 0, bite: 3 + Math.random() * 4.5, kind: w.kind }; h.mode = 'fish'; h.vx = h.vz = 0; emit('fishStart'); }
+  function stepFish(h, dt) {
+    const F = S.fishing; F.t += dt;
+    if (F.t >= F.bite) { S.fish = (S.fish || 0) + 1; h.mode = 'walk'; S.fishing = null; emit(['fish', S.fish]); }
+  }
+  /** شنو اكو قدّامك بالماي حتى تصيد */
+  function fishWater(h) {
+    const fx = h.x + Math.cos(h.face) * 3.5, fz = h.z + Math.sin(h.face) * 3.5, g = G.H(fx, fz), w = G.water(fx, fz, g + 0.05);
+    return w && (w.kind === 'lake' || w.kind === 'sea' || w.kind === 'marsh') && w.level - g > 0.3 ? w : null;
+  }
   function stepHero(h, c, dt) {
     if (h.mode === 'faint') { h.faintT += dt; if (h.faintT > 1.6) respawn(h, 'faint'); return; }
+    if (h.mode === 'zip') return stepZip(h, dt);
+    if (h.mode === 'climb') return stepClimb(h, dt);
+    if (h.mode === 'fish') { if ((c.mag || 0) > 0.3) { h.mode = 'walk'; S.fishing = null; emit('fishStop'); } else return stepFish(h, dt); }
     if (h.mode !== 'walk') return stepAirborneStory(h, c, dt);
     if (S.scope) { h.vx = h.vz = 0; h.speed = 0; return; }
     let mag = clamp(c.mag || 0, 0, 1);
@@ -154,7 +186,7 @@ export function createSim(G, opts = {}) {
     const y0 = h.y;
     moveChar(h, wx, wz, spd, dt, { pushX, pushZ });
     const climb = !h.air && h.speed > 0.5 ? (h.y - y0) / (h.speed * dt) : 0;
-    const drain = (run && h.speed > 3 ? 9 : 0) + (climb > 0.3 ? 7 * clamp((climb - 0.3) / 0.4, 0, 1) : 0);
+    const drain = (run && h.speed > 3 ? 9 : 0) + (climb > 0.3 ? 7 * clamp((climb - 0.3) / 0.4, 0, 1) * (h.boots ? 0.55 : 1) : 0);
     stamina(h, drain, dt);
     h.run = run && h.speed > 3;
     if (h.speed > 0.3 && !h.air) h.face = dampAngle(h.face, Math.atan2(h.vz - pushZ, h.vx - pushX), 12, dt);
@@ -422,7 +454,7 @@ export function createSim(G, opts = {}) {
     if (!vq.called && dm < 24 && Math.abs(h.y - merchant.y) < 8) { vq.called = true; emit('call'); }
     if (!vq.met && dm < 4.2) { vq.met = true; S.focus = { t: 3.4, dist: 6.2, x: (h.x + vq.merW.x) / 2, z: (h.z + vq.merW.z) / 2, yaw: talkYaw, talk: true }; emit('meet'); }
     if (vq.caught && !vq.delivered && Math.hypot(h.x - vq.zoneW.x, h.z - vq.zoneW.z) < 1.7) {
-      vq.delivered = true; gz.state = 'pen';
+      vq.delivered = true; gz.state = 'pen'; S.req = { kind: 'fish', need: 2, done: false }; // الطلب الجاي: سمچ
       S.focus = { t: 4.6, dist: 6.6, x: (h.x + vq.merW.x) / 2, z: (h.z + vq.merW.z) / 2, yaw: talkYaw, talk: true };
       emit('deliver');
     }
@@ -443,32 +475,45 @@ export function createSim(G, opts = {}) {
     gz.y = G.H(gz.x, gz.z);
     Object.assign(S.vq, { met: false, called: false, caught: false, delivered: false }); campRest.on = false;
     S.coins = M.coins.map((k) => ({ ...k, taken: false }));
+    S.zip = null; S.climbing = null; S.fishing = null; S.fish = 0; S.req = null;
     S.coinsGot = 0; S.summit = null; S.scope = false; S.carry = null; S.focus = null; S.wind = 0; S.t = 0; S.drop = null;
     S.climb = { done: false, time: 0, t0: 0 };
     S.reached = new Set();
     const start = G.restPoints[0];
     S.rest = start; S.reached.add(start.id);
-    S.hero = makeHero(skinId, start); ents.push(S.hero);
+    S.hero = makeHero(skinId, start); ents.push(S.hero); S.hero.boots = !!S.tools.boots;
     const h = S.hero;
     if (o.at === 'summit') { Object.assign(h, { x: M.x - M.RP + 2.5, z: M.z + 2, y: M.HS }); S.rest = G.restPoints.find((p) => p.id === 'summit'); S.climb.done = true; }
     if (o.at === 'valley') { const vr = G.restPoints.find((p) => p.id === 'valley'); Object.assign(h, { x: vr.x, z: vr.z, y: vr.y, face: 0 }); S.rest = vr; }
     return { camp: 0, gazelle: [gz.x, gz.z], start: [h.x, h.z] };
   }
+  function setTools(t) { S.tools = { ...(t || {}) }; if (S.hero) S.hero.boots = !!S.tools.boots; }
   function interact(id) {
+    const [kind, n] = String(id).split(':');
+    if (kind === 'zip') { const z = G.zips[+n]; if (z && S.hero.mode === 'walk') startZip(z); return true; }
+    if (kind === 'rope') { const a = G.anchors[+n]; if (!a) return false; if (!S.tools.rope) { emit(['needTool', 'rope']); return false; } if (S.hero.mode === 'walk') startClimb(a); return true; }
+    if (kind === 'fish') { const w = fishWater(S.hero); if (!S.tools.rod) { emit(['needTool', 'rod']); return false; } if (w) startFish(w); return true; }
+    if (kind === 'shop') { emit('shop'); return true; }
     if (id === 'scope') { S.scope = !S.scope; return true; }
     if (id === 'tea') { S.hero.hp = S.hero.maxHp; return true; }
     return true;
   }
   function nearInteract() {
-    const h = S.hero; if (h.mode !== 'walk' || !S.summit || S.summit.phase !== 'wait') return null;
+    const h = S.hero; if (h.mode !== 'walk' || h.air) return null;
     let best = null, bd = 1e9;
-    for (const it of M.plaza.inter) { const d = Math.hypot(h.x - it.x, h.z - it.z); if (d < it.r && d < bd) { bd = d; best = it; } }
+    if (S.summit && S.summit.phase === 'wait') {
+      for (const it of M.plaza.inter) { const d = Math.hypot(h.x - it.x, h.z - it.z); if (d < it.r && d < bd) { bd = d; best = it; } }
+      for (const z of G.zips) { const d = Math.hypot(h.x - z.stand.x, h.z - z.stand.z); if (d < 2.4 && d < bd) { bd = d; best = { id: 'zip:' + z.i, label: `🚡 ${z.name} ${z.icon}`, r: 2.4 }; } }
+      if (S.vq.met) { const d = Math.hypot(h.x - S.vq.merW.x, h.z - S.vq.merW.z); if (d < 3.2 && d < bd && !(S.vq.caught && !S.vq.delivered)) { bd = d; best = { id: 'shop', label: '🛒 دكان أبو جاسم', r: 3.2 }; } }
+    }
+    for (const a of G.anchors) { const d = Math.hypot(h.x - a.bot.x, h.z - a.bot.z); if (d < 2.2 && Math.abs(h.y - a.bot.y) < 1.6 && d < bd) { bd = d; best = { id: 'rope:' + a.i, label: S.tools.rope ? `🧗 اتسلّق ${Math.round(a.h)} م` : '🧗 تحتاج حبل تسلّق', r: 2.2 }; } }
+    if (!best && !h.swim && fishWater(h)) best = { id: 'fish', label: S.tools.rod ? '🎣 اصطاد سمچ' : '🎣 تحتاج سنارة', r: 3 };
     return best;
   }
   function objective() {
     const h = S.hero, vq = S.vq;
     if (h.mode === 'faint') return '😵 …';
-    if (vq.delivered) return '🌍 استكشف الجزيرة';
+    if (vq.delivered) return S.req && !S.req.done ? (S.tools.rod ? `🐟 جيب ${S.req.need} سمچات لأبو جاسم (${Math.min(S.fish, S.req.need)}/${S.req.need})` : '🎣 اشتري سنارة من أبو جاسم وصيد سمچ') : '🌍 استكشف الجزيرة';
     if (vq.caught) return '🏔️ رجّع الغزال لأبو جاسم بالقمة';
     if (vq.met) return '🦌 جيب غزال من وادي الغزلان';
     if (S.summit) return vq.called ? '👳 كلّم أبو جاسم' : '☕ ساحة القمة';
@@ -476,8 +521,7 @@ export function createSim(G, opts = {}) {
   }
 
   // ---------------------------------------------------------------- خطوة وحدة
-  function step(dt, cmd) {
-    ev.length = 0;
+  function step(dt, cmd) { // الأحداث من الضغطات (interact) تطلع ويّا أول خطوة بعدها
     S.t += dt;
     const h = S.hero; if (!h) return [];
     stepHero(h, cmd || {}, dt);
@@ -488,7 +532,8 @@ export function createSim(G, opts = {}) {
     updateValleyQuest(dt);
     if (S.drop) S.drop.t += dt;
     if (S.focus) { S.focus.t -= dt; if (S.focus.t <= 0) S.focus = null; }
-    return ev.slice();
+    const out = ev.slice(); ev.length = 0; return out;
   }
-  return { S, ents, beasts, gz, merchant, step, enter, interact, nearInteract, skipWait, objective, respawn: () => { if (S.hero && S.hero.mode === 'walk') respawn(S.hero, 'menu'); }, hurt: (d) => hurt(S.hero, d, 'test') };
+  S.tools = {}; S.fish = 0;
+  return { S, ents, beasts, gz, merchant, step, enter, interact, nearInteract, skipWait, objective, setTools, respawn: () => { if (S.hero && S.hero.mode === 'walk') respawn(S.hero, 'menu'); }, hurt: (d) => hurt(S.hero, d, 'test') };
 }

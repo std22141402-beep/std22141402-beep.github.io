@@ -132,6 +132,13 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 #mapv .mhint{flex:1;font-size:14px;text-align:center}
 #mapC{flex:1;width:100%;min-height:0;touch-action:none;display:block}
 #mapv .mtools{display:flex;gap:8px;justify-content:center}
+#mshop{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(10,14,30,.6)}
+#mshop .card{width:min(360px,100%)}
+#mshop .tool{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;background:#F4EFE3;margin:6px 0}
+#mshop .tool .ic{font-size:30px}
+#mshop .tool .nm{flex:1;text-align:right;font-weight:900;color:#24305e;font-size:15px}
+#mshop .tool .nm small{display:block;font-weight:600;color:#5b6380;font-size:12px}
+#mshop .tool button{min-width:84px}
 #mapv .pin{flex:1;max-width:84px;border:0;border-radius:16px;padding:8px 4px;font-size:24px;background:rgba(255,255,255,.12);color:#fff;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:inherit}
 #mapv .pin small{font-size:11px;font-weight:800}
 #mapv .pin.on{background:#FFD23F;color:#24305e;box-shadow:0 3px 0 #c99300}
@@ -272,6 +279,19 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   </section>
 
   <!-- 🗺️ خريطة الوادي -->
+  <!-- 🛒 دكان أبو جاسم بقمة السحاب -->
+  <section id="mshop" hidden>
+    <div class="card stack">
+      <div class="over-title">🛒 دكان أبو جاسم</div>
+      <div class="lbl" id="mshopCoins"></div>
+      <div class="tool"><span class="ic">🧗</span><span class="nm">حبل التسلّق<small>تصعد الجروف المعلّمة بعلامة حمرة 🚩</small></span><button class="btn primary" data-tool="rope" data-price="300">300 🪙</button></div>
+      <div class="tool"><span class="ic">🥾</span><span class="nm">جزمة الجبل<small>تصعد منحدرات أشد وتتعب أقل</small></span><button class="btn primary" data-tool="boots" data-price="250">250 🪙</button></div>
+      <div class="tool"><span class="ic">🎣</span><span class="nm">سنارة<small>تصيد سمچ بالبحيرة والبحر والهور</small></span><button class="btn primary" data-tool="rod" data-price="150">150 🪙</button></div>
+      <button class="btn" id="mshopSell" hidden></button>
+      <button class="btn" id="mshopX">رجوع ↩</button>
+    </div>
+  </section>
+
   <section id="mapv" hidden>
     <div class="mtop"><button class="hud-btn" id="mapX" aria-label="سد">✕</button><div class="chip mhint">اختار علامة واضغط عالخريطة 📍</div></div>
     <canvas id="mapC"></canvas>

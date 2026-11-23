@@ -372,7 +372,7 @@ export function buildGeo(map = NATTA_ISLAND) {
       if (Math.abs(x) > HALF - 20 || Math.abs(z) > HALF - 20 || inValleyBox(x, z)) continue;
       const mr = M.rad(x, z);
       if (mr < 250) { if (mr < M.RP + 3 || M.inMaze(x, z) || !clearOfTrail(x, z, 1.4) || bridgeAt(x, z)) continue; }
-      if (I.reserved(x, z)) continue;
+      if (I.reserved(x, z) || underZip(x, z)) continue;
       const y = H(x, z), a = y - SEA;
       if (a > -1 && a < 0.35 && roll > 0.6) { const fl = I.flora(x, z, a, 0, 0); if (fl.reed > 0 && r() < fl.reed) c.items.push({ t: 'reed', x, y: y - 0.1, z, s: 0.8 + sc * 0.6, ry }); continue; }
       if (a < 0.35) continue;
@@ -393,6 +393,15 @@ export function buildGeo(map = NATTA_ISLAND) {
       }
     }
     vcells.set(key, c); return c;
+  }
+  /** ممر بلا شجر تحت الحبال المنزلقة (وين الحبل واطي) */
+  function underZip(x, z) {
+    if (typeof zips === 'undefined') return false;
+    for (const zp of zips) for (const g of zp.segs) {
+      const dx = g.B.x - g.A.x, dz = g.B.z - g.A.z, l2 = dx * dx + dz * dz, t = clamp(((x - g.A.x) * dx + (z - g.A.z) * dz) / l2, 0, 1);
+      if (Math.hypot(x - g.A.x - dx * t, z - g.A.z - dz * t) < 7) { const cy = lerp(g.A.y, g.B.y, t) - g.sag * 4 * t * (1 - t); if (cy - H(x, z) < 28) return true; }
+    }
+    return false;
   }
   let vegAt = null;
   /** نفعّل عوائق الشجر حوالين نقطة (وننطّي البعيدة)، ونمسح الذاكرة البعيدة كلش */
@@ -489,8 +498,57 @@ export function buildGeo(map = NATTA_ISLAND) {
   }
   const tallNear = (x, z, f) => cgrid.each(x, z, 1, (c) => c.tall && f(c));
   const restPoints = [...I.rest.map((p) => ({ ...p, y: H(p.x, p.z) })), ...M.rest, ...V.rest]; // أول وحدة = ساحة الفجر (البداية)
+
+  // ---------------- 🚡 حبال منزلقة من قمة السحاب (نزول بس: الطلعة تبقى التحدي)
+  const D2R2 = Math.PI / 180, zoneXZ = (id) => { const z = I.zones.find((q) => q.id === id); return [z.x, z.z]; };
+  const ZIP_DEFS = [
+    { id: 'fajr', name: 'حبل الفجر', icon: '🌅', a: 20, to: [I.fajr.x - 330, I.fajr.z + 110] },
+    { id: 'valley', name: 'حبل الوادي', icon: '🦌', a: 128, to: [V.x - 120, V.z - 60] },
+    { id: 'huts', name: 'حبل الحطّابين', icon: '🪓', a: 270, to: (([x, z]) => [x + 70, z + 40])(zoneXZ('huts')) },
+  ];
+  const zips = ZIP_DEFS.map((d, i) => {
+    const a = d.a * D2R2, S0 = { x: M.x + Math.cos(a) * 14.6, y: M.HS + 4.6, z: M.z + Math.sin(a) * 14.6 };
+    const ex = d.to[0], ez = d.to[1], E = { x: ex, y: H(ex, ez) + 4.4, z: ez };
+    // الحبل يتقسّم لأجزاء: إذا قرّب من الأرض نحط برج 12 م (مثل الحبال الطويلة الحقيقية)
+    const pts = [S0, E], spanAt = (A, B, t, sag) => ({ x: lerp(A.x, B.x, t), y: lerp(A.y, B.y, t) - sag * 4 * t * (1 - t), z: lerp(A.z, B.z, t) });
+    for (let it = 0; it < 6; it++) {
+      let worst = null;
+      for (let k = 0; k < pts.length - 1; k++) { const A = pts[k], B = pts[k + 1], L = Math.hypot(B.x - A.x, B.z - A.z), sag = L * 0.01; for (let q = 1; q < 40; q++) { const t = q / 40, p = spanAt(A, B, t, sag), c = p.y - 3.4 - H(p.x, p.z); if (!worst || c < worst.c) worst = { c, k, t, p }; } }
+      if (worst.c > 0) break;
+      const T = { x: worst.p.x, z: worst.p.z, tower: true }; T.y = H(T.x, T.z) + 12;
+      pts.splice(worst.k + 1, 0, T);
+    }
+    const segs = []; let L = 0;
+    for (let k = 0; k < pts.length - 1; k++) { const A = pts[k], B = pts[k + 1], l = Math.hypot(B.x - A.x, B.y - A.y, B.z - A.z); segs.push({ A, B, s0: L, l, sag: Math.hypot(B.x - A.x, B.z - A.z) * 0.01 }); L += l; }
+    const ux = (E.x - S0.x) / Math.hypot(E.x - S0.x, E.z - S0.z), uz = (E.z - S0.z) / Math.hypot(E.x - S0.x, E.z - S0.z);
+    const z = { i, ...d, S: S0, E, pts, segs, L, ux, uz, stand: { x: M.x + Math.cos(a) * 11.4, z: M.z + Math.sin(a) * 11.4 }, end: { x: ex - ux * 2.5, z: ez - uz * 2.5 } };
+    z.at = (s) => { s = clamp(s, 0, L); let g = segs[segs.length - 1]; for (const q of segs) if (s <= q.s0 + q.l) { g = q; break; } const t = clamp((s - g.s0) / g.l, 0, 1), p = spanAt(g.A, g.B, t, g.sag); p.t = s / L; return p; };
+    let clear = 1e9; for (let k = 1; k < 200; k++) { const p = z.at((k / 200) * L); clear = Math.min(clear, p.y - 2.2 - H(p.x, p.z)); } z.clear = clear;
+    return z;
+  });
+
+  // ---------------- 🧗 نقاط تسلّق بالحبل: على الجروف (أحزمة الصخر بالمخروط، جروف الجبل، حافة الهضبة)
+  const anchors = [];
+  function findCliff(cx, cz, th, r0, r1) { // نمشي من برّه (r1) لجوّه (r0) ونلگه أشد نزلة
+    const c = Math.cos(th), sn = Math.sin(th); let best = null, bs = 0;
+    for (let r = r1; r > r0; r -= 1) { const h1 = H(cx + c * r, cz + sn * r), h0 = H(cx + c * (r - 1), cz + sn * (r - 1)), g = h0 - h1; if (g > bs) { bs = g; best = r; } }
+    if (!best || bs < 0.9) return null;
+    let rb = best + 1; while (rb < r1 && H(cx + c * rb, cz + sn * rb) - H(cx + c * (rb + 1), cz + sn * (rb + 1)) > 0.55) rb++;
+    let rt = best - 1; while (rt > r0 && H(cx + c * (rt - 1), cz + sn * (rt - 1)) - H(cx + c * rt, cz + sn * rt) > 0.55) rt--;
+    rb += 1.6; rt -= 1.8;
+    const bot = { x: cx + c * rb, z: cz + sn * rb }, top = { x: cx + c * rt, z: cz + sn * rt };
+    bot.y = H(bot.x, bot.z); top.y = H(top.x, top.z);
+    if (top.y - bot.y < 2.4 || slope(top.x, top.z) > 1.0 || slope(bot.x, bot.z) > 1.0) return null;
+    if (M.rad(bot.x, bot.z) < 250 && (!clearOfTrail(bot.x, bot.z, 1) || !clearOfTrail(top.x, top.z, 1))) return null;
+    return { bot, top, h: top.y - bot.y };
+  }
+  const tryAnchor = (cx, cz, deg, r0, r1, name) => { const q = findCliff(cx, cz, deg * D2R2, r0, r1); if (q) anchors.push({ i: anchors.length, name, ...q }); };
+  for (const d of [35, 140, 215, 320, 250]) tryAnchor(M.x, M.z, d, 43, 54, 'حزام الصخر');
+  for (const d of [70, 190, 300, 250]) tryAnchor(M.x, M.z, d, 21, 31, 'الحزام العالي');
+  for (const b of [[0.95, 760], [-2.2, 900], [2.4, 640], [-0.45, 1200], [1.9, 1300], [-1.45, 560]]) tryAnchor(M.x, M.z, b[0] / D2R2, b[1] - 30, b[1] + 30, 'جرف الجبل');
+  { const P = I.plateau; for (const d of [-60, 30, 150, 210]) tryAnchor(P.x, P.z, d, P.r - 140, P.r + 150, 'جرف الهضبة'); }
   return {
     map, HALF, M, V, H, slope, plains, surfaceAt, groundKind, water, collide, colliders, addColl, removeColl: (c) => { cgrid.remove(c); const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }, tallNear, cgrid,
-    veg, forestAt, restPoints, bridgeAt, deck, I, SEA, VC, vegCell, ensureVeg, platAt, zoneAt: I.zoneAt,
+    veg, forestAt, restPoints, bridgeAt, deck, I, SEA, VC, vegCell, ensureVeg, platAt, zoneAt: I.zoneAt, zips, anchors,
   };
 }

@@ -206,7 +206,22 @@ ok(await until(() => window.__natta.WD.S.vq.delivered, 6000), '🏔️ رجّع�
 await fast(3); ok(await until(() => window.__natta.state === 'ending', 20000), 'شاشة نهاية المغامرة'); await fast(0);
 ok(await G(() => !document.getElementById('eCont').hidden), 'بيها «كمّل تمشّى بالعالم»');
 await page.tap('#eCont', { force: true }); await wait(400);
-ok(await G(() => window.__natta.state === 'world' && document.getElementById('vobj').textContent.includes('استكشف')), 'يرجع للجزيرة ويكمل («استكشف الجزيرة»)');
+ok(await G(() => window.__natta.state === 'world' && /سمچ|استكشف/.test(document.getElementById('vobj').textContent)), `يرجع للجزيرة ويكمل، والطلب الجاي: «${await G(() => document.getElementById('vobj').textContent)}»`);
+
+// 12) 🛒 دكان أبو جاسم: يشتري أدوات تفتح طرق، 🚡 حبل منزلق، 🧗 تسلّق، 🎣 صيد وبيع
+await G(() => { window.__natta.save.coins = 1000; window.__natta.save.tools = {}; window.__natta.WD.setTools({}); const W = window.__natta.WD, M = W.info.M, mw = W.S.vq.merW; Object.assign(W.S.hero, { x: M.x + (mw.x - M.x) * 0.78, z: M.z + (mw.z - M.z) * 0.78, y: M.HS, air: false, mode: 'walk' }); });
+ok(await until(() => !document.getElementById('actBtn').hidden && document.getElementById('actBtn').textContent.includes('دكان'), 5000), '🛒 زر «دكان أبو جاسم» يطلع يمّه');
+await page.tap('#actBtn', { force: true });
+ok(await until(() => !document.getElementById('mshop').hidden, 4000), 'الدكان ينفتح');
+for (const t of ['rope', 'boots', 'rod']) await page.click(`#mshop [data-tool="${t}"]`);
+ok(await G(() => { const s = window.__natta.save; return !!(s.tools && s.tools.rope && s.tools.boots && s.tools.rod) && s.coins === 300 && window.__natta.WD.S.hero.boots; }), 'اشترى حبل التسلّق والجزمة والسنارة (700 🪙)، والجزمة صارت بالرجل');
+await shot('12-shop'); await page.click('#mshopX');
+const zr = await G(() => { const W = window.__natta.WD, z = W.G.zips[0], h = W.S.hero, M = W.info.M; Object.assign(h, { x: z.stand.x, z: z.stand.z, y: M.HS, air: false, mode: 'walk' }); const n = W.nearInteract(); if (!n || n.id !== 'zip:0') return { n: n && n.id }; W.interact('zip:0'); let k = 0, minClr = 1e9; while (h.mode === 'zip' && k++ < 20000) { W.sim.step(1 / 60, {}); if (h.mode === 'zip') minClr = Math.min(minClr, h.y - W.G.H(h.x, h.z)); } return { ok: h.mode === 'walk', t: Math.round(k / 60), clr: +minClr.toFixed(1), zone: W.G.zoneAt(h.x, h.z).name, alt: Math.round(h.y - W.G.SEA), L: Math.round(z.L) }; });
+ok(zr.ok && zr.clr > 0.3, `🚡 «حبل الفجر» ${zr.L} م من القمة نزل بـ ${zr.t} ث (أقل علو فوك الأرض ${zr.clr} م) ← ${zr.zone} (${zr.alt} م)`);
+const cl = await G(() => { const W = window.__natta.WD, a = W.G.anchors.find((q) => q.h < 25), h = W.S.hero; Object.assign(h, { x: a.bot.x, z: a.bot.z, y: a.bot.y, air: false, mode: 'walk' }); const n = W.nearInteract(); const y0 = h.y; if (!n || !n.id.startsWith('rope')) return { n: n && n.id }; W.interact(n.id); let k = 0; while (h.mode === 'climb' && k++ < 6000) W.sim.step(1 / 60, {}); return { ok: h.mode === 'walk', up: +(h.y - y0).toFixed(1), name: a.name }; });
+ok(cl.ok && cl.up > 2, `🧗 تسلّق «${cl.name}» بالحبل وصعد ${cl.up} م`);
+const fi = await G(() => { const W = window.__natta.WD, h = W.S.hero, p = W.G.I.sites.find((s) => s.kind === 'pier' && !s.lake), c = Math.cos(p.rot), sn = Math.sin(p.rot); Object.assign(h, { x: p.x + c * 20, z: p.z + sn * 20, air: false, mode: 'walk', face: p.rot }); h.y = W.G.surfaceAt(h.x, h.z, h.y + 50).y; const n = W.nearInteract(); if (!n || n.id !== 'fish') return { n: n && n.id, y: h.y - W.G.SEA }; W.interact('fish'); let k = 0; while (h.mode === 'fish' && k++ < 1200) W.sim.step(1 / 60, {}); return { ok: W.S.fish === 1 }; });
+ok(fi.ok, '🎣 من رصيف الخليج صاد سمچة' + (fi.ok ? '' : ' ' + JSON.stringify(fi)));
 
 // 12) الانتقال السريع (بكود سري) يوديك للقمة وللوادي بنفس العالم، وما يكسر الأرقام
 await G(() => window.__natta.goHome());

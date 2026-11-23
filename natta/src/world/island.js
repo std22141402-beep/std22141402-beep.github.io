@@ -278,7 +278,7 @@ export function buildIsland(def, M, valleyDef) {
     addSite({ kind: 'signpost', ...L(-26, 8), rot: 0 }, false);
     addSite({ kind: 'gate', ...L(-31, 0), rot: 0, w: 1.2, d: 9, h: 5.2 }, false);
     for (const [u, v] of [[-30, -46], [-30, 46], [30, -46], [30, 46], [0, -46], [0, 46], [-30, 22], [-30, -22]]) addSite({ kind: 'lamp', ...L(u, v) }, false);
-    addSite({ kind: 'pier', x: shBay.x - shBay.c * 18, z: shBay.z - 40, rot: 0, w: 3, d: 46, h: 0 }, false);
+    addSite({ kind: 'pier', x: shBay.x + shBay.c * 6, z: shBay.z - 40 + shBay.s * 6, rot: Math.atan2(shBay.s, shBay.c), w: 46, d: 3, h: 0 }, false); // رصيف يدخل بالخليج
     for (let k = 0; k < 3; k++) addSite({ kind: 'boat', x: shBay.x + 10 + k * 7, z: shBay.z - 30 + k * 9, rot: 0.4 + k * 0.5 }, false);
   }
   { // 🏘️ قرية الطين: بيوت طين على المدرّجات، تواجه الوادي
@@ -320,7 +320,7 @@ export function buildIsland(def, M, valleyDef) {
   { // 🐚 شاطئ اللؤلؤ و🌙 البحيرة: أكواخ صيادين ومشاحيف
     addSite({ kind: 'reedhut', x: PEARL.x + 30, z: PEARL.z - 20, rot: 0.5, w: 3.2, d: 6, h: 3 });
     for (let k = 0; k < 3; k++) addSite({ kind: 'boat', x: shPearl.x + 8, z: shPearl.z - 25 + k * 14, rot: k * 0.6 }, false);
-    const dl = { x: LAKE.x + 240, z: LAKE.z + 90 }; addSite({ kind: 'pier', x: dl.x, z: dl.z, rot: Math.atan2(LAKE.z - dl.z, LAKE.x - dl.x) - Math.PI / 2, w: 2.4, d: 22, h: 0, lake: true }, false);
+    const la = Math.atan2(90, 240), dl = { x: LAKE.x + Math.cos(la) * (LAKE.r - 8), z: LAKE.z + Math.sin(la) * (LAKE.r - 8) }; addSite({ kind: 'pier', x: dl.x, z: dl.z, rot: la + Math.PI, w: 26, d: 2.4, h: 0, lake: true }, false); // رصيف يدخل بالبحيرة
   }
   // ارتفاع كل تسوية = ارتفاع الأرض بنصها
   for (const p of pads) p.a = preAll(p.x, p.z);

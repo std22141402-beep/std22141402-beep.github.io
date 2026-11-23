@@ -454,11 +454,12 @@ export function createView(cfg, G, sim) {
   function updateCamera(dt) {
     const h = S.hero; if (!h) return;
     if (S.scope) { const ex = M.x + RP + 4.75, ey = HS + 1.45, ez = M.z, yaw = cam.scopeYaw, pt = cam.scopePitch; cam.pos.set(ex, ey, ez); cam.tgt.set(ex + Math.cos(yaw) * 100 * Math.cos(pt), ey + Math.sin(pt) * 100, ez + Math.sin(yaw) * 100 * Math.cos(pt)); return; }
-    const f = S.focus, story = h.mode === 'lift' || h.mode === 'carry', glide = h.mode === 'glide';
+    const f = S.focus, story = h.mode === 'lift' || h.mode === 'carry' || h.mode === 'zip', glide = h.mode === 'glide';
     _ct.set(f && f.x != null ? f.x : h.x, h.y + (story || glide ? 0.9 : 1.6), f && f.z != null ? f.z : h.z);
     if (f) cam.yaw = dampAngle(cam.yaw, f.yaw, 2.2, dt);
     if (h.mode === 'carry') cam.yaw = dampAngle(cam.yaw, Math.atan2(h.z - cam.pos.z, h.x - cam.pos.x), 1.5, dt);
-    const wantDist = f ? f.dist : h.mode === 'carry' ? 11 : story ? 7 : glide ? 9 : S.summit ? 6.8 : 6.3;
+    if (h.mode === 'zip') cam.yaw = dampAngle(cam.yaw, h.face, 1.4, dt); // الكاميرا وراك على الحبل
+    const wantDist = f ? f.dist : h.mode === 'carry' ? 11 : h.mode === 'zip' ? 9.5 : story ? 7 : glide ? 9 : S.summit ? 6.8 : 6.3;
     if (!cam.init) { cam.tgt.copy(_ct); cam.dist = wantDist; cam.effPitch = null; cam.effDist = null; cam.init = true; }
     const k = h.mode === 'faint' ? 2 : story ? 6 : 14;
     cam.tgt.x = damp(cam.tgt.x, _ct.x, k, dt); cam.tgt.z = damp(cam.tgt.z, _ct.z, k, dt); cam.tgt.y = damp(cam.tgt.y, _ct.y, h.air && !story && !glide ? 6 : 10, dt);

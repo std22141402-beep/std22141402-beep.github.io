@@ -3302,6 +3302,7 @@
     WS = { t: 0, fade: 1, fadeCol: '255,255,255', warp: !!opts.warp, paid: 0, jumpBuf: 0, dlg: null, act: null, threat: 0, warned: {}, usedJ: false, usedCam: false, landedT: 0, pins: [], mapOpen: false, map: null, fog: null, lastReveal: null, revealed: 0, delivered: false, endT: 0, obj: '', hurtT: 0, mapHi: false, portrait: null, phase: 'walk' };
     WD.setSize(cssW, cssH, window.__r3dPR || Math.min(window.devicePixelRatio || 1, 2));
     const seed = window.__seed != null ? window.__seed : (Math.random() * 4294967295) >>> 0;
+    WD.setTools(save.tools || {});
     WS.info = WD.enter(skinById(save.skin), { at: opts.at, seed });
     state = 'world'; resumeTo = 'world';
     clearTimeout(toastT); $('toast').classList.remove('show'); // رسالة «نجهّز العالم» تختفي أول ما يبين
@@ -3357,6 +3358,7 @@
         sparkleAt(WD.info.M.x, WD.info.M.HS + 0.6, WD.info.M.z, ['#FFD23F', '#BDE8FF', '#FFFFFF'], 'star', 12, 0.8);
         toast(pick(['🪙 رميت عملة… وتمنّيت ✨', '🪙 أمنيتك راح تتحقق! ✨', '🪙 طشّ! بالنص بالضبط 🎯', '🪙 تمنّى توصل الوادي بسلامة 😄']), 2400);
         break;
+      default: WD.interact(id); // 🚡 حبل، 🧗 تسلّق، 🎣 صيد، 🛒 دكان
     }
   }
   function onWorldEvent(type, a) {
@@ -3405,6 +3407,15 @@
         break;
       case 'snort': Sfx.snort(); break;
       case 'breath': toast('😮‍💨 نفَسك خلص! امشِ بهدوء أو وكّف شوية', 2200); break;
+      case 'zipStart': Sfx.whoosh(); Sfx.gust(); banner('🚡', a[0], 'تمسّك زين! ' + a[1], 'gold', 2600); break;
+      case 'zipEnd': Sfx.thud(); shake = 0.12; toast(`🚡 وصلت! (${a[0]})`, 1800); break;
+      case 'climbStart': Sfx.whoosh(); toast(`🧗 تتسلّق ${a[0]} (${a[1]} م)…`, 2000); break;
+      case 'climbEnd': Sfx.step(1); toast('🧗 فوك!', 1400); break;
+      case 'needTool': toast(a[0] === 'rope' ? '🧗 تحتاج «حبل التسلّق» من دكان أبو جاسم بالقمة' : '🎣 تحتاج «سنارة» من دكان أبو جاسم بالقمة', 2800); break;
+      case 'fishStart': Sfx.splash(); toast('🎣 انتظر… لمن السمچة تعض', 2200); break;
+      case 'fishStop': toast('🎣 تركت الصيد', 1200); break;
+      case 'fish': Sfx.splash(); Sfx.coin(); toast(`🐟 صدت سمچة! (عندك ${a[0]})`, 2000); break;
+      case 'shop': openShop3d(); break;
       case 'farSea': toast('🌊 بعيد كلش عن الساحل… ارجع للجزيرة', 2200); break;
       case 'tired': toast('الغزال تعب! 😮‍💨 هسه فرصتك', 2400); break;
       case 'call': say(S3.vq.caught ? 'هاااا! 🦌 جبت الغزال؟ تعال يمّي يا بطل!' : 'يا هلا! 👋 آني أبو جاسم التاجر… تعال يمّي، عندي إلك شغلة وجائزة 🎁', 6, MERCHANT); break;
@@ -3425,7 +3436,7 @@
         if (!save.owned.includes('explorer')) save.owned.push('explorer');
         save.adventures = (save.adventures || 0) + 1; persist();
         Sfx.reward(); Music.celebrate();
-        say('تسلم إيدك يا بطل! 🙌 هاي جائزتك: 500 عملة 💰 وقبعة المغامر 🤠', 5, MERCHANT);
+        say('تسلم إيدك يا بطل! 🙌 هاي جائزتك: 500 عملة 💰 وقبعة المغامر 🤠. وإذا تريد شغلة ثانية: جيبلي سمچتين 🐟 — عندي بالدكان سنارة وحبل تسلّق وجزمة 🛒', 7, MERCHANT);
         banner('🎁', 'الجائزة!', '+500 🪙  وشخصية «المغامر» 🤠', 'gold', 3600);
         const mw = S3.vq.merW; sparkleAt(mw.x, h.y + 1.7, mw.z, ['#FFD23F', '#FFB703'], 'coin', 34, 1.5);
         break;
@@ -3463,7 +3474,7 @@
     if (m.fade > 0 && !(S3.hero.mode === 'faint')) m.fade = Math.max(0, m.fade - dt * (m.fadeCol === '255,255,255' ? 1.1 : 1.6));
     else if (S3.hero.mode === 'faint') m.fade = Math.min(0.9, m.fade + dt * 1.2);
     m.hurtT = Math.max(0, m.hurtT - dt);
-    if (state === 'world' && !m.mapOpen) {
+    if (state === 'world' && !m.mapOpen && !m.shopOpen) {
       const inp = valleyInput(dt);
       const n = Math.max(1, Math.ceil(dt / (1 / 60) - 0.01)), hs = dt / n;
       for (let i = 0; i < n; i++) {
@@ -3498,6 +3509,37 @@
     }
     shake = Math.max(0, shake - dt);
   }
+
+  // ---------------------------------------------------------------- 🛒 دكان أبو جاسم: أدوات تفتح طرق، وبيع السمچ
+  function openShop3d() {
+    if (!WS || state !== 'world') return;
+    WS.shopOpen = true; J.id = null; CAMD.id = null; Sfx.click(); refreshShop3d(); $('mshop').hidden = false;
+    say(pick(['هلا بيك! 🛒 شوف شنو تحتاج… كل أداة تفتحلك طريق جديد', 'تفضّل يا بطل 🤝 الحبل للجروف، الجزمة للمنحدرات، والسنارة للسمچ']), 4, MERCHANT);
+  }
+  function closeShop3d() { if (!WS) return; WS.shopOpen = false; $('mshop').hidden = true; }
+  function refreshShop3d() {
+    const tools = save.tools || {}, S3 = WD.S;
+    $('mshopCoins').textContent = `عندك ${save.coins} 🪙`;
+    document.querySelectorAll('#mshop [data-tool]').forEach((b) => { const own = tools[b.dataset.tool]; b.disabled = !!own || save.coins < +b.dataset.price; b.textContent = own ? '✅ عندك' : `${b.dataset.price} 🪙`; });
+    const req = S3.req, sell = $('mshopSell');
+    if (req && !req.done && S3.fish >= req.need) { sell.hidden = false; sell.textContent = `🐟 سلّم الطلب (${req.need} سمچات) +300 🪙`; sell.dataset.mode = 'req'; }
+    else if (S3.fish > 0) { sell.hidden = false; sell.textContent = `🐟 بيع السمچ (${S3.fish} × 30 🪙)`; sell.dataset.mode = 'sell'; }
+    else sell.hidden = true;
+  }
+  document.querySelectorAll('#mshop [data-tool]').forEach((b) => { b.onclick = () => {
+    const price = +b.dataset.price, k = b.dataset.tool; save.tools = save.tools || {};
+    if (save.tools[k] || save.coins < price) return;
+    save.coins -= price; save.tools[k] = true; persist(); WD.setTools(save.tools); Sfx.reward();
+    toast({ rope: '🧗 حبل التسلّق صار عندك! دوّر على العلامات الحمرة بالجروف', boots: '🥾 لبست جزمة الجبل! المنحدرات صارت أسهل', rod: '🎣 السنارة عندك! روح للبحيرة أو البحر' }[k], 3000);
+    refreshShop3d();
+  }; });
+  $('mshopSell').onclick = () => {
+    const S3 = WD.S, req = S3.req;
+    if ($('mshopSell').dataset.mode === 'req' && req) { S3.fish -= req.need; req.done = true; save.coins += 300; Sfx.reward(); Music.celebrate(); banner('🐟', 'سلّمت الطلب!', '+300 🪙', 'gold', 2600); say('عاشت إيدك! 🐟🐟 هاي 300 عملة… الجزيرة كلها إلك، استكشفها 🏝️', 5, MERCHANT); }
+    else { const n = S3.fish; S3.fish = 0; save.coins += n * 30; Sfx.coin(); toast(`🐟 بعت ${n} سمچات (+${n * 30} 🪙)`, 2000); }
+    persist(); refreshShop3d();
+  };
+  $('mshopX').onclick = () => { Sfx.click(); closeShop3d(); };
 
   // ---------------------------------------------------------------- 🗺️ الخريطة: العالم كله، تنكشف بس اللي مشيت بيه، وإنت تحط العلامات
   const PIN_ICON = { camp: '🏕️', gazelle: '🦌', flag: '📍' };
@@ -3675,6 +3717,7 @@
     ctx.fillText(WS.hurtT > 0 && Math.sin(time * 40) > 0 ? '💔' : '❤️', hx - hw / 2 + 13, y + 13.5);
     chip(`🪙 ${WD.S.coinsGot}`, C.W / 2 + 22);
     chip(`⛰️ ${Math.max(0, Math.round(h.y - WD.G.SEA))}م`, C.W / 2 + 84); // الارتفاع فوك البحر
+    if (WD.S.fish > 0) chip(`🐟 ${WD.S.fish}`, 44); // سمچ مصيود
     if (h.st < 99.5) { // 💨 النفَس
       const sw = 96, sx = hx - sw / 2, k2 = clamp(h.st / 100, 0, 1), low = h.st < 25;
       ctx.fillStyle = 'rgba(20,28,56,.5)'; rr(ctx, sx, y + 30, sw, 16, 8); ctx.fill();
