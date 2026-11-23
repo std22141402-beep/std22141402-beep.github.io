@@ -222,6 +222,8 @@ const cl = await G(() => { const W = window.__natta.WD, a = W.G.anchors.find((q)
 ok(cl.ok && cl.up > 2, `🧗 تسلّق «${cl.name}» بالحبل وصعد ${cl.up} م`);
 const fi = await G(() => { const W = window.__natta.WD, h = W.S.hero, p = W.G.I.sites.find((s) => s.kind === 'pier' && !s.lake), c = Math.cos(p.rot), sn = Math.sin(p.rot); Object.assign(h, { x: p.x + c * 20, z: p.z + sn * 20, air: false, mode: 'walk', face: p.rot }); h.y = W.G.surfaceAt(h.x, h.z, h.y + 50).y; const n = W.nearInteract(); if (!n || n.id !== 'fish') return { n: n && n.id, y: h.y - W.G.SEA }; W.interact('fish'); let k = 0; while (h.mode === 'fish' && k++ < 1200) W.sim.step(1 / 60, {}); return { ok: W.S.fish === 1 }; });
 ok(fi.ok, '🎣 من رصيف الخليج صاد سمچة' + (fi.ok ? '' : ' ' + JSON.stringify(fi)));
+const pw = await G(() => { const W = window.__natta.WD, h = W.S.hero, p = W.G.I.sites.find((s) => s.kind === 'pier' && !s.lake), c = Math.cos(p.rot), sn = Math.sin(p.rot); Object.assign(h, { x: p.x - c * 10, z: p.z - sn * 10, air: false, mode: 'walk', face: p.rot }); h.y = W.G.surfaceAt(h.x, h.z, h.y + 50).y; for (let i = 0; i < 180; i++) W.sim.step(1 / 60, { mx: c, mz: sn, mag: 0.5 }); const u = (h.x - p.x) * c + (h.z - p.z) * sn, v = -(h.x - p.x) * sn + (h.z - p.z) * c; return { u: +u.toFixed(1), v: +v.toFixed(2), y: +(h.y - p.y).toFixed(2), surf: h.surf }; });
+ok(Math.abs(pw.v) < 1.6 && pw.u > -8 && Math.abs(pw.y) < 0.2 && pw.surf === 'pier', `🚶 يمشي على رصيف الخليج وما ينسحب لمكان ثاني (${JSON.stringify(pw)})`);
 
 // 12) الانتقال السريع (بكود سري) يوديك للقمة وللوادي بنفس العالم، وما يكسر الأرقام
 await G(() => window.__natta.goHome());

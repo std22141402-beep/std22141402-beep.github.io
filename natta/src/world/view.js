@@ -507,7 +507,7 @@ export function createView(cfg, G, sim) {
     if (walk && e.speed > 0.3) sq += (1 - Math.abs(Math.sin(e.hopPh))) * 0.22 - 0.07;
     h.inner.scale.set(1 + 0.2 * sq, 1 - 0.22 * sq, 1 + 0.2 * sq); h.inner.position.y = 0.55 * (1 - 0.22 * sq);
     for (const [i, f] of h.feet.entries()) f.position.y = -0.49 + (walk && e.speed > 0.3 ? Math.max(0, Math.sin(e.hopPh * 2 + i * Math.PI)) * 0.06 : 0);
-    const scared = e.mode !== 'walk' && e.mode !== 'glide' || e.stun > 0 || (e.air && e.vy < -7) || S.wind > 0.5;
+    const scared = e.mode !== 'walk' && e.mode !== 'glide' && e.mode !== 'fish' && e.mode !== 'climb' || e.stun > 0 || (e.air && e.vy < -7) || S.wind > 0.5;
     h.nextBlink -= dt; if (h.nextBlink < 0) { h.blink = 0.14; h.nextBlink = 2.5 + Math.random() * 2.5; } h.blink = Math.max(0, h.blink - dt);
     for (const ee of h.eyes) ee.scale.set(scared ? 1.08 : 1, scared ? 1.15 : h.blink > 0 || lying ? 0.12 : 1, 1);
     for (const pp of h.pupils) pp.scale.setScalar(scared ? 0.72 : 1);

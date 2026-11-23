@@ -354,7 +354,7 @@ export function buildGeo(map = NATTA_ISLAND) {
     else if (k === 'lamp' || k === 'signpost') addColl({ x: st.x, z: st.z, r: 0.14 });
     else if (k === 'palm') addColl({ x: st.x, z: st.z, r: 0.3, tall: 1, tree: 1 });
     else if (k === 'gate') for (const sd of [-1, 1]) addColl({ x: st.x - Math.sin(rot) * sd * 4.6, z: st.z + Math.cos(rot) * sd * 4.6, r: 0.55, tall: 1 });
-    else if (k === 'pier') { const lake = st.lake ? I.lakes[0] : null, y = lake ? SEA + lake.lv + 0.55 : SEA + 0.95; const pl = { x: st.x, z: st.z, c: Math.cos(rot), s: Math.sin(rot), hw: st.w / 2, hd: st.d / 2, y }; st.y = y; plats.push(pl); platGrid.addArea(pl, st.x - st.d, st.z - st.d, st.x + st.d, st.z + st.d); }
+    else if (k === 'pier') { const lake = st.lake ? I.lakes[0] : null, y = lake ? SEA + lake.lv + 0.55 : SEA + 0.95; const pl = { x: st.x, z: st.z, c: Math.cos(rot), s: Math.sin(rot), hw: st.w / 2, hd: st.d / 2, y }; st.y = y; plats.push(pl); const ext = Math.max(st.w, st.d) / 2 + 1; platGrid.addArea(pl, st.x - ext, st.z - ext, st.x + ext, st.z + ext); }
   }
   /** نطلّع الأرصفة: إذا داخل الرصيف يرجّع ارتفاعه */
   function platAt(x, z) { let hit = null; platGrid.each(x, z, 0, (p) => { const dx = x - p.x, dz = z - p.z; if (Math.abs(dx * p.c + dz * p.s) < p.hw + 0.05 && Math.abs(-dx * p.s + dz * p.c) < p.hd) hit = p; }); return hit; }
@@ -447,7 +447,7 @@ export function buildGeo(map = NATTA_ISLAND) {
     const b = bridgeAt(x, z); if (b && b.y != null && b.y <= up && b.y > y - 0.01) { y = b.y; kind = 'bridge'; plat = b; }
     for (const s of M.stones) { const d = Math.hypot(x - s.x, z - s.z); if (d < s.r + (air ? 0.5 : 0) && s.y <= up && s.y > y) { y = s.y; kind = 'stone'; plat = s; } }
     if (x > deck.x0 && x < deck.x1 && z > deck.z0 && z < deck.z1 && deck.y <= up && deck.y >= y - 0.2) { y = deck.y; kind = 'deck'; }
-    const pl = platAt(x, z); if (pl && pl.y <= up && pl.y > y) { y = pl.y; kind = 'deck'; }
+    const pl = platAt(x, z); if (pl && pl.y <= up && pl.y > y) { y = pl.y; kind = 'pier'; } // رصيف خشب (غير سطيحة التلسكوب)
     return { y, kind, plat, b };
   }
   /** نوع الأرض (للصوت والسرعة) */

@@ -3774,7 +3774,7 @@
       if (q.vis && q.x > 0.02 && q.x < 0.98 && q.y > 0.05 && q.y < 0.95) drawGzMarks(q.x * C.W, q.y * viewH + 84, { sus: g.sus, state: g.state, face: 1 }, t, false);
     }
     drawUParts();
-    const live = state === 'world' && !S3.scope && !m.mapOpen && (h.mode === 'walk' || h.mode === 'glide');
+    const live = state === 'world' && !S3.scope && !m.mapOpen && !m.shopOpen && ['walk', 'glide', 'fish', 'climb'].includes(h.mode);
     if (live) { if (h.mode === 'walk') drawThreats(t); drawCompass(); drawMinimap(); drawStatus(); drawAltitude(); drawJoystick(t, m); }
     if (m.hurtT > 0) { ctx.fillStyle = `rgba(255,30,30,${m.hurtT * 0.45})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
     if (m.fade > 0) { ctx.fillStyle = `rgba(${m.fadeCol},${m.fade})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
@@ -3881,5 +3881,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, openCode, unlockWarp: () => { save.warp = true; persist(); }, warpTo, want3D, get r3State() { return r3State; }, openMap, closeMap, get J() { return J; }, startWorld, startMountain: startWorld, get WD() { return WD; }, get WS() { return WS; }, mtJump, mtAction };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, openCode, unlockWarp: () => { save.warp = true; persist(); }, warpTo, want3D, get r3State() { return r3State; }, openMap, closeMap, get J() { return J; }, startWorld, startMountain: startWorld, get WD() { return WD; }, get WS() { return WS; }, mtJump, mtAction, drawMap: () => drawFullMap() };
 })();

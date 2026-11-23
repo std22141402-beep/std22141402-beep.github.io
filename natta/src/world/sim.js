@@ -123,7 +123,7 @@ export function createSim(G, opts = {}) {
     S.focus = null;
   }
   // ---------------------------------------------------------------- 🚡 حبل منزلق، 🧗 تسلّق بالحبل، 🎣 صيد
-  function startZip(z) { const h = S.hero; S.zip = { z, s: 0, v: 4 }; S.scope = false; h.mode = 'zip'; h.air = true; h.vy = 0; emit(['zipStart', z.name, z.icon]); }
+  function startZip(z) { const h = S.hero; S.zip = { z, s: 0, v: 4 }; S.scope = false; h.mode = 'zip'; h.air = true; h.vy = 0; h.rot = 0; emit(['zipStart', z.name, z.icon]); }
   function stepZip(h, dt) {
     const Z = S.zip, z = Z.z, a = z.at(Z.s), b = z.at(Z.s + 1.5), sl = (b.y - a.y) / 1.5;
     Z.v += (-9.8 * sl * 0.85 - 0.0016 * Z.v * Z.v) * dt; Z.v = clamp(Z.v, 3.5, 27);
@@ -133,14 +133,14 @@ export function createSim(G, opts = {}) {
     h.x = p.x; h.y = p.y - 2.1; h.z = p.z; h.face = Math.atan2(q.z - p.z, q.x - p.x); h.vx = Math.cos(h.face) * Z.v; h.vz = Math.sin(h.face) * Z.v; h.speed = Z.v;
     if (Z.s >= z.L - 0.4) { const e = z.end; Object.assign(h, { x: e.x, z: e.z, y: G.H(e.x, e.z), mode: 'walk', air: false, vx: 0, vz: 0, vy: 0, surf: null, peak: 0 }); S.zip = null; emit(['zipEnd', z.name]); }
   }
-  function startClimb(a) { const h = S.hero; S.climbing = { a, t: 0, dur: Math.max(3, a.h / 2.6) }; h.mode = 'climb'; h.vx = h.vz = 0; h.face = Math.atan2(a.top.z - a.bot.z, a.top.x - a.bot.x); emit(['climbStart', a.name, Math.round(a.h)]); }
+  function startClimb(a) { const h = S.hero; S.climbing = { a, t: 0, dur: Math.max(3, a.h / 2.6) }; h.mode = 'climb'; h.vx = h.vz = 0; h.rot = 0; h.face = Math.atan2(a.top.z - a.bot.z, a.top.x - a.bot.x); emit(['climbStart', a.name, Math.round(a.h)]); }
   function stepClimb(h, dt) {
     const C = S.climbing, a = C.a; C.t += dt; const k = clamp(C.t / C.dur, 0, 1), kk = smooth(0, 1, k);
     h.x = lerp(a.bot.x, a.top.x, smooth(0.75, 1, k)); h.z = lerp(a.bot.z, a.top.z, smooth(0.75, 1, k)); h.y = lerp(a.bot.y, a.top.y, kk) + Math.sin(k * Math.PI) * 0.4;
     stamina(h, 5, dt);
     if (k >= 1) { Object.assign(h, { x: a.top.x, z: a.top.z, y: G.H(a.top.x, a.top.z), mode: 'walk', air: false, surf: null }); S.climbing = null; emit(['climbEnd', a.name]); }
   }
-  function startFish(w) { const h = S.hero; S.fishing = { t: 0, bite: 3 + Math.random() * 4.5, kind: w.kind }; h.mode = 'fish'; h.vx = h.vz = 0; emit('fishStart'); }
+  function startFish(w) { const h = S.hero; S.fishing = { t: 0, bite: 3 + Math.random() * 4.5, kind: w.kind }; h.mode = 'fish'; h.vx = h.vz = 0; h.rot = 0; h.air = false; emit('fishStart'); }
   function stepFish(h, dt) {
     const F = S.fishing; F.t += dt;
     if (F.t >= F.bite) { S.fish = (S.fish || 0) + 1; h.mode = 'walk'; S.fishing = null; emit(['fish', S.fish]); }
