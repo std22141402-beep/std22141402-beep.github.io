@@ -1001,12 +1001,12 @@ export function create(canvas, cfg) {
       // أبو جاسم: يصيحك إذا قربت، ويحچي وياك إذا وصلته
       const dm = Math.hypot(p.x - S.merW.x, p.z - S.merW.z);
       if (!S.called && dm < 24) { S.called = true; ev.push('call'); }
-      const frontYaw = Math.atan2(-Math.cos(S.camp.rot), -Math.sin(S.camp.rot)); // الكاميرا قدّام الخيمة وتباوع عليها
-      if (!S.met && dm < 4.2) { S.met = true; S.focus = { t: 3.2, dist: 6.2, x: (p.x + S.merW.x) / 2, z: (p.z + S.merW.z) / 2, yaw: frontYaw }; ev.push('meet'); }
+      const talkYaw = Math.atan2(-Math.cos(S.camp.rot), -Math.sin(S.camp.rot)); // الكاميرا قدّام الخيمة، وأبو جاسم يباوع لقدّام (نشوف وجهه)
+      if (!S.met && dm < 4.2) { S.met = true; S.focus = { t: 3.4, dist: 6.2, x: (p.x + S.merW.x) / 2, z: (p.z + S.merW.z) / 2, yaw: talkYaw, talk: true }; ev.push('meet'); }
       if (S.caught && !S.delivered && Math.hypot(p.x - S.zoneW.x, p.z - S.zoneW.z) < 1.7) {
         S.delivered = true; S.gz.state = 'pen';
         const mx2 = (p.x + S.merW.x) / 2, mz2 = (p.z + S.merW.z) / 2;
-        S.focus = { t: 4.6, dist: 6.6, x: mx2, z: mz2, yaw: frontYaw };
+        S.focus = { t: 4.6, dist: 6.6, x: mx2, z: mz2, yaw: talkYaw, talk: true };
         ev.push('deliver');
       }
     }
@@ -1120,7 +1120,8 @@ export function create(canvas, cfg) {
   function animateMerchant(t, dt, dlg) {
     const m = mer, p = S.p, dx = p.x - S.merW.x, dz = p.z - S.merW.z, d = Math.hypot(dx, dz);
     const near = d < 16 || !!dlg;
-    const yaw = near ? Math.atan2(dx, dz) : S.camp.rot + 0.15 * Math.sin(t * 0.3);
+    let yaw = near ? Math.atan2(dx, dz) : S.camp.rot + 0.15 * Math.sin(t * 0.3);
+    if (S.focus && S.focus.talk) yaw = S.camp.rot + clamp(angDiff(S.camp.rot, Math.atan2(dx, dz)), -0.7, 0.7); // باللقطة يباوع للكاميرا وللبطل
     m.yaw = dampAngle(m.yaw, yaw, 3, dt); m.root.rotation.y = m.yaw;
     m.root.position.set(S.merW.x, S.camp.base, S.merW.z);
     m.root.scale.y = 1 + Math.sin(t * 1.7) * 0.007;
