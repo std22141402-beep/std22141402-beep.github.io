@@ -292,6 +292,16 @@
       S.voice({ type: 'sawtooth', f: 92, f1: 60, dur: 3, vol: 0.05, attack: 1.2, filter: ['lowpass', 380], pan: -0.6 * d, pan1: 0.6 * d });
     },
     whoosh(S) { S.D.rev = 0.3; S.noise({ type: 'highpass', f: 1200, f1: 4500, dur: 0.5, vol: 0.18, attack: 0.08 }); S.noise({ type: 'bandpass', f: 900, f1: 300, t: 0.15, dur: 0.9, vol: 0.12 }); },
+    coin(S) { S.voice({ type: 'square', f: 988, dur: 0.06, vol: 0.06, filter: ['lowpass', 5000] }); S.voice({ type: 'square', f: 1319, t: 0.06, dur: 0.22, vol: 0.06, filter: ['lowpass', 5000] }); },
+    // ---- أصوات الجبل
+    howl(S) { S.D.rev = 0.55; S.voice({ type: 'triangle', f: 330, f1: 560, dur: 1.5, vol: 0.13, attack: 0.3, vib: [5, 10], filter: ['lowpass', 1800] }); S.voice({ type: 'sine', f: 335, f1: 545, t: 0.05, dur: 1.4, vol: 0.08, attack: 0.35, vib: [5.5, 8] }); S.noise({ type: 'bandpass', f: 900, q: 6, dur: 1.2, vol: 0.03, attack: 0.3 }); },
+    growl(S) { S.D.rev = 0.15; S.voice({ type: 'sawtooth', f: 78, f1: 66, dur: 0.7, vol: 0.12, attack: 0.05, vib: [22, 7], filter: ['lowpass', 520] }); S.noise({ type: 'bandpass', f: 260, q: 3, dur: 0.6, vol: 0.2, attack: 0.05 }); },
+    grunt(S) { S.D.rev = 0.12; [0, 0.2].forEach((t) => { S.noise({ type: 'bandpass', f: 420, f1: 230, q: 2.2, t, dur: 0.16, vol: 0.38, attack: 0.008 }); S.voice({ type: 'sawtooth', f: 120, f1: 85, t, dur: 0.15, vol: 0.06, filter: ['lowpass', 700] }); }); },
+    creak(S) { S.D.rev = 0.12; S.voice({ type: 'sawtooth', f: 210 + Math.random() * 60, f1: 150, dur: 0.32, vol: 0.035, attack: 0.04, vib: [28, 18], filter: ['lowpass', 1300] }); },
+    toll(S) { S.D.rev = 0.7; [[1, 0.2, 3.2], [2, 0.09, 2.2], [2.4, 0.07, 1.6], [3, 0.05, 1.3], [4.2, 0.03, 0.9], [0.5, 0.12, 3.6]].forEach(([k, v, d]) => S.voice({ f: 330 * k, dur: d, vol: v, attack: 0.002 })); S.noise({ type: 'highpass', f: 2500, dur: 0.05, vol: 0.08, attack: 0.001 }); },
+    pour(S) { S.D.rev = 0.15; S.noise({ type: 'bandpass', f: 1300, f1: 2600, q: 4, dur: 1.0, vol: 0.13, attack: 0.08 }); [0, 1.1].forEach((t) => S.voice({ f: 2600, t, dur: 0.18, vol: 0.05, attack: 0.002 })); },
+    hurt(S) { S.D.rev = 0.15; S.noise({ f: 1100, f1: 200, dur: 0.18, vol: 0.28 }); S.voice({ type: 'square', f: 420, f1: 140, dur: 0.22, vol: 0.07, filter: ['lowpass', 2500] }); },
+    fallW(S) { S.D.rev = 0.3; S.voice({ type: 'sine', f: 1000, f1: 280, dur: 0.9, vol: 0.1, attack: 0.01 }); },
     thunder(S, near = 1, delay = 0) {
       S.D.rev = 0.4;
       if (near) S.noise({ type: 'highpass', f: 2600, f1: 700, t: delay, dur: 0.16, vol: 0.3, attack: 0.002 });
@@ -340,7 +350,7 @@
         usePack(S, id, 'lose').lose(S);
       },
       hello(id) { if (!ok()) return; usePack(S, id, 'hello').hello(S); },
-      coin() { if (!ok()) return; const s = plain(); s.voice({ type: 'square', f: 988, dur: 0.06, vol: 0.06, filter: ['lowpass', 5000] }); s.voice({ type: 'square', f: 1319, t: 0.06, dur: 0.22, vol: 0.06, filter: ['lowpass', 5000] }); },
+      coin() { if (ok()) FXS.coin(plain()); },
       brk() { if (!ok()) return; const s = plain(); s.noise({ f: 1400, f1: 300, dur: 0.2, vol: 0.24 }); s.voice({ type: 'triangle', f: 200, f1: 70, dur: 0.18, vol: 0.18 }); },
       vanish() { if (!ok()) return; plain().voice({ f: 1200, f1: 400, dur: 0.14, vol: 0.12 }); },
       rocket() {
@@ -371,6 +381,8 @@
       chute() { if (ok()) FXS.chute(plain()); }, thud() { if (ok()) FXS.thud(plain()); }, step(k) { if (ok()) FXS.step(plain(), k); },
       snort() { if (ok()) FXS.snort(plain()); }, catchIt() { if (ok()) FXS.catchIt(plain()); }, talk() { if (ok()) FXS.talk(plain()); }, splash() { if (ok()) FXS.splash(plain()); }, reward() { if (ok()) FXS.reward(plain()); },
       whoosh() { if (ok()) FXS.whoosh(plain()); },
+      howl() { if (ok()) FXS.howl(plain()); }, growl() { if (ok()) FXS.growl(plain()); }, grunt() { if (ok()) FXS.grunt(plain()); }, creak() { if (ok()) FXS.creak(plain()); },
+      toll() { if (ok()) FXS.toll(plain()); }, pour() { if (ok()) FXS.pour(plain()); }, hurt() { if (ok()) FXS.hurt(plain()); }, fallW() { if (ok()) FXS.fallW(plain()); },
       click() { if (!ok()) return; plain().voice({ f: 620, f1: 820, dur: 0.06, vol: 0.12, rev: 0 }); },
       buy() { if (!ok()) return; const s = plain(); [880, 1175, 1568].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.07, dur: 0.1, vol: 0.07, filter: ['lowpass', 5000] })); },
     };
@@ -440,6 +452,7 @@
     space: { key: 64, scale: 'minor', prog: [0, 5, 3, 4], bpm: [96, 112], beat: 'half', rev: 0.55, pad: 'padGlass', arp: 'bell', lead: 'leadGlass', bass: 'bass', sev: true },
     summit: { key: 65, scale: 'major', prog: [0, 3, 5, 4], bpm: [80, 100], beat: 'half', rev: 0.5, pad: 'padGlass', arp: 'bell', lead: 'leadGlass', bass: 'bass' },
     valley: { key: 67, scale: 'major', prog: [0, 4, 5, 3], bpm: [100, 116], beat: 'pop', rev: 0.25, pad: 'padSoft', arp: 'pluck', lead: 'leadFlute', bass: 'bass' },
+    forest: { key: 62, scale: 'dorian', prog: [0, 3, 4, 0], bpm: [96, 112], beat: 'pop', rev: 0.35, pad: 'padWarm', arp: 'pluck', lead: 'leadFlute', bass: 'bass' },
     fire: { key: 62, scale: 'hijaz', prog: [0, 1, 0, 6], bpm: [112, 138], beat: 'maqsum', rev: 0.24, pad: 'padDark', arp: 'qanun', lead: 'leadMizmar', bass: 'bassDist' },
   };
   const BASS = { pop: [[0, 0], [6, 0], [8, 0], [11, 7], [14, 12]], half: [[0, 0], [10, 7]], maqsum: [[0, 0], [3, 0], [6, 0], [8, 0], [12, 7]] };
@@ -1799,14 +1812,14 @@
   function sideOf(e) { const r = cvs.getBoundingClientRect(); return e.clientX - r.left < r.width / 2 ? -1 : 1; }
   cvs.addEventListener('pointerdown', (e) => {
     Sfx.init();
-    if (state === 'valley' && V && V.r3d) { e.preventDefault(); valleyPointer('down', e); return; }
+    if ((state === 'valley' && V && V.r3d) || state === 'mountain') { e.preventDefault(); valleyPointer('down', e); return; }
     if (state !== 'play' && state !== 'valley') return;
     e.preventDefault();
     ptr.delete(e.pointerId); ptr.set(e.pointerId, sideOf(e));
     try { cvs.setPointerCapture(e.pointerId); } catch (err) { /* */ }
     tutSeen();
   });
-  cvs.addEventListener('pointermove', (e) => { if (state === 'valley' && V && V.r3d) { valleyPointer('move', e); return; } if (ptr.has(e.pointerId)) ptr.set(e.pointerId, sideOf(e)); });
+  cvs.addEventListener('pointermove', (e) => { if ((state === 'valley' && V && V.r3d) || state === 'mountain') { valleyPointer('move', e); return; } if (ptr.has(e.pointerId)) ptr.set(e.pointerId, sideOf(e)); });
   const lift = (e) => { valleyPointer('up', e); ptr.delete(e.pointerId); };
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => cvs.addEventListener(ev, lift));
   cvs.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -1820,6 +1833,8 @@
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') { if (e.key === 'Enter') { e.preventDefault(); tryCode(); } return; }
     if ((e.code === 'ArrowUp' || e.code === 'KeyW') && state === 'play') { useTurbo(); return; }
+    if (state === 'mountain' && e.code === 'Space') { e.preventDefault(); mtJump(); return; }
+    if (state === 'mountain' && (e.code === 'KeyF' || e.code === 'Enter')) { e.preventDefault(); mtAction(); return; }
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keyL = true; tutSeen(); }
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') { keyR = true; tutSeen(); }
     else if (e.code === 'ArrowUp' || e.code === 'KeyW') keyU = true;
@@ -1828,9 +1843,10 @@
     else if (e.code === 'KeyQ') keyQ = true;
     else if (e.code === 'KeyE') keyE = true;
     else if (e.code === 'KeyM' && state === 'valley' && V && V.r3d) { if (V.mapOpen) closeMap(); else openMap(); }
-    else if (e.code === 'Escape' || e.code === 'KeyP') { if (state === 'play' || state === 'valley') pause(); else if (state === 'pause') resume(); }
+    else if (e.code === 'Escape' || e.code === 'KeyP') { if (state === 'play' || state === 'valley' || state === 'mountain') pause(); else if (state === 'pause') resume(); }
     else if (e.code === 'Space' || e.code === 'Enter') {
-      if (state === 'home' || (state === 'over' && !$('over').hidden)) { e.preventDefault(); startRun(); }
+      if (state === 'home') { e.preventDefault(); startMountain(); }
+      else if (state === 'over' && !$('over').hidden) { e.preventDefault(); startRun(); }
       else if (state === 'pause') resume();
     } else return;
     Sfx.init();
@@ -1890,18 +1906,17 @@
     $('snd').textContent = save.sound ? '🔊' : '🔇';
     $('mus').textContent = save.music && save.sound ? '🎵' : '🔕';
     const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
-    $('how').textContent = save.control === 'tilt'
-      ? 'ميّل الموبايل يمين ويسار حتى تتحرك — القفز تلقائي 🦘'
-      : coarse ? 'اضغط يمين أو يسار الشاشة حتى تتحرك — القفز تلقائي 🦘'
-        : 'تحرك بالأسهم ← → أو بالماوس — القفز تلقائي 🦘';
+    $('how').textContent = coarse ? '⛰️ إبهامك اليسار يمشي، اليمين يلف الكاميرا، وزر 🦘 للنطة'
+      : '⛰️ امشي بـ WASD، لف الكاميرا بـ Q و E، والمسافة للنطة';
     $('a2hs').hidden = !(isIOS && !standalone && !save.a2hs);
     $('hHero').hidden = !save.hero;
-    $('hSum').textContent = save.summits ? `🏔️ ×${save.summits}` : `🏔️ ${C.SUMMIT}`;
-    $('tag').textContent = isFireSkin() ? 'اصعد فوك البراكين! 🌋' : 'اصعد لأعلى ما تكدر! ☁️';
+    $('hSum').textContent = save.mtSummits ? `⛰️ ×${save.mtSummits}${save.mtBest ? ' • ⏱️ ' + fmtTime(save.mtBest) : ''}` : '⛰️ 95م';
+    $('tag').textContent = 'اطلع للقمة… إذا تكدر! ⛰️';
   }
   function clearSky() { squads.length = 0; bolts.length = 0; squadT = rnd(5, 8); }
   function newDemo() { world = Core.createWorld(rand32(), { viewH, demo: true }); parts.length = 0; texts.length = 0; clearSky(); }
   function goHome() {
+    if (MT) leaveMountain();
     if (V) leaveValley(); SUM = null; $('skip').hidden = true;
     state = 'home'; newDemo(); show('home'); $('turbo').hidden = true;
     $('hud').hidden = true; $('tut').hidden = true; Sfx.rocketStop(); refreshHome();
@@ -1909,6 +1924,7 @@
   }
   function startRun() {
     Sfx.init();
+    if (MT) leaveMountain();
     if (V) leaveValley(); SUM = null; $('skip').hidden = true; resumeTo = 'play';
     if (save.control === 'tilt') enableTilt();
     FT = isFireSkin(); deathCause = ''; clearSky();
@@ -1926,8 +1942,9 @@
   function pause() {
     if (V && V.mapOpen) closeMap();
     J.id = null; CAMD.id = null;
-    if (state !== 'play' && state !== 'countdown' && state !== 'valley') return;
-    if (state !== 'countdown') resumeTo = state === 'valley' ? 'valley' : 'play';
+    if (state !== 'play' && state !== 'countdown' && state !== 'valley' && state !== 'mountain') return;
+    if (state !== 'countdown') resumeTo = state === 'valley' || state === 'mountain' ? state : 'play';
+    $('jumpBtn').hidden = true; $('actBtn').hidden = true; $('skip').hidden = true;
     clearTimeout(countTimer); $('count').hidden = true; $('vbar').hidden = true; $('dlg').hidden = true;
     state = 'pause'; show('pause'); Sfx.rocketStop(); ptr.clear(); keyL = keyR = false; $('turbo').hidden = true; Music.setMode('pause');
   }
@@ -2036,14 +2053,15 @@
   }
 
   // ---- الأزرار
-  $('play').onclick = startRun;
+  $('play').onclick = () => startMountain();
+  $('playJump').onclick = startRun;
   $('again').onclick = startRun;
   $('toHome').onclick = () => { Sfx.click(); goHome(); };
   // إنهاء الجولة من الإيقاف: تنحسب العملات والنتيجة وتطلع شاشة النهاية
-  $('quit').onclick = () => { Sfx.click(); if (state !== 'pause') return; if (resumeTo === 'valley') { goHome(); return; } state = 'play'; endRun(); };
-  $('skip').onclick = skipSummit; $('vPause').onclick = () => { Sfx.click(); pause(); };
+  $('quit').onclick = () => { Sfx.click(); if (state !== 'pause') return; if (resumeTo === 'valley' || resumeTo === 'mountain') { goHome(); return; } state = 'play'; endRun(); };
+  $('skip').onclick = () => { if (state === 'mountain' && M3) { M3.skipWait(); Sfx.click(); return; } skipSummit(); }; $('vPause').onclick = () => { Sfx.click(); pause(); };
   $('eWear').onclick = () => { Sfx.click(); save.skin = 'explorer'; persist(); Sfx.hello('explorer'); toast('🤠 لبست المغامر!'); $('eWear').hidden = true; };
-  $('eAgain').onclick = startRun; $('eHome').onclick = () => { Sfx.click(); goHome(); };
+  $('eAgain').onclick = () => startMountain(); $('eHome').onclick = () => { Sfx.click(); goHome(); };
   $('eShare').onclick = async () => {
     Sfx.click();
     const url = location.href.split('#')[0].split('?')[0], text = 'وصلت القمة 🏔️ بلعبة نطّة، طرت بالمظلة 🪂 ولزمت الغزال 🦌! تكدر توصل؟';
@@ -2182,6 +2200,7 @@
   function warpTo(where) {
     if (!save.warp) return;
     Sfx.click(); $('codeIn').blur();
+    if (where === 'summit' && r3State !== 'failed' && !window.__no3d) { startMountain({ at: 'summit', warp: true }); return; }
     want3D(); startRun();
     const w = world; w.warp = true;
     $('tut').hidden = true; save.tut = true;
@@ -2454,7 +2473,8 @@
   let countTimer = 0;
   function startCountdown() {
     show(null); $('turbo').hidden = !(world.hero && resumeTo === 'play');
-    if (resumeTo === 'valley') $('vbar').hidden = false;
+    if (resumeTo === 'valley' || resumeTo === 'mountain') $('vbar').hidden = false;
+    if (resumeTo === 'mountain') $('jumpBtn').hidden = false;
     state = 'countdown';
     let n = 3; const el = $('count');
     const showN = () => { el.hidden = false; el.textContent = n; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); Sfx.count(1); };
@@ -2465,7 +2485,7 @@
       if (n > 0) { showN(); countTimer = setTimeout(tick, 520); return; }
       el.hidden = true; Sfx.count(0);
       state = resumeTo; lastT = performance.now(); acc = 0; Music.setMode('play');
-      if (state === 'valley' && V && V.dlg) $('dlg').hidden = false;
+      if ((state === 'valley' && V && V.dlg) || (state === 'mountain' && MT && MT.dlg)) $('dlg').hidden = false;
     };
     clearTimeout(countTimer); countTimer = setTimeout(tick, 520);
   }
@@ -2596,6 +2616,7 @@
 
   // ---------------------------------------------------------------- الوادي
   function startValley() {
+    if (MT) leaveMountain(true);
     state = 'valley';
     $('skip').hidden = true; $('vbar').hidden = false; $('hud').hidden = true; $('banner').classList.remove('show');
     const dir = SUM ? SUM.dir : 1;
@@ -2626,20 +2647,20 @@
     }
   }
   /** كلام التاجر يطلع حرف حرف ويه صوت */
-  function updateDialog(dt) {
-    const v = V;
-    if (!v.dlg) return;
+  function updateDialog(dt, v = V) {
+    if (!v || !v.dlg) return;
     const d = v.dlg, chars = [...d.text];
     d.shown = Math.min(chars.length, d.shown + dt * 38);
     const n = Math.floor(d.shown);
     $('dlgText').textContent = chars.slice(0, n).join('');
     if (n - d.blip >= 4 && n < chars.length) { d.blip = n; Sfx.talk(); }
     d.t -= dt;
-    if (d.t <= 0) { v.dlg = null; $('dlg').classList.remove('show'); setTimeout(() => { if (V && !V.dlg) $('dlg').hidden = true; }, 300); }
+    if (d.t <= 0) { v.dlg = null; $('dlg').classList.remove('show'); setTimeout(() => { const h = MT || V; if (!h || !h.dlg) $('dlg').hidden = true; }, 300); }
   }
-  function say(text, sec = 5) {
-    if (!V) return;
-    V.dlg = { text, t: sec, shown: 0, blip: 0 };
+  function say(text, sec = 5, who) {
+    const h = MT || V; if (!h) return;
+    h.dlg = { text, t: sec, shown: 0, blip: 0 };
+    if (who) { $('dlgWho').textContent = who[0]; $('dlgName').textContent = who[1]; }
     $('dlg').hidden = false; $('dlgText').textContent = '';
     $('dlg').classList.remove('show'); void $('dlg').offsetWidth; $('dlg').classList.add('show');
   }
@@ -3201,10 +3222,7 @@
   function enter3D() {
     if (r3State !== 'ready' || window.__no3d) return false;
     try {
-      if (!R3) {
-        R3 = self.NattaValley3D.create($('g3d'), { sign: 'خيمة أبو جاسم' });
-        $('g3d').addEventListener('webglcontextlost', (e) => { e.preventDefault(); r3State = 'failed'; if (V) V.r3d = false; $('g3d').hidden = true; $('vign').hidden = true; });
-      }
+      if (!R3) R3 = self.NattaValley3D.create($('g3d'), { sign: 'خيمة أبو جاسم', renderer: sharedRenderer() });
       $('g3d').hidden = false; $('vign').hidden = false; $('app').classList.add('v3d');
       R3.setSize(cssW, cssH, window.__r3dPR || Math.min(window.devicePixelRatio || 1, 2));
       const seed = window.__seed != null ? window.__seed : (Math.random() * 4294967295) >>> 0;
@@ -3214,7 +3232,8 @@
       V.map = R3.mapShot();
       V.fog = document.createElement('canvas'); V.fog.width = V.map.canvas.width; V.fog.height = V.map.canvas.height;
       const fg = V.fog.getContext('2d'); fg.fillStyle = 'rgba(14,20,38,0.9)'; fg.fillRect(0, 0, V.fog.width, V.fog.height);
-      try { $('dlgWho').innerHTML = `<img alt="" src="${R3.portrait()}">`; } catch (e) { /* يبقى الإيموجي */ }
+      $('dlgName').textContent = 'أبو جاسم التاجر';
+      try { $('dlgWho').innerHTML = `<img alt="" src="${R3.portrait()}">`; } catch (e) { $('dlgWho').textContent = '👳🏻‍♂️'; }
       return true;
     } catch (e) { console.warn('3D', e); r3State = 'failed'; $('g3d').hidden = true; $('vign').hidden = true; return false; }
   }
@@ -3227,13 +3246,14 @@
   const MINI = { x: () => C.W - 60, y: () => 150, r: 46 };
   const toLogical = (e) => { const r = cvs.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; };
   function valleyPointer(type, e) {
-    if (!V || !V.r3d) return;
+    const h = MT || (V && V.r3d ? V : null);
+    if (!h) return;
     const q = toLogical(e);
     if (type === 'down') {
-      if (V.mapOpen) return;
-      if (V.phase === 'walk' && Math.hypot(q.x - MINI.x(), q.y - MINI.y()) < MINI.r + 8) { openMap(); return; }
-      if (q.x < C.W * 0.5 && J.id === null) { Object.assign(J, { id: e.pointerId, cx: q.x, cy: q.y, x: q.x, y: q.y }); V.usedJ = true; }
-      else if (CAMD.id === null) { Object.assign(CAMD, { id: e.pointerId, x: q.x, y: q.y }); V.usedCam = true; }
+      if (h.mapOpen) return;
+      if (h === V && V.phase === 'walk' && Math.hypot(q.x - MINI.x(), q.y - MINI.y()) < MINI.r + 8) { openMap(); return; }
+      if (q.x < C.W * 0.5 && J.id === null) { Object.assign(J, { id: e.pointerId, cx: q.x, cy: q.y, x: q.x, y: q.y }); h.usedJ = true; }
+      else if (CAMD.id === null) { Object.assign(CAMD, { id: e.pointerId, x: q.x, y: q.y }); h.usedCam = true; }
       try { cvs.setPointerCapture(e.pointerId); } catch (err) { /* */ }
     } else if (type === 'move') {
       if (e.pointerId === J.id) { J.x = q.x; J.y = q.y; }
@@ -3261,7 +3281,7 @@
   // ---------------------------------------------------------------- منطق الوادي المفتوح (الأحداث تجي من محاكاة الـ 3D)
   const uparts = []; // ذرات على الشاشة (عملات، قلوب، نجوم)
   function sparkleAt(x, y, z, colors, kind = 'star', n = 8, spd = 1) {
-    const q = R3.project(x, y, z); if (!q.vis) return;
+    const q = (MT && M3 ? M3 : R3).project(x, y, z); if (!q.vis) return;
     const sx = q.x * C.W, sy = q.y * viewH;
     for (let i = 0; i < n; i++) { const life = rnd(0.55, 1.2); uparts.push({ x: sx, y: sy, vx: rnd(-90, 90) * spd, vy: rnd(-200, -40) * spd, g: 300, life, max: life, r: rnd(2.6, 4.6), c: pick(colors), kind, rot: rnd(0, 6) }); }
   }
@@ -3340,6 +3360,225 @@
     shake = Math.max(0, shake - dt);
   }
 
+  // ---------------------------------------------------------------- ⛰️ الجبل ثلاثي الأبعاد (اللعبة الرئيسية)
+  // طريق متعرج بغابة كثيفة، جسور حبال، متاهة، حافة جرف، ساقية بالحجار، ذيابة وخنازير، وساحة بالقمة
+  // بعدين الريح تشيل البطل وتوديه للوادي (valley3d). الرسّام (WebGL) واحد مشترك بين الجبل والوادي.
+  let M3 = null, MT = null, RR = null;
+  const inMountain = () => !!MT && (state === 'mountain' || ((state === 'pause' || state === 'countdown') && resumeTo === 'mountain'));
+  const fmtTime = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  const TEA_SELLER = ['🧔🏻‍♂️', 'أبو علي الچايچي'], GUESTS = ['👳🏻‍♂️', 'زوار القمة'];
+  function sharedRenderer() {
+    if (!RR) {
+      RR = self.NattaValley3D.makeRenderer($('g3d'));
+      $('g3d').addEventListener('webglcontextlost', (e) => {
+        e.preventDefault(); r3State = 'failed'; if (V) V.r3d = false; $('g3d').hidden = true; $('vign').hidden = true;
+        if (MT) { goHome(); toast('صار خلل بالرسم 😕 جرّب وضع القفز 🦘', 3000); }
+      });
+    }
+    return RR;
+  }
+  function startMountain(opts = {}) {
+    Sfx.init(); want3D();
+    if (r3State === 'failed' || window.__no3d) { startRun(); return; } // جهاز ما يدعم الـ 3D: اللعبة الكلاسيكية
+    if (r3State !== 'ready') { // بعده ينزل
+      state = 'warp'; show(null); toast('⏳ نجهّز الجبل…', 2500);
+      const t0 = performance.now();
+      const go = () => { if (state !== 'warp') return; if (r3State === 'ready') startMountain(opts); else if (r3State === 'failed' || performance.now() - t0 > 15000) startRun(); else setTimeout(go, 150); };
+      setTimeout(go, 150); return;
+    }
+    if (V) leaveValley(); if (MT) leaveMountain(); SUM = null;
+    try { if (!M3) M3 = self.NattaValley3D.createMountain({ renderer: sharedRenderer() }); }
+    catch (e) { console.warn('mountain', e); r3State = 'failed'; startRun(); return; }
+    if (!world) newDemo();
+    MT = { t: 0, runT: 0, fade: 1, fadeCol: '255,255,255', coins: 0, warp: !!opts.warp, paid: false, jumpBuf: 0, dlg: null, act: null, threat: 0, warned: {}, toValley: 0, falls: 0, bites: 0, phase: 'walk', usedJ: false, usedCam: false, landedT: 0, marks: [], tea: 0 };
+    M3.setSize(cssW, cssH, window.__r3dPR || Math.min(window.devicePixelRatio || 1, 2));
+    MT.info = M3.enter(skinById(save.skin), { at: opts.at });
+    state = 'mountain'; resumeTo = 'mountain';
+    show(null); $('hud').hidden = true; $('turbo').hidden = true; $('tut').hidden = true; $('banner').classList.remove('show'); $('count').hidden = true;
+    $('g3d').hidden = false; $('vign').hidden = false; $('app').classList.add('v3d');
+    $('vbar').hidden = false; $('vMap').hidden = true; $('jumpBtn').hidden = false; $('actBtn').hidden = true; $('skip').hidden = true;
+    $('vobj').textContent = opts.at === 'summit' ? '☕ ساحة القمة' : '⛰️ اطلع للقمة';
+    J.id = null; CAMD.id = null; uparts.length = 0; ptr.clear();
+    Music.reset(); Music.setMode('play'); Sfx.click();
+    if (opts.at !== 'summit') {
+      banner('⛰️', 'جبل الغابة', 'اطلع للقمة 95م — الطريق يلف ويضيّع 🌲', 'gold', 3400);
+      setTimeout(() => { if (MT && state === 'mountain' && !MT.usedJ) toast('🕹️ إبهامك اليسار يمشي، ودفعة كاملة = ركض', 3400); }, 3600);
+      setTimeout(() => { if (MT && state === 'mountain' && !M3.S.summit) toast('🦘 زر النطة للألواح الناقصة والحجار', 3200); }, 7400);
+    } else toast('🚀 للقمة!', 1300);
+  }
+  function leaveMountain(toValley) {
+    if (!MT) return;
+    if (!MT.paid && MT.coins > 0) { save.coins += MT.coins; persist(); }
+    if (M3) M3.S.scope = false;
+    MT = null; J.id = null; CAMD.id = null; uparts.length = 0;
+    $('jumpBtn').hidden = true; $('jumpBtn').classList.remove('on'); $('actBtn').hidden = true; $('skip').hidden = true; $('vMap').hidden = false; $('dlg').hidden = true;
+    if (!toValley) { $('vbar').hidden = true; $('g3d').hidden = true; $('vign').hidden = true; $('app').classList.remove('v3d'); }
+  }
+  function mtJump() { if (MT && state === 'mountain') MT.jumpBuf = 0.18; }
+  function mtAction() {
+    if (!MT || state !== 'mountain') return;
+    const S3 = M3.S, id = S3.scope ? 'scope' : MT.act;
+    if (!id) return;
+    Sfx.click();
+    switch (id) {
+      case 'tea':
+        M3.interact('tea'); Sfx.pour(); MT.tea++;
+        say(MT.tea === 1 ? 'هلا بالبطل! ☕ تفضّل استكان شاي مهيّل… حار ويرد الروح بعد هالطلعة 😄' : pick(['ثاني استكان؟ 😄 تدلل، الشاي هنا ما يخلص ☕', 'اشرب على راحتك… بس انتبه، الهوا هنا يقلب الدنيا فجأة 💨', 'الشاي بالقمة غير طعم! ☕✨']), 5, TEA_SELLER);
+        break;
+      case 'chat':
+        M3.interact('chat'); Sfx.talk();
+        say(pick(['شفت الوادي بالتلسكوب؟ 🔭 يكولون بيه غزال 🦌 محد كدر يلزمه!', 'إحنا كل جمعة نصعد هنا… بس الريح بالقمة ما تتأمّن 💨', 'دك الجرس 🔔 حظ حلو! وارمي عملة بالنافورة وتمنّى ✨', 'الطريق المتاهة ضيّعنا ساعة 😅 اللافتات تساعد، بس مو بكل مكان']), 5.5, GUESTS);
+        break;
+      case 'bell': M3.interact('bell'); Sfx.toll(); shake = 0.05; break;
+      case 'scope':
+        M3.interact('scope'); Sfx.whoosh();
+        if (M3.S.scope) toast('👆 حرّك إصبعك حتى تباوع… شوف الوادي والنخل 🌴', 2600);
+        break;
+      case 'fountain':
+        if (save.coins < 1) { toast('ما عندك عملات 🪙'); break; }
+        save.coins -= 1; persist(); Sfx.coin(); setTimeout(() => Sfx.splash(), 380);
+        sparkleAt(0, 95.6, 0, ['#FFD23F', '#BDE8FF', '#FFFFFF'], 'star', 12, 0.8);
+        toast(pick(['🪙 رميت عملة… وتمنّيت ✨', '🪙 أمنيتك راح تتحقق! ✨', '🪙 طشّ! بالنص بالضبط 🎯', '🪙 تمنّى توصل الوادي بسلامة 😄']), 2400);
+        break;
+    }
+  }
+  function onMountainEvent(type, a) {
+    const S3 = M3.S, m = MT;
+    switch (type) {
+      case 'jump': Sfx.jump(save.skin); break;
+      case 'land': Sfx.step(1); break;
+      case 'landStone': Sfx.step(1); Sfx.splash(); break;
+      case 'step': Sfx.step(a[0] ? 1 : 0); if (a[1] === 'bridge' && Math.random() < 0.4) Sfx.creak(); break;
+      case 'coin': { m.coins++; Sfx.coin(); const c = a[0]; sparkleAt(c.x, c.y, c.z, ['#FFD23F', '#FFF6C4'], 'star', 7); break; }
+      case 'fall': Sfx.fallW(); if (a[0] === 'water') setTimeout(() => Sfx.splash(), 350); m.falls++; toast(a[0] === 'water' ? '💦 وكعت بالماي!' : '😵 وكعت!', 1500); break;
+      case 'respawn': m.fade = 0.85; m.fadeCol = '18,22,40'; toast(`🚩 رجعت لـ «${a[0]}»`, 1800); break;
+      case 'checkpoint': Sfx.mission(); banner('🚩', 'نقطة استراحة', a[0], '', 2000); break;
+      case 'growl': Sfx.growl(); if (!m.warned.wolf) { m.warned.wolf = 1; toast('🐺 ذيب! اركض بعيد عنه', 2400); } break;
+      case 'howl': Sfx.howl(); break;
+      case 'grunt': Sfx.grunt(); if (!m.warned.boar) { m.warned.boar = 1; toast('🐗 خنزير بري! يهجم بخط مستقيم… تنحّى عن طريقه', 2800); } break;
+      case 'bitten': {
+        const lose = Math.min(15, m.coins); m.coins -= lose; m.bites++; shake = 0.3; Sfx.hurt();
+        toast(lose ? `${a[0] === 'wolf' ? '🐺' : '🐗'} لزمك! خسرت ${lose} 🪙` : `${a[0] === 'wolf' ? '🐺' : '🐗'} لزمك! 😵`, 2000);
+        const p = S3.p; if (lose) sparkleAt(p.x, p.y + 1.2, p.z, ['#FFD23F', '#E09B00'], 'coin', Math.min(10, lose), 1.2);
+        break;
+      }
+      case 'summit': {
+        const tm = m.runT;
+        let sub = `⏱️ ${fmtTime(tm)}   +200 🪙`;
+        if (!m.warp) {
+          const rec = !save.mtBest || tm < save.mtBest;
+          save.mtSummits = (save.mtSummits || 0) + 1; if (rec) { save.mtBest = Math.round(tm); sub = `⏱️ ${fmtTime(tm)} — رقم قياسي! 🏆  +200 🪙`; }
+          save.coins += 200 + m.coins;
+        } else { save.coins += m.coins; sub = 'انتقال سريع 🚀'; }
+        m.paid = true; persist();
+        Sfx.flag(); Music.celebrate(); shake = 0.1;
+        banner('🏔️', 'وصلت القمة!', sub, 'gold', 4200);
+        sparkleAt(S3.p.x, S3.p.y + 1.5, S3.p.z, ['#FFD23F', '#FF5D8F', '#7FD1FF', '#8DE26B'], 'star', 26, 1.4);
+        $('vobj').textContent = '☕ استريح بالساحة';
+        setTimeout(() => { if (MT && state === 'mountain' && M3.S.summit && M3.S.summit.phase === 'wait') say('هلا بيك بالقمة يا بطل! 🏔️ تعال اشرب استكان شاي ☕ وباوع بالتلسكوب عالوادي 🔭', 6, TEA_SELLER); }, 2600);
+        break;
+      }
+      case 'windStart':
+        Sfx.wind(9); banner('💨', 'الريح هبّت!', 'كلشي ديتحرك… تمسّك!', 'danger', 3200);
+        $('vobj').textContent = '💨 الريح!'; if (m.dlg) m.dlg.t = Math.min(m.dlg.t, 0.5);
+        break;
+      case 'lift': Sfx.gust(); Sfx.whoosh(); shake = 0.25; banner('🌪️', 'الريح شالتك!', 'رايح وين؟! 😱', '', 2600); $('vobj').textContent = '🌪️ …'; break;
+      case 'toValley': m.toValley = 0.001; m.fadeCol = '255,255,255'; break;
+    }
+  }
+  function updateMountain(dt) {
+    const m = MT, S3 = M3.S;
+    m.t += dt;
+    if (!m.toValley && m.fade > 0) m.fade = Math.max(0, m.fade - dt * (m.fadeCol === '255,255,255' ? 1.1 : 1.6));
+    if (state === 'mountain' && !m.toValley) {
+      const inp = valleyInput(dt);
+      const n = Math.max(1, Math.ceil(dt / (1 / 60) - 0.01)), h = dt / n; // خطوات صغيرة حتى ما يعبر الحافات
+      for (let i = 0; i < n; i++) {
+        inp.jump = m.jumpBuf > 0;
+        const ev = M3.step(h, inp); inp.dyaw = 0; inp.dpitch = 0;
+        m.jumpBuf = Math.max(0, m.jumpBuf - h);
+        for (const e of ev) { if (e === 'jump') m.jumpBuf = 0; if (Array.isArray(e)) onMountainEvent(e[0], e.slice(1)); else onMountainEvent(e, []); }
+        if (!MT) return;
+      }
+      if (!S3.summit) m.runT += dt;
+    }
+    if (m.toValley) {
+      m.toValley += dt; m.fade = Math.min(1, m.toValley / 0.8);
+      if (m.toValley > 0.95) { leaveMountain(true); startValley(); return; } // الشاشة بيضة: نبني الوادي هسه
+    }
+    // زر الفعالية (شاي، جرس، تلسكوب، نافورة، سوالف)
+    const it = state === 'mountain' && !m.toValley ? M3.nearInteract() : null;
+    m.act = it ? it.id : null;
+    const label = S3.scope ? '🔭 طلّع من التلسكوب' : it ? it.label : '';
+    const ab = $('actBtn');
+    if (state === 'mountain' && label) { if (ab.hidden || ab.textContent !== label) { ab.textContent = label; ab.hidden = false; } } else if (!ab.hidden) ab.hidden = true;
+    $('jumpBtn').hidden = !(state === 'mountain' && !S3.scope && !(S3.summit && S3.summit.phase !== 'wait'));
+    const sk = state === 'mountain' && S3.summit && S3.summit.phase === 'wait' && S3.summit.t > 3;
+    if ($('skip').hidden === !!sk) $('skip').hidden = !sk;
+    m.threat = M3.threats().length;
+    updateDialog(dt, m);
+    for (let i = uparts.length - 1; i >= 0; i--) {
+      const q = uparts[i]; q.life -= dt;
+      if (q.life <= 0) { uparts[i] = uparts[uparts.length - 1]; uparts.pop(); continue; }
+      q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.rot += dt * 5;
+    }
+    shake = Math.max(0, shake - dt);
+  }
+  function drawAltitude() { // شريط الارتفاع على اليمين + عملات
+    const S3 = M3.S, p = S3.p, info = M3.info, top = 0.95, alt = clamp((p.y - 9) / 86, 0, top / 0.95);
+    const x = C.W - 24, y0 = 140, y1 = 360, cy = (k) => y1 - (y1 - y0) * k;
+    ctx.save();
+    ctx.fillStyle = 'rgba(20,28,56,.42)'; rr(ctx, x - 9, y0 - 26, 18, y1 - y0 + 40, 9); ctx.fill();
+    const g = ctx.createLinearGradient(0, y1, 0, y0); g.addColorStop(0, '#4FB86A'); g.addColorStop(0.6, '#9BD86B'); g.addColorStop(1, '#FFFFFF');
+    ctx.fillStyle = g; rr(ctx, x - 4, cy(alt), 8, Math.max(4, y1 - cy(alt)), 4); ctx.fill();
+    info.checkpoints.forEach((c, i) => { const k = clamp((c.y - 9) / 86, 0, 1); ctx.fillStyle = i <= S3.cp ? '#FFD23F' : 'rgba(255,255,255,.55)'; ctx.fillRect(x - 8, cy(k) - 1, 16, 2.5); });
+    ctx.font = '15px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🏔️', x, y0 - 14);
+    ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(x, cy(alt), 6.5, 0, TAU); ctx.fill(); ctx.fillStyle = '#FF7A3D'; ctx.beginPath(); ctx.arc(x, cy(alt), 4, 0, TAU); ctx.fill();
+    // شارتين تحت البوصلة: الارتفاع والعملات (كل وحدة لحالها حتى ما تتلخبط الأرقام ويه العربي)
+    ctx.font = '900 14px -apple-system,system-ui,sans-serif';
+    const chip = (txt, cx) => { const w = ctx.measureText(txt).width + 24; ctx.fillStyle = 'rgba(20,28,56,.5)'; rr(ctx, cx - w / 2, 104, w, 28, 14); ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.fillText(txt, cx, 119); };
+    chip(`⛰️ ${Math.max(0, Math.round(p.y))}م`, C.W / 2 + 46); chip(`🪙 ${MT.coins}`, C.W / 2 - 46);
+    ctx.restore();
+  }
+  function drawThreats(t) { // إذا حيوان يطاردك وبرّة الشاشة: سهم أحمر على الحافة
+    const th = M3.threats(); if (!th.length) return;
+    ctx.save();
+    const a = 0.18 + 0.12 * Math.sin(t * 10), gr = ctx.createRadialGradient(C.W / 2, viewH / 2, Math.min(C.W, viewH) * 0.35, C.W / 2, viewH / 2, Math.max(C.W, viewH) * 0.75);
+    gr.addColorStop(0, 'rgba(255,40,40,0)'); gr.addColorStop(1, `rgba(255,40,40,${a})`); ctx.fillStyle = gr; ctx.fillRect(0, 0, C.W, viewH);
+    ctx.font = '26px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const b of th) {
+      const q = M3.project(b.x, b.y + 0.8, b.z);
+      if (q.vis && q.x > 0.04 && q.x < 0.96 && q.y > 0.08 && q.y < 0.92) { ctx.fillText(b.state === 'notice' ? '❗' : '', q.x * C.W, q.y * viewH - 34); continue; }
+      let dx = q.x - 0.5, dy = q.y - 0.5; if (!q.vis) { dx = -dx; dy = -dy; }
+      const k = Math.min(0.42 / Math.abs(dx || 1e-3), 0.42 / Math.abs(dy || 1e-3)), sx = C.W * (0.5 + dx * k), sy = viewH * (0.5 + dy * k);
+      ctx.fillStyle = 'rgba(200,30,30,.85)'; ctx.beginPath(); ctx.arc(sx, sy, 22, 0, TAU); ctx.fill();
+      ctx.fillText(b.kind === 'wolf' ? '🐺' : '🐗', sx, sy + 1);
+    }
+    ctx.restore();
+  }
+  function drawScopeMask() {
+    const r = Math.min(C.W, viewH) * 0.47, cx = C.W / 2, cy = viewH / 2;
+    ctx.save(); ctx.fillStyle = '#05070D'; ctx.beginPath(); ctx.rect(-4, -4, C.W + 8, viewH + 8); ctx.arc(cx, cy, r, 0, TAU, true); ctx.fill();
+    const g = ctx.createRadialGradient(cx, cy, r * 0.7, cx, cy, r); g.addColorStop(0, 'rgba(5,7,13,0)'); g.addColorStop(1, 'rgba(5,7,13,.85)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(cx - 16, cy); ctx.lineTo(cx + 16, cy); ctx.moveTo(cx, cy - 16); ctx.lineTo(cx, cy + 16); ctx.stroke();
+    ctx.strokeStyle = 'rgba(201,161,59,.9)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(cx, cy, r + 2, 0, TAU); ctx.stroke();
+    ctx.restore();
+  }
+  function renderMountain3D() {
+    const m = MT, t = time, S3 = M3.S;
+    M3.render(t, { shake });
+    ctx.setTransform(S * dpr, 0, 0, S * dpr, 0, 0);
+    ctx.clearRect(-10, -10, C.W + 20, viewH + 20);
+    if (S3.scope) drawScopeMask();
+    drawUParts();
+    const live = state === 'mountain' && !S3.scope && !m.toValley;
+    if (live && !(S3.summit && S3.summit.phase !== 'wait')) { drawThreats(t); drawCompass(); drawAltitude(); drawJoystick(t, m); }
+    if (m.fade > 0) { ctx.fillStyle = `rgba(${m.fadeCol},${m.fade})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
+  }
+  $('jumpBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); Sfx.init(); mtJump(); $('jumpBtn').classList.add('on'); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('jumpBtn').addEventListener(ev, () => $('jumpBtn').classList.remove('on')));
+  $('actBtn').onclick = () => mtAction();
+
   // ---------------------------------------------------------------- 🗺️ الخريطة: تنكشف بس اللي مشيت بيه، وإنت تحط العلامات
   const PIN_ICON = { camp: '🏕️', gazelle: '🦌', flag: '📍' };
   let pinTool = 'camp';
@@ -3411,7 +3650,7 @@
     }
     ctx.globalAlpha = 1;
   }
-  function drawJoystick(t) {
+  function drawJoystick(t, h = V) {
     if (J.id !== null) {
       const dx = J.x - J.cx, dy = J.y - J.cy, l = Math.hypot(dx, dy), k = l > JOY_R ? JOY_R / l : 1, run = l > JOY_R * 0.62;
       ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.arc(J.cx, J.cy, JOY_R, 0, TAU); ctx.fill();
@@ -3420,15 +3659,15 @@
       ctx.fillStyle = run ? 'rgba(255,183,3,.9)' : 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(J.cx + dx * k, J.cy + dy * k, 21, 0, TAU); ctx.fill();
       ctx.font = '900 11px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#24305e';
       ctx.fillText(run ? 'ركض' : 'هادئ', J.cx + dx * k, J.cy + dy * k);
-    } else if (!V.usedJ || V.t - (V.landedT || 0) < 12) {
+    } else if (!h.usedJ || h.t - (h.landedT || 0) < 12) {
       const a = 0.35 + 0.15 * Math.sin(t * 3), x = 74, y = viewH - 170;
       ctx.globalAlpha = a; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, JOY_R, 0, TAU); ctx.stroke();
       ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(x, y, 18, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
-      if (!V.usedCam && V.phase === 'walk') { ctx.globalAlpha = a; ctx.font = '30px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('👆', C.W - 80, viewH - 170 + Math.sin(t * 3) * 6); ctx.font = '900 12px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFFFFF'; ctx.fillText('⟷ لف الكاميرا', C.W - 80, viewH - 128); ctx.globalAlpha = 1; }
+      if (!h.usedCam && h.phase === 'walk') { ctx.globalAlpha = a; ctx.font = '30px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('👆', C.W - 80, viewH - 170 + Math.sin(t * 3) * 6); ctx.font = '900 12px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFFFFF'; ctx.fillText('⟷ لف الكاميرا', C.W - 80, viewH - 128); ctx.globalAlpha = 1; }
     }
   }
   function drawCompass() {
-    const hd = R3.heading(), cx = C.W / 2, y = 82, w = 220, ppd = w / 110, p = R3.S.p;
+    const W3 = MT && M3 ? M3 : R3, hd = W3.heading(), cx = C.W / 2, y = 82, w = 220, ppd = w / 110, p = W3.S.p;
     ctx.save();
     ctx.fillStyle = 'rgba(20,28,56,.42)'; rr(ctx, cx - w / 2 - 8, y - 15, w + 16, 30, 15); ctx.fill();
     ctx.beginPath(); ctx.rect(cx - w / 2, y - 16, w, 32); ctx.clip();
@@ -3441,7 +3680,7 @@
       else { ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y - (a % 45 ? 3 : 6)); ctx.lineTo(x, y + (a % 45 ? 3 : 6)); ctx.stroke(); }
     }
     ctx.font = '15px -apple-system,system-ui,sans-serif';
-    for (const pin of V.pins) {
+    for (const pin of (W3 === R3 && V ? V.pins : MT.marks || [])) {
       const b = ((Math.atan2(pin.z - p.z, pin.x - p.x) * 180) / Math.PI + 360) % 360, d = ((b - hd + 540) % 360) - 180;
       if (Math.abs(d) > 58) continue;
       ctx.fillText(PIN_ICON[pin.type], cx + d * ppd, y - 1);
@@ -3495,6 +3734,12 @@
   /** شنو لازم تعزف الموسيقى هسه: النمط حسب العالم والارتفاع، والحماس حسب النتيجة والصاروخ */
   function musicInfo() {
     if (!world) return { style: 'day', intensity: 0.6, bpm: 92 };
+    if (inMountain()) {
+      const S3 = M3.S, sm = S3.summit;
+      if (sm) return { style: 'summit', intensity: sm.phase === 'wait' ? 1.1 : 1 + (sm.wind || 1) * 2.6, bpm: sm.phase === 'wait' ? 86 : 84 + (sm.wind || 1) * 34, riser: sm.phase !== 'wait' };
+      const chase = MT.threat > 0, alt = clamp((S3.p.y - 9) / 86, 0, 1);
+      return { style: 'forest', intensity: 1.5 + alt * 1.3 + (chase ? 1.3 : 0), bpm: 98 + alt * 10 + (chase ? 12 : 0), riser: chase };
+    }
     if (inValley()) { const g = V.gz.state; return { style: 'valley', intensity: V.delivered || state === 'ending' ? 3.6 : V.phase !== 'walk' ? 1.3 : g === 'flee' || g === 'leap' ? 3.2 : V.caught ? 2.6 : 1.9, bpm: g === 'flee' ? 116 : 104 }; }
     if (state === 'summit' && SUM) return { style: 'summit', intensity: 1 + SUM.wind * 2.6, bpm: 84 + SUM.wind * 34, riser: SUM.wind > 0.15 };
     if (state !== 'play' && state !== 'pause' && state !== 'over' && state !== 'revive' && state !== 'countdown') return { style: FT ? 'fire' : 'day', intensity: 0.7, bpm: FT ? 100 : 92 };
@@ -3512,6 +3757,7 @@
   const STEP = 1 / 120;
   let lastT = performance.now(), acc = 0, time = 0;
   function render() {
+    if (inMountain()) { renderMountain3D(); return; }
     if (inValley()) { if (V.r3d && R3) renderValley3D(); else renderValley(); return; }
     const P = world.player;
     let sx = 0, sy = 0;
@@ -3559,10 +3805,11 @@
       time += dt; acc += dt;
       const dir = state === 'play' ? inputDir() : Math.sin(time * 0.7) * 0.45;
       let n = 0;
-      if (inValley()) acc = 0;
+      if (inValley() || inMountain()) acc = 0;
       while (acc >= STEP && n < 20) { Core.step(world, STEP, dir); acc -= STEP; n++; }
       if (n >= 20) acc = 0;
       if (inValley()) updateValley(dt);
+      else if (inMountain()) updateMountain(dt);
       else {
         handleEvents();
         updateFx(dt);
@@ -3577,8 +3824,9 @@
   // ---------------------------------------------------------------- تشغيل
   resize();
   goHome();
+  setTimeout(want3D, 300); // الجبل هو اللعبة الرئيسية: نحمّل ملف الـ 3D من البداية
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, openCode, unlockWarp: () => { save.warp = true; persist(); }, warpTo, want3D, get r3State() { return r3State; }, get R3() { return R3; }, openMap, closeMap, get J() { return J; } };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, openCode, unlockWarp: () => { save.warp = true; persist(); }, warpTo, want3D, get r3State() { return r3State; }, get R3() { return R3; }, openMap, closeMap, get J() { return J; }, startMountain, get M3() { return M3; }, get MT() { return MT; }, mtJump, mtAction };
 })();

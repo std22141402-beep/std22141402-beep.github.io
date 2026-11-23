@@ -113,6 +113,11 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 #sumChip{font-size:15px;padding:4px 10px}
 #vbar{position:absolute;z-index:4;inset:0 0 auto 0;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 14px 0;pointer-events:none}
 #vobj{flex:1;font-size:18px;font-weight:900;padding:9px 14px;text-align:center}
+#playJump{margin-top:-4px;font-size:16px;padding:10px 20px}
+#jumpBtn{position:absolute;z-index:5;right:calc(env(safe-area-inset-right) + 20px);bottom:calc(env(safe-area-inset-bottom) + 118px);width:80px;height:80px;border-radius:50%;border:3px solid rgba(255,255,255,.8);background:rgba(36,48,94,.38);color:#fff;font:inherit;font-size:15px;line-height:1.05;font-weight:900;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+#jumpBtn.on{background:rgba(255,183,3,.8);transform:scale(.94)}
+#actBtn{position:absolute;z-index:5;right:calc(env(safe-area-inset-right) + 12px);bottom:calc(env(safe-area-inset-bottom) + 214px);border:0;border-radius:999px;padding:12px 18px;font:inherit;font-size:16px;font-weight:900;color:#24305e;background:#FFD23F;box-shadow:0 4px 0 rgba(36,48,94,.3);touch-action:manipulation;animation:actPop .35s cubic-bezier(.2,1.6,.4,1)}
+@keyframes actPop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 #dlg{position:absolute;z-index:6;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 18px);display:flex;gap:10px;align-items:flex-start;background:rgba(255,250,238,.97);border:3px solid #8B5A2B;border-radius:20px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;opacity:0;transform:translateY(20px);transition:opacity .25s,transform .3s cubic-bezier(.2,1.4,.4,1)}
 #dlg.show{opacity:1;transform:none}
 #dlg .who{flex:none;width:48px;height:48px;border-radius:50%;background:#f1e3c4;display:flex;align-items:center;justify-content:center;font-size:30px}
@@ -201,6 +206,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     <div class="tag out" id="tag" style="--o:#24305e">اصعد لأعلى ما تكدر! ☁️</div>
     <div class="stats"><span class="chip">🏆 <b id="hBest">0</b></span><span class="chip">🪙 <b id="hCoins">0</b></span><span class="chip hero-chip" id="hHero" hidden>🦸 بطل</span><span class="chip" id="hSum">🏔️</span><button class="chip" id="hMis" style="border:0;font:inherit;font-weight:800">📋 المهام</button></div>
     <button class="btn primary big" id="play">العب ▶</button>
+    <button class="btn" id="playJump">🦘 وضع القفز</button>
     <div class="row">
       <button class="btn" id="openShop">🎨 الشخصيات</button>
       <button class="btn" id="ctrl">👆 لمس</button>
@@ -228,8 +234,10 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   <div id="tut" hidden><div>اضغط هنا ⬅️</div><div>➡️ اضغط هنا</div></div>
   <div id="toast" class="out"></div>
   <button id="skip" hidden>تخطّى ⏩</button>
+  <button id="jumpBtn" hidden aria-label="نطة">🦘<br>نط</button>
+  <button id="actBtn" hidden></button>
   <div id="vbar" hidden><div id="vobj" class="chip">🪂</div><button class="hud-btn" id="vMap" aria-label="الخريطة">🗺️</button><button class="hud-btn" id="vPause" aria-label="إيقاف">II</button></div>
-  <div id="dlg" hidden><div class="who" id="dlgWho">👳🏻‍♂️</div><div><div class="nm">أبو جاسم التاجر</div><div id="dlgText"></div></div></div>
+  <div id="dlg" hidden><div class="who" id="dlgWho">👳🏻‍♂️</div><div><div class="nm" id="dlgName">أبو جاسم التاجر</div><div id="dlgText"></div></div></div>
 
   <!-- إيقاف مؤقت -->
   <section id="pause" class="screen" hidden>

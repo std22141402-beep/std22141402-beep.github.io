@@ -41,7 +41,7 @@ const until = async (fn, ms = 20000, a) => { const t0 = Date.now(); while (Date.
 await page.goto(`http://localhost:${server.address().port}/natta/`);
 await wait(700);
 await shot('01-home');
-ok(await G(() => document.getElementById('hSum').textContent.includes('7000')), 'الرئيسية تبيّن هدف القمة 🏔️ 7000');
+ok(await G(() => document.getElementById('hSum').textContent.includes('95')), 'الرئيسية تبيّن هدف الجبل ⛰️ 95م');
 
 // 1) نوصل قرب القمة وننزل عليها
 await G(() => window.__natta.startRun()); await wait(300);
@@ -147,7 +147,7 @@ ok(await G(() => window.__natta.state === 'home' && !window.__natta.V), 'رجع 
 await shot('13-home-explorer');
 
 // 8) الإيقاف بنص الوادي يرجّع للوادي (مو للصعود)
-await page.tap('#play', { force: true }); await wait(200);
+await page.tap('#playJump', { force: true }); await wait(200);
 await G(() => window.__natta.startValley());
 await G(() => { window.__timeScale = 4; }); await until(() => window.__natta.V.phase === 'walk', 12000); await G(() => { window.__timeScale = 1; });
 await page.tap('#vPause', { force: true }); await wait(200);
@@ -179,7 +179,7 @@ ok(errors.length === 0, 'ماكو أخطاء بالكونسول' + (errors.lengt
   const pos = () => G3(() => { const p = window.__natta.R3.S.p; return [p.x, p.z]; });
   await p3.goto(`http://localhost:${server.address().port}/natta/`);
   await p3.waitForTimeout(500);
-  ok(await G3(() => !document.querySelector('script[src="valley3d.js"]')), 'ملف الـ 3D ما ينزل ويه أول فتحة (اللعبة تفتح خفيفة)');
+  ok(await G3(() => !!document.querySelector('script[src="valley3d.js"]')), 'ملف الـ 3D ينزل من البداية (الجبل هو اللعبة الرئيسية)');
   await G3(() => { const N = window.__natta; N.startRun(); const w = N.world; N.Core.genUntil(w, N.Core.C.SUMMIT_Y + 1200); const s = w.platforms.find((p) => p.type === 's'); w.enemies = []; Object.assign(w.player, { x: s.x + s.w / 2, y: s.y + 120, vy: 100, state: 'alive' }); w.camY = s.y - w.viewH * 0.5; });
   ok(await until3(() => window.__natta.state === 'summit', 8000), '3D: وصل القمة');
   ok(await until3(() => window.__natta.r3State === 'ready', 20000), '3D: الوادي ثلاثي الأبعاد نزل وجاهز وقت القمة');
@@ -249,7 +249,7 @@ ok(errors.length === 0, 'ماكو أخطاء بالكونسول' + (errors.lengt
   ok(second && (second.camp !== first.camp || Math.hypot(second.gazelle[0] - first.gazelle[0], second.gazelle[1] - first.gazelle[1]) > 10), `3D: كل مغامرة التاجر والغزال بمكان جديد (خيمة ${first.camp + 1} ← ${second.camp + 1})`);
   await G3(() => window.__natta.goHome());
   // 🚀 الانتقال السريع (بكود سري): كبل للقمة وللوادي، وما يكسر الأرقام
-  const rec0 = await G3(() => [window.__natta.save.best, window.__natta.save.summits || 0]);
+  const rec0 = await G3(() => [window.__natta.save.best, window.__natta.save.summits || 0, window.__natta.save.mtSummits || 0, window.__natta.save.mtBest || 0]);
   await G3(() => { window.__natta.unlockWarp(); window.__natta.openCode(); });
   ok(await G3(() => !document.getElementById('codeWarp').hidden), 'الانتقال السريع: يطلع بشاشة الكود السري بعد ما ينفتح');
   await p3.tap('#warpValley', { force: true });
@@ -257,10 +257,10 @@ ok(errors.length === 0, 'ماكو أخطاء بالكونسول' + (errors.lengt
   await p3.waitForTimeout(800); await shot3('3d-07-warp-valley');
   await G3(() => window.__natta.goHome());
   await G3(() => window.__natta.openCode()); await p3.tap('#warpSummit', { force: true });
-  ok(await until3(() => window.__natta.state === 'summit', 8000), 'الانتقال السريع: كبل للقمة');
+  ok(await until3(() => window.__natta.state === 'mountain' && window.__natta.M3 && window.__natta.M3.S.summit, 12000), 'الانتقال السريع: كبل لقمة الجبل');
   await p3.waitForTimeout(800); await shot3('3d-08-warp-summit');
-  const rec1 = await G3(() => [window.__natta.save.best, window.__natta.save.summits || 0]);
-  ok(rec1[0] === rec0[0] && rec1[1] === rec0[1], `الانتقال السريع: ما يكسر أفضل نتيجة ولا يحسب قمة (${rec1})`);
+  const rec1 = await G3(() => [window.__natta.save.best, window.__natta.save.summits || 0, window.__natta.save.mtSummits || 0, window.__natta.save.mtBest || 0]);
+  ok(rec1.every((v, i) => v === rec0[i]), `الانتقال السريع: ما يكسر أفضل نتيجة ولا يحسب قمة (${rec1})`);
   await G3(() => window.__natta.goHome());
   ok(errs3.length === 0, '3D: ماكو أخطاء' + (errs3.length ? ': ' + errs3.slice(0, 3).join(' | ') : ''));
   await ctx3.close();

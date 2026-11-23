@@ -48,7 +48,7 @@ await page.tap('#mBack');
 await wait(300);
 
 // جولة: نخلي الشخصية عالية حتى نجرّب بأمان
-await page.tap('#play', { force: true });
+await page.tap('#playJump', { force: true });
 await wait(500);
 const lift = () => G(() => { const w = window.__natta.world, P = w.player; if (P.state === 'alive' && P.y < w.camY + 260) { P.y = w.camY + 300; P.vy = 820; } });
 const keepAlive = await page.evaluateHandle(() => setInterval(() => { const w = window.__natta.world, P = w.player; if (window.__natta.state === 'play' && P.state === 'alive' && P.y < w.camY + 200 && !window.__noLift) { P.vy = Math.max(P.vy, 900); } }, 50));

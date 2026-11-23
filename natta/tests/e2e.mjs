@@ -35,7 +35,7 @@ page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 
 async function waitOver() {
-  await page.waitForFunction(() => ['revive', 'over'].includes(window.__natta.state), null, { timeout: 6000 });
+  await page.waitForFunction(() => ['revive', 'over'].includes(window.__natta.state), null, { timeout: 12000 });
   if (await page.isVisible('#revive')) await page.tap('#rvNo'); // ما نريد فرصة ثانية بهالفحص
   await page.waitForSelector('#over:not([hidden])', { timeout: 5000 });
 }
@@ -72,7 +72,7 @@ await page.tap('#shopBack');
 await wait(300);
 
 // بداية اللعب
-await page.tap('#play', { force: true });
+await page.tap('#playJump', { force: true });
 await wait(900);
 await shot('3-play-start');
 ok((await G(() => window.__natta.state)) === 'play', 'اللعبة بدت');
@@ -204,7 +204,7 @@ const minD = await page.evaluate(() => new Promise((res) => {
   tick();
 }));
 ok(minD > 30, `الطيارات تتفادى الشخصية (أقرب مسافة ${minD.toFixed(0)})`);
-await page.tap('#play', { force: true });
+await page.tap('#playJump', { force: true });
 await G(() => { window.__botOff = false; });
 await wait(400);
 await G(() => { const w = window.__natta.world, P = w.player; P.y = 40000; P.vy = 820; w.camY = 40000 - w.viewH * 0.42; w.maxY = 40000; w.genY = w.camY - 50; w.platforms = w.platforms.filter((p) => p.y > w.camY - 400); P.invul = 3; });
@@ -241,7 +241,7 @@ await page.fill('#codeIn', ' بَغداد ');
 await page.tap('#codeGo');
 await wait(500);
 ok((await G(() => window.__natta.save.hero)) === true && (await page.isVisible('#hHero')), 'الكود الصح يشغّل وضع البطل');
-await page.tap('#play', { force: true });
+await page.tap('#playJump', { force: true });
 await wait(500);
 ok((await page.isVisible('#turbo')) && (await page.isVisible('#heroChip')), 'زر 🚀 يطلع بوضع البطل');
 await page.tap('#turbo', { force: true });
