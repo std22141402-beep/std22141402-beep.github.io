@@ -82,7 +82,8 @@ const coinsBefore = await G(() => window.__natta.save.coins + window.__natta.wor
 await page.tap('#rvYes');
 await wait(600);
 const after = await G(() => ({ st: window.__natta.state, alive: window.__natta.world.player.state, coins: window.__natta.save.coins + window.__natta.world.runCoins }));
-ok(after.st === 'play' && after.alive === 'alive' && coinsBefore - after.coins === 50, 'كمّل: رجع يلعب وانخصمت 50 عملة');
+const spent = coinsBefore - after.coins; // ممكن يلزم عملة بعد ما يرجع، فنسمح بفرق صغير
+ok(after.st === 'play' && after.alive === 'alive' && spent <= 50 && spent >= 40, `كمّل: رجع يلعب وانخصمت 50 عملة (صرف ${spent})`);
 await shot('9-revived');
 await page.evaluate(() => { window.__noLift = false; });
 
