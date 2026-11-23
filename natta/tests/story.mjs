@@ -1,4 +1,5 @@
-// فحص المغامرة كاملة بمتصفح بمقاس آيفون: القمة ← الهوا ← المظلة ← الوادي ← الغزال (بالتسلّل) ← التاجر ← الجائزة
+// فحص مغامرة «وضع القفز» 2D كاملة بمتصفح بمقاس آيفون: القمة ← الهوا ← المظلة ← الوادي ← الغزال (بالتسلّل) ← التاجر ← الجائزة
+// (العالم المفتوح 3D له فحص خاص: tests/world.mjs)
 // التشغيل: node natta/tests/story.mjs   (الصور بـ /tmp/natta-story)
 import http from 'node:http';
 import fs from 'node:fs';
@@ -27,7 +28,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-// منطق المغامرة كله ينفحص بالوادي الـ 2D (أسرع بالمتصفح الوهمي)، والـ 3D له قسم خاص بالآخر
+// وضع القفز كله 2D (حتى بدون 3D)
 await page.addInitScript(() => { window.__no3d = true; });
 await page.addInitScript(() => { if (!localStorage.getItem('natta.v1')) localStorage.setItem('natta.v1', JSON.stringify({ tut: true, coins: 100, best: 3000, games: 9 })); });
 
@@ -165,106 +166,6 @@ ok(await G(() => [...document.querySelectorAll('#grid *')].some((e) => e.textCon
 
 ok(errors.length === 0, 'ماكو أخطاء بالكونسول' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
 
-// 10) الوادي ثلاثي الأبعاد 🏞️: عالم مفتوح، جويستك وكاميرا مثل ببجي، خريطة وعلامات، والتاجر والغزال بمكان عشوائي
-{
-  const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  const p3 = await ctx3.newPage();
-  const errs3 = [];
-  p3.on('pageerror', (e) => errs3.push('pageerror: ' + e.message));
-  p3.on('console', (m) => { if (m.type() === 'error') errs3.push('console: ' + m.text()); });
-  await p3.addInitScript(() => { window.__r3dPR = 1; window.__seed = 7; localStorage.setItem('natta.v1', JSON.stringify({ tut: true, coins: 100, best: 3000, games: 9, skin: 'explorer', owned: ['green', 'explorer'] })); });
-  const G3 = (fn, a) => p3.evaluate(fn, a);
-  const until3 = async (fn, ms = 20000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await G3(fn)) return true; await p3.waitForTimeout(80); } return false; };
-  const shot3 = (n) => p3.screenshot({ path: `${SHOTS}/${n}.png` });
-  const pos = () => G3(() => { const p = window.__natta.R3.S.p; return [p.x, p.z]; });
-  await p3.goto(`http://localhost:${server.address().port}/natta/`);
-  await p3.waitForTimeout(500);
-  ok(await G3(() => !!document.querySelector('script[src="valley3d.js"]')), 'ملف الـ 3D ينزل من البداية (الجبل هو اللعبة الرئيسية)');
-  await G3(() => { const N = window.__natta; N.startRun(); const w = N.world; N.Core.genUntil(w, N.Core.C.SUMMIT_Y + 1200); const s = w.platforms.find((p) => p.type === 's'); w.enemies = []; Object.assign(w.player, { x: s.x + s.w / 2, y: s.y + 120, vy: 100, state: 'alive' }); w.camY = s.y - w.viewH * 0.5; });
-  ok(await until3(() => window.__natta.state === 'summit', 8000), '3D: وصل القمة');
-  ok(await until3(() => window.__natta.r3State === 'ready', 20000), '3D: الوادي ثلاثي الأبعاد نزل وجاهز وقت القمة');
-  await p3.tap('#skip', { force: true });
-  ok(await until3(() => window.__natta.state === 'valley', 20000), '3D: صار بالوادي');
-  const info = await G3(() => { const R = window.__natta.R3, c = document.getElementById('g3d'); return { r3d: window.__natta.V.r3d, shown: !c.hidden && c.clientWidth > 300, tris: R.renderer.info.render.triangles, VL: R.info.VL, FL: R.info.FLOOR }; });
-  ok(info.r3d && info.shown && info.tris > 10000, `3D: المشهد يترسم (${info.tris} مثلث)`);
-  ok(info.VL * info.FL * 2 >= 2500, `3D: قاع الوادي ${info.VL}×${info.FL * 2} م = ${info.VL * info.FL * 2} م² (دونم عراقي 2500 م²)`);
-  const wallH = await G3(() => { const R = window.__natta.R3; return [R.ground(60, 0), R.ground(60, 30), R.ground(60, -30)]; });
-  ok(wallH[1] - wallH[0] > 15 && wallH[2] - wallH[0] > 15, `3D: جوانب الوادي ترتفع (${wallH[1].toFixed(0)} و ${wallH[2].toFixed(0)} م)`);
-  await until3(() => window.__natta.V.phase === 'glide', 10000);
-  const a0 = await pos();
-  await p3.mouse.move(80, 650); await p3.mouse.down(); await p3.mouse.move(80, 598, { steps: 3 });
-  await p3.waitForTimeout(2200);
-  const a1 = await pos();
-  await p3.mouse.up();
-  ok(Math.hypot(a1[0] - a0[0], a1[1] - a0[1]) > 0.6, `3D: الجويستك يوجّه المظلة (${Math.hypot(a1[0] - a0[0], a1[1] - a0[1]).toFixed(1)} م)`);
-  await shot3('3d-01-parachute');
-  await G3(() => { window.__timeScale = 6; }); await until3(() => window.__natta.V.phase === 'walk', 60000); await G3(() => { window.__timeScale = 1; });
-  ok(await G3(() => window.__natta.V.phase === 'walk'), '3D: نزل بالمظلة عالأرض');
-  ok(await G3(() => document.getElementById('vobj').textContent.includes('دوّر على الغزال')), '3D: المهمة «دوّر على الغزال» بدون أي سهم يدلّك');
-  await p3.waitForTimeout(1500); await shot3('3d-02-landing');
-  const w0 = await pos();
-  await p3.keyboard.down('KeyW'); await p3.waitForTimeout(2200); await p3.keyboard.up('KeyW');
-  const w1 = await pos();
-  ok(Math.hypot(w1[0] - w0[0], w1[1] - w0[1]) > 1, `3D: يمشي بكل الاتجاهات (${Math.hypot(w1[0] - w0[0], w1[1] - w0[1]).toFixed(1)} م)`);
-  const h0 = await G3(() => window.__natta.R3.heading());
-  await p3.mouse.move(300, 520); await p3.mouse.down(); await p3.mouse.move(370, 520, { steps: 4 }); await p3.mouse.up();
-  await p3.waitForTimeout(600);
-  const h1 = await G3(() => window.__natta.R3.heading());
-  ok(Math.abs(h1 - h0) > 15, `3D: السحب يمين يلف الكاميرا (${h0.toFixed(0)}° ← ${h1.toFixed(0)}°)`);
-  // الخريطة: تنفتح من الخريطة الصغيرة، تنكشف بس اللي مشيت بيه، وتحط علامة
-  await p3.mouse.click(330, 150); await p3.waitForTimeout(500);
-  ok(await G3(() => !document.getElementById('mapv').hidden), '3D: الخريطة تنفتح من الخريطة الصغيرة');
-  const box = await p3.locator('#mapC').boundingBox();
-  await p3.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.35); await p3.waitForTimeout(300);
-  await p3.tap('#mapv .pin[data-t="flag"]', { force: true });
-  await p3.mouse.click(box.x + box.width * 0.62, box.y + box.height * 0.6); await p3.waitForTimeout(300);
-  const pins = await G3(() => window.__natta.V.pins.map((p) => p.type));
-  ok(pins.includes('camp') && pins.includes('flag'), `3D: تحط علامات عالخريطة (${pins.join('، ')})`);
-  await shot3('3d-03-map');
-  await p3.tap('#mapX', { force: true }); await p3.waitForTimeout(300);
-  ok(await G3(() => document.getElementById('mapv').hidden), '3D: الخريطة تنسد');
-  // نلگه التاجر: يصيحك من بعيد، ويحچي وياك إذا وصلته
-  await G3(() => { const S = window.__natta.R3.S; S.p.x = S.merW.x + 14; S.p.z = S.merW.z; });
-  ok(await until3(() => window.__natta.R3.S.called, 4000), '3D: أبو جاسم يصيحك لما تقرب');
-  await G3(() => { const S = window.__natta.R3.S; S.p.x = S.merW.x + 2.6; S.p.z = S.merW.z + 1.2; });
-  ok(await until3(() => window.__natta.R3.S.met && !document.getElementById('dlg').hidden, 4000), '3D: وصلت التاجر وحچى وياك');
-  await p3.waitForTimeout(2000); await shot3('3d-04-merchant');
-  ok(await G3(() => (document.querySelector('#dlgWho img') || {}).src?.startsWith('data:image')), '3D: صورة أبو جاسم بمربع الكلام مرسومة من الموديل');
-  // الغزال: نلزمه، ويمشي ورانا للخيمة
-  await G3(() => { const S = window.__natta.R3.S, g = S.gz; S.p.x = g.x - 0.9; S.p.z = g.z; g.state = 'tired'; g.stamina = 0; g.t = 0; });
-  ok(await until3(() => window.__natta.R3.S.caught, 5000), '3D: لزم الغزال');
-  await p3.waitForTimeout(1500); await shot3('3d-05-caught');
-  await G3(() => { const S = window.__natta.R3.S; S.p.x = S.zoneW.x + 0.3; S.p.z = S.zoneW.z + 0.2; S.gz.x = S.p.x - 1.4; S.gz.z = S.p.z; });
-  ok(await until3(() => window.__natta.R3.S.delivered, 6000), '3D: سلّمه لأبو جاسم بالدائرة يم الخيمة');
-  await p3.waitForTimeout(1800); await shot3('3d-06-deliver');
-  await G3(() => { window.__timeScale = 3; });
-  ok(await until3(() => window.__natta.state === 'ending', 40000), '3D: شاشة نهاية المغامرة');
-  await G3(() => { window.__timeScale = 1; });
-  const first = await G3(() => window.__natta.V.info);
-  await p3.tap('#eHome', { force: true }); await p3.waitForTimeout(400);
-  ok(await G3(() => document.getElementById('g3d').hidden && window.__natta.state === 'home'), '3D: الرجوع للرئيسية يخفي المشهد');
-  // مغامرة ثانية: التاجر والغزال بمكان ثاني
-  await G3(() => { window.__seed = 99; const N = window.__natta; N.startRun(); N.startValley(); });
-  const second = await G3(() => window.__natta.V.info);
-  ok(second && (second.camp !== first.camp || Math.hypot(second.gazelle[0] - first.gazelle[0], second.gazelle[1] - first.gazelle[1]) > 10), `3D: كل مغامرة التاجر والغزال بمكان جديد (خيمة ${first.camp + 1} ← ${second.camp + 1})`);
-  await G3(() => window.__natta.goHome());
-  // 🚀 الانتقال السريع (بكود سري): كبل للقمة وللوادي، وما يكسر الأرقام
-  const rec0 = await G3(() => [window.__natta.save.best, window.__natta.save.summits || 0, window.__natta.save.mtSummits || 0, window.__natta.save.mtBest || 0]);
-  await G3(() => { window.__natta.unlockWarp(); window.__natta.openCode(); });
-  ok(await G3(() => !document.getElementById('codeWarp').hidden), 'الانتقال السريع: يطلع بشاشة الكود السري بعد ما ينفتح');
-  await p3.tap('#warpValley', { force: true });
-  ok(await until3(() => window.__natta.state === 'valley' && window.__natta.V && window.__natta.V.r3d, 15000), 'الانتقال السريع: كبل للوادي (3D)');
-  await p3.waitForTimeout(800); await shot3('3d-07-warp-valley');
-  await G3(() => window.__natta.goHome());
-  await G3(() => window.__natta.openCode()); await p3.tap('#warpSummit', { force: true });
-  ok(await until3(() => window.__natta.state === 'mountain' && window.__natta.M3 && window.__natta.M3.S.summit, 12000), 'الانتقال السريع: كبل لقمة الجبل');
-  await p3.waitForTimeout(800); await shot3('3d-08-warp-summit');
-  const rec1 = await G3(() => [window.__natta.save.best, window.__natta.save.summits || 0, window.__natta.save.mtSummits || 0, window.__natta.save.mtBest || 0]);
-  ok(rec1.every((v, i) => v === rec0[i]), `الانتقال السريع: ما يكسر أفضل نتيجة ولا يحسب قمة (${rec1})`);
-  await G3(() => window.__natta.goHome());
-  ok(errs3.length === 0, '3D: ماكو أخطاء' + (errs3.length ? ': ' + errs3.slice(0, 3).join(' | ') : ''));
-  await ctx3.close();
-}
 await browser.close(); server.close();
 console.log(fails ? `\n✗ ${fails} فشل` : '\n✓ كلشي تمام');
 process.exit(fails ? 1 : 0);

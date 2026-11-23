@@ -10,9 +10,9 @@
 <meta name="apple-mobile-web-app-title" content="نطّة">
 <meta name="application-name" content="نطّة">
 <meta name="format-detection" content="telephone=no">
-<meta name="description" content="نطّة — لعبة قفز بسيطة: اصعد لأعلى ما تكدر، اجمع العملات وافتح شخصيات جديدة.">
+<meta name="description" content="نطّة — مغامرة 3D بعالم مفتوح: اطلع الجبل وسط الغابة، الريح تطيّرك للوادي، والزم الغزال. ووياها وضع القفز الكلاسيكي.">
 <meta property="og:title" content="نطّة 🚀 — تكدر تغلبني؟">
-<meta property="og:description" content="لعبة قفز بسيطة تنلعب من المتصفح. اصعد لأعلى ما تكدر!">
+<meta property="og:description" content="مغامرة 3D بعالم مفتوح تنلعب من المتصفح: جبل، قمة، ووادي غزلان بخريطة وحدة.">
 <meta property="og:image" content="icon-512.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -203,7 +203,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   <!-- الرئيسية -->
   <section id="home" class="screen">
     <h1 class="logo out">نطّة</h1>
-    <div class="tag out" id="tag" style="--o:#24305e">اصعد لأعلى ما تكدر! ☁️</div>
+    <div class="tag out" id="tag" style="--o:#24305e">عالم مفتوح… اطلع للقمة! ⛰️</div>
     <div class="stats"><span class="chip">🏆 <b id="hBest">0</b></span><span class="chip">🪙 <b id="hCoins">0</b></span><span class="chip hero-chip" id="hHero" hidden>🦸 بطل</span><span class="chip" id="hSum">🏔️</span><button class="chip" id="hMis" style="border:0;font:inherit;font-weight:800">📋 المهام</button></div>
     <button class="btn primary big" id="play">العب ▶</button>
     <button class="btn" id="playJump">🦘 وضع القفز</button>
@@ -244,6 +244,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     <div class="card stack">
       <div class="over-title">متوقفة ⏸</div>
       <button class="btn primary" id="resume">كمّل ▶</button>
+      <button class="btn" id="rest" hidden>🚩 رجوع لآخر استراحة</button>
       <button class="btn" id="quit">إنهاء الجولة 🏁</button>
     </div>
   </section>
@@ -294,6 +295,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       </div>
       <div class="stack">
         <button class="btn primary" id="eWear" style="font-size:20px">البس المغامر 🤠</button>
+        <button class="btn primary" id="eCont" hidden>🌍 كمّل تمشّى بالعالم</button>
         <button class="btn" id="eAgain">جولة جديدة ↻</button>
         <div class="row"><button class="btn" id="eHome">الرئيسية</button><button class="btn" id="eShare">شارك 📤</button></div>
       </div>
