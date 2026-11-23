@@ -276,6 +276,7 @@
     step(S, k = 0) { S.D.rev = 0.05; S.noise({ type: 'bandpass', f: 700 + k * 300, q: 0.8, dur: 0.07, vol: 0.22 + k * 0.1, attack: 0.004 }); S.voice({ f: 130, f1: 70, dur: 0.05, vol: 0.08 + k * 0.04, attack: 0.003 }); },
     snort(S) { S.D.rev = 0.2; S.noise({ type: 'bandpass', f: 1500, f1: 600, q: 1.2, dur: 0.2, vol: 0.55, attack: 0.012 }); S.noise({ type: 'bandpass', f: 900, f1: 500, q: 1.2, t: 0.22, dur: 0.14, vol: 0.35, attack: 0.01 }); },
     catchIt(S) { S.D.rev = 0.3; S.noise({ type: 'bandpass', f: 1500, f1: 4000, q: 2, dur: 0.3, vol: 0.12 }); [72, 76, 79, 84].forEach((m, i) => S.voice({ type: 'triangle', f: mf(m), t: 0.25 + i * 0.07, dur: 0.3, vol: 0.1 })); },
+    splash(S) { S.D.rev = 0.1; S.noise({ type: 'bandpass', f: 1900, f1: 650, q: 1.1, dur: 0.17, vol: 0.2, attack: 0.004 }); S.noise({ type: 'highpass', f: 3200, t: 0.03, dur: 0.08, vol: 0.06, attack: 0.003 }); },
     talk(S) { S.D.rev = 0.1; for (let i = 0; i < 3; i++) S.voice({ type: 'square', f: 170 + Math.random() * 110, t: i * 0.06, dur: 0.05, vol: 0.03, attack: 0.004, filter: ['lowpass', 1500] }); },
     reward(S) {
       S.D.rev = 0.35;
@@ -368,7 +369,7 @@
       revive() { if (ok()) FXS.revive(plain()); }, mission() { if (ok()) FXS.mission(plain()); }, count(n) { if (ok()) FXS.count(plain(), n); },
       flag() { if (ok()) FXS.flag(plain()); }, wind(d) { if (ok()) FXS.wind(plain(), d); }, gust() { if (ok()) FXS.gust(plain()); },
       chute() { if (ok()) FXS.chute(plain()); }, thud() { if (ok()) FXS.thud(plain()); }, step(k) { if (ok()) FXS.step(plain(), k); },
-      snort() { if (ok()) FXS.snort(plain()); }, catchIt() { if (ok()) FXS.catchIt(plain()); }, talk() { if (ok()) FXS.talk(plain()); }, reward() { if (ok()) FXS.reward(plain()); },
+      snort() { if (ok()) FXS.snort(plain()); }, catchIt() { if (ok()) FXS.catchIt(plain()); }, talk() { if (ok()) FXS.talk(plain()); }, splash() { if (ok()) FXS.splash(plain()); }, reward() { if (ok()) FXS.reward(plain()); },
       whoosh() { if (ok()) FXS.whoosh(plain()); },
       click() { if (!ok()) return; plain().voice({ f: 620, f1: 820, dur: 0.06, vol: 0.12, rev: 0 }); },
       buy() { if (!ok()) return; const s = plain(); [880, 1175, 1568].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.07, dur: 0.1, vol: 0.07, filter: ['lowpass', 5000] })); },
@@ -1798,14 +1799,15 @@
   function sideOf(e) { const r = cvs.getBoundingClientRect(); return e.clientX - r.left < r.width / 2 ? -1 : 1; }
   cvs.addEventListener('pointerdown', (e) => {
     Sfx.init();
+    if (state === 'valley' && V && V.r3d) { e.preventDefault(); valleyPointer('down', e); return; }
     if (state !== 'play' && state !== 'valley') return;
     e.preventDefault();
     ptr.delete(e.pointerId); ptr.set(e.pointerId, sideOf(e));
     try { cvs.setPointerCapture(e.pointerId); } catch (err) { /* */ }
     tutSeen();
   });
-  cvs.addEventListener('pointermove', (e) => { if (ptr.has(e.pointerId)) ptr.set(e.pointerId, sideOf(e)); });
-  const lift = (e) => ptr.delete(e.pointerId);
+  cvs.addEventListener('pointermove', (e) => { if (state === 'valley' && V && V.r3d) { valleyPointer('move', e); return; } if (ptr.has(e.pointerId)) ptr.set(e.pointerId, sideOf(e)); });
+  const lift = (e) => { valleyPointer('up', e); ptr.delete(e.pointerId); };
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => cvs.addEventListener(ev, lift));
   cvs.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -1820,6 +1822,12 @@
     if ((e.code === 'ArrowUp' || e.code === 'KeyW') && state === 'play') { useTurbo(); return; }
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keyL = true; tutSeen(); }
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') { keyR = true; tutSeen(); }
+    else if (e.code === 'ArrowUp' || e.code === 'KeyW') keyU = true;
+    else if (e.code === 'ArrowDown' || e.code === 'KeyS') keyD = true;
+    else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keySh = true;
+    else if (e.code === 'KeyQ') keyQ = true;
+    else if (e.code === 'KeyE') keyE = true;
+    else if (e.code === 'KeyM' && state === 'valley' && V && V.r3d) { if (V.mapOpen) closeMap(); else openMap(); }
     else if (e.code === 'Escape' || e.code === 'KeyP') { if (state === 'play' || state === 'valley') pause(); else if (state === 'pause') resume(); }
     else if (e.code === 'Space' || e.code === 'Enter') {
       if (state === 'home' || (state === 'over' && !$('over').hidden)) { e.preventDefault(); startRun(); }
@@ -1830,6 +1838,11 @@
   window.addEventListener('keyup', (e) => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keyL = false;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keyR = false;
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') keyU = false;
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') keyD = false;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keySh = false;
+    if (e.code === 'KeyQ') keyQ = false;
+    if (e.code === 'KeyE') keyE = false;
   });
 
   function onOrient(e) {
@@ -1911,6 +1924,8 @@
     Sfx.click(); Music.reset(); Music.setMode('play');
   }
   function pause() {
+    if (V && V.mapOpen) closeMap();
+    J.id = null; CAMD.id = null;
     if (state !== 'play' && state !== 'countdown' && state !== 'valley') return;
     if (state !== 'countdown') resumeTo = state === 'valley' ? 'valley' : 'play';
     clearTimeout(countTimer); $('count').hidden = true; $('vbar').hidden = true; $('dlg').hidden = true;
@@ -2566,14 +2581,27 @@
   function leaveValley() {
     if (!V) return;
     if (!V.delivered && V.coinsGot) { save.coins += V.coinsGot; persist(); }
-    V = null; vparts.length = 0;
-    $('vbar').hidden = true; $('dlg').hidden = true; $('g3d').hidden = true; $('vign').hidden = true;
+    if (V.mapOpen) closeMap();
+    V = null; vparts.length = 0; J.id = null; CAMD.id = null; uparts.length = 0;
+    $('vbar').hidden = true; $('dlg').hidden = true; $('g3d').hidden = true; $('vign').hidden = true; $('app').classList.remove('v3d');
   }
   function vburst(x, y, n, o) {
     for (let i = 0; i < n; i++) {
       const life = o.life * rnd(0.6, 1.2);
       vparts.push({ x: x + rnd(-(o.spread || 0), o.spread || 0), y, vx: rnd(-1, 1) * o.sp, vy: rnd(o.vy0, o.vy1), g: o.g, life, max: life, r: o.r * rnd(0.7, 1.3), c: pick(o.colors), kind: o.kind || 'dot', rot: rnd(0, 6) });
     }
+  }
+  /** كلام التاجر يطلع حرف حرف ويه صوت */
+  function updateDialog(dt) {
+    const v = V;
+    if (!v.dlg) return;
+    const d = v.dlg, chars = [...d.text];
+    d.shown = Math.min(chars.length, d.shown + dt * 38);
+    const n = Math.floor(d.shown);
+    $('dlgText').textContent = chars.slice(0, n).join('');
+    if (n - d.blip >= 4 && n < chars.length) { d.blip = n; Sfx.talk(); }
+    d.t -= dt;
+    if (d.t <= 0) { v.dlg = null; $('dlg').classList.remove('show'); setTimeout(() => { if (V && !V.dlg) $('dlg').hidden = true; }, 300); }
   }
   function say(text, sec = 5) {
     if (!V) return;
@@ -2582,6 +2610,7 @@
     $('dlg').classList.remove('show'); void $('dlg').offsetWidth; $('dlg').classList.add('show');
   }
   function updateValley(dt) {
+    if (V.r3d) { updateValley3D(dt); return; }
     const v = V, p = v.p;
     v.t += dt;
     v.fade = Math.max(0, v.fade - dt * 1.4);
@@ -2641,16 +2670,7 @@
     v.cam.x += (clamp(camTx, C.W / 2, VW - C.W / 2) - v.cam.x) * Math.min(1, dt * 4);
     const ty = Math.max(-viewH * (1 - V_GROUND), p.y - viewH * 0.5);
     v.cam.y = v.phase === 'fall' ? ty : v.cam.y + (ty - v.cam.y) * Math.min(1, dt * 4);
-    // كلام التاجر (يطلع حرف حرف)
-    if (v.dlg) {
-      const d = v.dlg, chars = [...d.text];
-      d.shown = Math.min(chars.length, d.shown + dt * 38);
-      const n = Math.floor(d.shown);
-      $('dlgText').textContent = chars.slice(0, n).join('');
-      if (n - d.blip >= 4 && n < chars.length) { d.blip = n; Sfx.talk(); }
-      d.t -= dt;
-      if (d.t <= 0) { v.dlg = null; $('dlg').classList.remove('show'); setTimeout(() => { if (V && !V.dlg) $('dlg').hidden = true; }, 300); }
-    }
+    updateDialog(dt);
     for (let i = vparts.length - 1; i >= 0; i--) {
       const q = vparts[i];
       q.life -= dt;
@@ -3148,26 +3168,293 @@
     if (r3State !== 'ready' || window.__no3d) return false;
     try {
       if (!R3) {
-        R3 = self.NattaValley3D.create($('g3d'), { VW, MER_X, ZONE_X, sign: 'خيمة أبو جاسم' });
+        R3 = self.NattaValley3D.create($('g3d'), { sign: 'خيمة أبو جاسم' });
         $('g3d').addEventListener('webglcontextlost', (e) => { e.preventDefault(); r3State = 'failed'; if (V) V.r3d = false; $('g3d').hidden = true; $('vign').hidden = true; });
       }
-      $('g3d').hidden = false; $('vign').hidden = false;
+      $('g3d').hidden = false; $('vign').hidden = false; $('app').classList.add('v3d');
       R3.setSize(cssW, cssH, window.__r3dPR || Math.min(window.devicePixelRatio || 1, 2));
-      R3.enter(skinById(save.skin));
-      if (!$('dlgWho').dataset.p) { try { $('dlgWho').innerHTML = `<img alt="" src="${R3.portrait()}">`; $('dlgWho').dataset.p = '1'; } catch (e) { /* يبقى الإيموجي */ } }
+      const seed = window.__seed != null ? window.__seed : (Math.random() * 4294967295) >>> 0;
+      V.info = R3.enter(skinById(save.skin), seed);
+      const S3 = R3.S;
+      V.p = S3.p; V.gz = S3.gz; V.coins = S3.coins; V.phase = S3.phase; V.pins = []; V.obj = '';
+      V.map = R3.mapShot();
+      V.fog = document.createElement('canvas'); V.fog.width = V.map.canvas.width; V.fog.height = V.map.canvas.height;
+      const fg = V.fog.getContext('2d'); fg.fillStyle = 'rgba(14,20,38,0.9)'; fg.fillRect(0, 0, V.fog.width, V.fog.height);
+      try { $('dlgWho').innerHTML = `<img alt="" src="${R3.portrait()}">`; } catch (e) { /* يبقى الإيموجي */ }
       return true;
-    } catch (e) { console.warn('3D', e); r3State = 'failed'; $('g3d').hidden = true; return false; }
+    } catch (e) { console.warn('3D', e); r3State = 'failed'; $('g3d').hidden = true; $('vign').hidden = true; return false; }
+  }
+
+  // ---------------------------------------------------------------- 🕹️ التحكم بالوادي المفتوح (مثل ببجي موبايل)
+  // إبهام يسار = جويستك (دفعة خفيفة مشي هادئ، دفعة كاملة ركض)، إصبع يمين = تلف الكاميرا. كيبورد: WASD/الأسهم، Shift هادئ، Q/E كاميرا، M خريطة
+  const JOY_R = 52;
+  const J = { id: null, cx: 0, cy: 0, x: 0, y: 0 }, CAMD = { id: null, x: 0, y: 0, dx: 0, dy: 0 };
+  let keyU = false, keyD = false, keySh = false, keyQ = false, keyE = false;
+  const MINI = { x: () => C.W - 60, y: () => 150, r: 46 };
+  const toLogical = (e) => { const r = cvs.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; };
+  function valleyPointer(type, e) {
+    if (!V || !V.r3d) return;
+    const q = toLogical(e);
+    if (type === 'down') {
+      if (V.mapOpen) return;
+      if (V.phase === 'walk' && Math.hypot(q.x - MINI.x(), q.y - MINI.y()) < MINI.r + 8) { openMap(); return; }
+      if (q.x < C.W * 0.5 && J.id === null) { Object.assign(J, { id: e.pointerId, cx: q.x, cy: q.y, x: q.x, y: q.y }); V.usedJ = true; }
+      else if (CAMD.id === null) { Object.assign(CAMD, { id: e.pointerId, x: q.x, y: q.y }); V.usedCam = true; }
+      try { cvs.setPointerCapture(e.pointerId); } catch (err) { /* */ }
+    } else if (type === 'move') {
+      if (e.pointerId === J.id) { J.x = q.x; J.y = q.y; }
+      else if (e.pointerId === CAMD.id) { CAMD.dx += q.x - CAMD.x; CAMD.dy += q.y - CAMD.y; CAMD.x = q.x; CAMD.y = q.y; }
+    } else {
+      if (e.pointerId === J.id) J.id = null;
+      if (e.pointerId === CAMD.id) CAMD.id = null;
+    }
+  }
+  function valleyInput(dt) {
+    let jx = 0, jy = 0, mag = 0;
+    if (J.id !== null) {
+      let dx = J.x - J.cx, dy = J.y - J.cy, l = Math.hypot(dx, dy);
+      if (l > JOY_R) { J.cx += (dx / l) * (l - JOY_R); J.cy += (dy / l) * (l - JOY_R); dx = J.x - J.cx; dy = J.y - J.cy; l = JOY_R; } // القاعدة تلحك الإصبع
+      if (l > 4) { const k = Math.min(1, l / JOY_R); jx = (dx / l) * k; jy = (-dy / l) * k; mag = k; }
+    } else if (keyL || keyR || keyU || keyD) {
+      jx = (keyR ? 1 : 0) - (keyL ? 1 : 0); jy = (keyU ? 1 : 0) - (keyD ? 1 : 0);
+      const l = Math.hypot(jx, jy) || 1; jx /= l; jy /= l; mag = keySh ? 0.5 : 1;
+    }
+    const dyaw = CAMD.dx * 0.0085 + ((keyE ? 1 : 0) - (keyQ ? 1 : 0)) * 1.9 * dt, dpitch = CAMD.dy * 0.006;
+    CAMD.dx = 0; CAMD.dy = 0;
+    return { jx, jy, mag, sneak: keySh, dyaw, dpitch };
+  }
+
+  // ---------------------------------------------------------------- منطق الوادي المفتوح (الأحداث تجي من محاكاة الـ 3D)
+  const uparts = []; // ذرات على الشاشة (عملات، قلوب، نجوم)
+  function sparkleAt(x, y, z, colors, kind = 'star', n = 8, spd = 1) {
+    const q = R3.project(x, y, z); if (!q.vis) return;
+    const sx = q.x * C.W, sy = q.y * viewH;
+    for (let i = 0; i < n; i++) { const life = rnd(0.55, 1.2); uparts.push({ x: sx, y: sy, vx: rnd(-90, 90) * spd, vy: rnd(-200, -40) * spd, g: 300, life, max: life, r: rnd(2.6, 4.6), c: pick(colors), kind, rot: rnd(0, 6) }); }
+  }
+  function onValleyEvent(type, data) {
+    const S3 = R3.S;
+    switch (type) {
+      case 'chute': Sfx.chute(); banner('🪂', 'انفتحت المظلة!', 'وجّه بالإبهام اليسار 🕹️ واجمع العملات', '', 2600); break;
+      case 'coin': Sfx.coin(); sparkleAt(data.x, data.y, data.z, ['#FFD23F', '#FFF6C4'], 'star', 7); break;
+      case 'land':
+        Sfx.thud(); shake = 0.15; V.landedT = V.t;
+        banner('🏞️', 'وادي الغزلان', 'دوّر على الغزال 🦌 وعلى خيمة التاجر 🏕️', 'gold', 3200);
+        setTimeout(() => { if (V && V.r3d && state === 'valley' && !V.caught) toast('🕹️ امشي بإبهامك اليسار، ودفعة خفيفة = مشي هادئ', 3600); }, 3400);
+        setTimeout(() => { if (V && V.r3d && state === 'valley' && !V.caught) toast('👆 لف الكاميرا بإصبعك اليمين، والخريطة 🗺️ فوك', 3400); }, 7300);
+        break;
+      case 'step': Sfx.step(data ? 1 : 0); break;
+      case 'splash': Sfx.splash(); break;
+      case 'snort': Sfx.snort(); break;
+      case 'tired': toast('الغزال تعب! 😮‍💨 هسه فرصتك', 2400); break;
+      case 'call': say('يا بطل! 👋 آني أبو جاسم التاجر… تعال لخيمتي، عندي إلك شغلة وجائزة 🎁', 6); break;
+      case 'meet':
+        if (!S3.caught) say('هلا بيك يا بطل! 🤝 بالوادي اكو غزال 🦌، إذا تلزمه جيبه لهنا لخيمتي وأنطيك جائزة كبيرة 🎁. أشّر مكاني بالخريطة 🗺️ حتى ما تضيع', 8);
+        else say('عفية عليك! 👏 جيبه لهنا، للدائرة الصفرة اللي يم الخيمة', 5);
+        if (!V.pins.some((p) => p.type === 'camp')) setTimeout(() => { if (V && V.r3d && state === 'valley' && !V.pins.some((p) => p.type === 'camp')) toast('🗺️ افتح الخريطة وأشّر مكان التاجر 🏕️', 3000); }, 4200);
+        break;
+      case 'catch': {
+        Sfx.catchIt(); shake = 0.12;
+        banner('🦌', 'لزمته!', S3.met ? 'رجّعه لخيمة أبو جاسم 🏕️' : 'هسه دوّر على أبو جاسم التاجر 🔎', 'gold', 3000);
+        const g = S3.gz; sparkleAt(g.x, R3.ground(g.x, g.z) + 1.2, g.z, ['#FF5D8F', '#FFD23F', '#FFFFFF'], 'heart', 14);
+        if (S3.met) setTimeout(() => { if (V && !V.delivered) say('عفية عليك! 👏 هسه جيبه لخيمتي', 4); }, 1600);
+        break;
+      }
+      case 'deliver': deliver3D(); break;
+    }
+  }
+  function deliver3D() {
+    V.delivered = true; V.endT = 0;
+    save.coins += 500 + V.coinsGot; V.paid = true;
+    if (!save.owned.includes('explorer')) save.owned.push('explorer');
+    save.adventures = (save.adventures || 0) + 1;
+    persist();
+    Sfx.reward(); Music.celebrate();
+    say('تسلم إيدك يا بطل! 🙌 هاي جائزتك: 500 عملة 💰 وقبعة المغامر 🤠', 5);
+    banner('🎁', 'الجائزة!', '+500 🪙  وشخصية «المغامر» 🤠', 'gold', 3600);
+    const m = R3.S.merW; sparkleAt(m.x, R3.ground(m.x, m.z) + 1.7, m.z, ['#FFD23F', '#FFB703'], 'coin', 34, 1.5);
+  }
+  function revealFog() {
+    const m = V.map, p = R3.S.p;
+    if (!m || (V.lastReveal && Math.hypot(p.x - V.lastReveal[0], p.z - V.lastReveal[1]) < 1.5)) return;
+    V.lastReveal = [p.x, p.z];
+    const g = V.fog.getContext('2d'), W = V.fog.width, Hh = V.fog.height, ppm = W / (m.z1 - m.z0);
+    const u = ((p.z - m.z0) / (m.z1 - m.z0)) * W, vv = ((m.x1 - p.x) / (m.x1 - m.x0)) * Hh, rad = (V.phase === 'walk' ? 15 : 21) * ppm;
+    g.save(); g.globalCompositeOperation = 'destination-out';
+    const gr = g.createRadialGradient(u, vv, rad * 0.5, u, vv, rad); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(u, vv, rad, 0, TAU); g.fill(); g.restore();
+    V.revealed = (V.revealed || 0) + 1;
+  }
+  function updateValley3D(dt) {
+    const v = V;
+    v.t += dt; v.fade = Math.max(0, v.fade - dt * 1.4);
+    if (!v.mapOpen) {
+      const ev = R3.step(dt, state === 'valley' ? valleyInput(dt) : { jx: 0, jy: 0, mag: 0 });
+      const S3 = R3.S;
+      v.phase = S3.phase; v.caught = S3.caught; v.coinsGot = S3.coinsGot;
+      for (const e of ev) { if (Array.isArray(e)) onValleyEvent(e[0], e[1]); else onValleyEvent(e, null); }
+    }
+    const S3 = R3.S, obj = S3.phase !== 'walk' ? '🪂 انزل بالمظلة' : S3.delivered ? '🎉 خلصت المغامرة' : !S3.caught ? '🔎 دوّر على الغزال' : S3.met ? '🏕️ رجّعه لأبو جاسم' : '🔎 دوّر على التاجر';
+    if (v.obj !== obj) { v.obj = obj; $('vobj').textContent = obj; }
+    revealFog();
+    updateDialog(dt);
+    if (v.delivered) { v.endT += dt; if (v.endT > 4.8 && state === 'valley') showEnding(); }
+    for (let i = uparts.length - 1; i >= 0; i--) {
+      const q = uparts[i]; q.life -= dt;
+      if (q.life <= 0) { uparts[i] = uparts[uparts.length - 1]; uparts.pop(); continue; }
+      q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.rot += dt * 5;
+    }
+    shake = Math.max(0, shake - dt);
+  }
+
+  // ---------------------------------------------------------------- 🗺️ الخريطة: تنكشف بس اللي مشيت بيه، وإنت تحط العلامات
+  const PIN_ICON = { camp: '🏕️', gazelle: '🦌', flag: '📍' };
+  let pinTool = 'camp';
+  const mapUV = (m, x, z) => [(z - m.z0) / (m.z1 - m.z0), (m.x1 - x) / (m.x1 - m.x0)];
+  function openMap() {
+    if (!V || !V.r3d || !V.map) return;
+    V.mapOpen = true; J.id = null; CAMD.id = null;
+    $('mapv').hidden = false; Sfx.click();
+    drawFullMap();
+  }
+  function closeMap() { if (!V) return; V.mapOpen = false; $('mapv').hidden = true; }
+  function mapFit() {
+    const cv = $('mapC'), m = V.map, r = cv.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+    if (cv.width !== Math.round(r.width * d) || cv.height !== Math.round(r.height * d)) { cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); }
+    const k = Math.min(cv.width / m.canvas.width, cv.height / m.canvas.height);
+    return { cv, d, k, ox: (cv.width - m.canvas.width * k) / 2, oy: (cv.height - m.canvas.height * k) / 2 };
+  }
+  function drawFullMap() {
+    if (!V || !V.mapOpen) return;
+    const m = V.map, f = mapFit(), g = f.cv.getContext('2d'), p = R3.S.p, W = m.canvas.width * f.k, Hh = m.canvas.height * f.k;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, f.cv.width, f.cv.height);
+    g.save(); rr(g, f.ox, f.oy, W, Hh, 18 * f.d); g.clip();
+    g.drawImage(m.canvas, f.ox, f.oy, W, Hh); g.drawImage(V.fog, f.ox, f.oy, W, Hh);
+    g.restore();
+    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 2 * f.d; rr(g, f.ox, f.oy, W, Hh, 18 * f.d); g.stroke();
+    const at = (x, z) => { const [u, v] = mapUV(m, x, z); return [f.ox + u * W, f.oy + v * Hh]; };
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const pin of V.pins) { const [x, y] = at(pin.x, pin.z); g.font = `${24 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText(PIN_ICON[pin.type], x, y - 10 * f.d); g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y + 3 * f.d, 6 * f.d, 2.5 * f.d, 0, 0, TAU); g.fill(); }
+    const [px, py] = at(p.x, p.z);
+    drawArrow(g, px, py, p.face, 11 * f.d, '#FFD23F');
+    g.font = `900 ${13 * f.d}px -apple-system,system-ui,sans-serif`; g.fillStyle = '#FFFFFF';
+    g.fillText('⬆ ش  (باتجاه القمة)', f.cv.width / 2, f.oy + 16 * f.d);
+  }
+  /** سهم البطل على الخريطة: الشمال (+x) لفوك، الشرق (+z) لليمين */
+  function drawArrow(g, x, y, face, s, col) {
+    const a = Math.atan2(-Math.cos(face), Math.sin(face));
+    g.save(); g.translate(x, y); g.rotate(a);
+    g.beginPath(); g.moveTo(s, 0); g.lineTo(-s * 0.7, s * 0.65); g.lineTo(-s * 0.35, 0); g.lineTo(-s * 0.7, -s * 0.65); g.closePath();
+    g.fillStyle = col; g.fill(); g.lineWidth = s * 0.22; g.strokeStyle = '#24305e'; g.stroke();
+    g.restore();
+  }
+  function mapTap(e) {
+    if (!V || !V.mapOpen) return;
+    const f = mapFit(), r = f.cv.getBoundingClientRect(), m = V.map;
+    const cx = (e.clientX - r.left) * f.d, cy = (e.clientY - r.top) * f.d;
+    const u = (cx - f.ox) / (m.canvas.width * f.k), v = (cy - f.oy) / (m.canvas.height * f.k);
+    if (u < 0 || u > 1 || v < 0 || v > 1) return;
+    const z = m.z0 + u * (m.z1 - m.z0), x = m.x1 - v * (m.x1 - m.x0);
+    const near = V.pins.findIndex((pin) => { const [pu, pv] = mapUV(m, pin.x, pin.z); return Math.hypot((pu - u) * m.canvas.width * f.k, (pv - v) * m.canvas.height * f.k) < 28 * f.d; });
+    if (near >= 0 && (pinTool === 'del' || V.pins[near].type === pinTool)) { V.pins.splice(near, 1); Sfx.click(); }
+    else if (pinTool !== 'del') {
+      if (pinTool === 'camp') V.pins = V.pins.filter((pin) => pin.type !== 'camp'); // علامة تاجر وحدة
+      V.pins.push({ type: pinTool, x, z }); Sfx.coin();
+    }
+    drawFullMap();
+  }
+  $('mapC').addEventListener('pointerdown', (e) => { e.preventDefault(); mapTap(e); });
+  $('mapX').onclick = () => { Sfx.click(); closeMap(); };
+  $('vMap').onclick = () => { if (V && V.r3d && V.phase === 'walk') openMap(); };
+  document.querySelectorAll('#mapv .pin').forEach((b) => { b.onclick = () => { pinTool = b.dataset.t; document.querySelectorAll('#mapv .pin').forEach((o) => o.classList.toggle('on', o === b)); Sfx.click(); }; });
+
+  // ---------------------------------------------------------------- رسم فوك المشهد ثلاثي الأبعاد: جويستك، بوصلة، خريطة صغيرة
+  function drawUParts() {
+    for (const q of uparts) {
+      ctx.globalAlpha = clamp(q.life / q.max, 0, 1);
+      if (q.kind === 'star') star(ctx, q.x, q.y, q.r * 1.5, q.r * 0.6, q.c);
+      else if (q.kind === 'heart') { ctx.fillStyle = q.c; ctx.font = `${q.r * 3.2}px -apple-system,system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('♥', q.x, q.y); }
+      else { ctx.save(); ctx.translate(q.x, q.y); ctx.scale(Math.abs(Math.cos(q.rot)), 1); ctx.fillStyle = '#E09B00'; ctx.beginPath(); ctx.arc(0, 0, q.r * 1.6, 0, TAU); ctx.fill(); ctx.fillStyle = '#FFD23F'; ctx.beginPath(); ctx.arc(0, 0, q.r * 1.2, 0, TAU); ctx.fill(); ctx.restore(); }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function drawJoystick(t) {
+    if (J.id !== null) {
+      const dx = J.x - J.cx, dy = J.y - J.cy, l = Math.hypot(dx, dy), k = l > JOY_R ? JOY_R / l : 1, run = l > JOY_R * 0.62;
+      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.arc(J.cx, J.cy, JOY_R, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(J.cx, J.cy, JOY_R * 0.62, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = run ? 'rgba(255,183,3,.9)' : 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(J.cx + dx * k, J.cy + dy * k, 21, 0, TAU); ctx.fill();
+      ctx.font = '900 11px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#24305e';
+      ctx.fillText(run ? 'ركض' : 'هادئ', J.cx + dx * k, J.cy + dy * k);
+    } else if (!V.usedJ || V.t - (V.landedT || 0) < 12) {
+      const a = 0.35 + 0.15 * Math.sin(t * 3), x = 74, y = viewH - 170;
+      ctx.globalAlpha = a; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, JOY_R, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(x, y, 18, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+      if (!V.usedCam && V.phase === 'walk') { ctx.globalAlpha = a; ctx.font = '30px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.fillText('👆', C.W - 80, viewH - 170 + Math.sin(t * 3) * 6); ctx.font = '900 12px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFFFFF'; ctx.fillText('⟷ لف الكاميرا', C.W - 80, viewH - 128); ctx.globalAlpha = 1; }
+    }
+  }
+  function drawCompass() {
+    const hd = R3.heading(), cx = C.W / 2, y = 82, w = 220, ppd = w / 110, p = R3.S.p;
+    ctx.save();
+    ctx.fillStyle = 'rgba(20,28,56,.42)'; rr(ctx, cx - w / 2 - 8, y - 15, w + 16, 30, 15); ctx.fill();
+    ctx.beginPath(); ctx.rect(cx - w / 2, y - 16, w, 32); ctx.clip();
+    const lab = { 0: 'ش', 90: 'ق', 180: 'ج', 270: 'غ' };
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let a = 0; a < 360; a += 15) {
+      const d = ((a - hd + 540) % 360) - 180; if (Math.abs(d) > 58) continue;
+      const x = cx + d * ppd;
+      if (lab[a]) { ctx.font = '900 13px -apple-system,system-ui,sans-serif'; ctx.fillStyle = a === 0 ? '#FFD23F' : '#FFFFFF'; ctx.fillText(lab[a], x, y + 1); }
+      else { ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y - (a % 45 ? 3 : 6)); ctx.lineTo(x, y + (a % 45 ? 3 : 6)); ctx.stroke(); }
+    }
+    ctx.font = '15px -apple-system,system-ui,sans-serif';
+    for (const pin of V.pins) {
+      const b = ((Math.atan2(pin.z - p.z, pin.x - p.x) * 180) / Math.PI + 360) % 360, d = ((b - hd + 540) % 360) - 180;
+      if (Math.abs(d) > 58) continue;
+      ctx.fillText(PIN_ICON[pin.type], cx + d * ppd, y - 1);
+    }
+    ctx.restore();
+    ctx.fillStyle = '#FFD23F'; ctx.beginPath(); ctx.moveTo(cx, y + 13); ctx.lineTo(cx - 5, y + 20); ctx.lineTo(cx + 5, y + 20); ctx.closePath(); ctx.fill();
+  }
+  function drawMinimap() {
+    const m = V.map; if (!m) return;
+    const cx = MINI.x(), cy = MINI.y(), r = MINI.r, p = R3.S.p, W = m.canvas.width, Hh = m.canvas.height;
+    const ppmMap = W / (m.z1 - m.z0), view = 30, sc = r / view / ppmMap;
+    const [u, v] = mapUV(m, p.x, p.z);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fillStyle = 'rgba(14,20,38,.85)'; ctx.fill(); ctx.clip();
+    ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-u * W, -v * Hh);
+    ctx.drawImage(m.canvas, 0, 0); ctx.drawImage(V.fog, 0, 0);
+    ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.clip();
+    // مخروط نظر الكاميرا
+    const yaw = (R3.heading() * Math.PI) / 180, ca = Math.atan2(-Math.cos(yaw), Math.sin(yaw));
+    const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, r); gr.addColorStop(0, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, ca - 0.45, ca + 0.45); ctx.closePath(); ctx.fill();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '15px -apple-system,system-ui,sans-serif';
+    for (const pin of V.pins) {
+      let dx = (pin.z - p.z) * (r / view), dy = -(pin.x - p.x) * (r / view); const l = Math.hypot(dx, dy);
+      if (l > r - 9) { dx *= (r - 9) / l; dy *= (r - 9) / l; }
+      ctx.fillText(PIN_ICON[pin.type], cx + dx, cy + dy);
+    }
+    ctx.restore();
+    drawArrow(ctx, cx, cy, p.face, 8, '#FFD23F');
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+    ctx.font = '900 11px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#FFD23F'; ctx.fillText('ش', cx, cy - r + 9);
+    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.font = '900 10px -apple-system,system-ui,sans-serif'; ctx.fillText('🗺️ اضغط', cx, cy + r + 10);
   }
   function renderValley3D() {
-    const v = V, t = time;
-    R3.render(v, t, { shake });
+    const v = V, t = time, S3 = R3.S;
+    R3.render(t, { shake, dlg: v.dlg });
     ctx.setTransform(S * dpr, 0, 0, S * dpr, 0, 0);
     ctx.clearRect(-10, -10, C.W + 20, viewH + 20);
-    const proj = (x, y, z) => { const q = R3.project(x, y, z); return { x: q.x * C.W, y: q.y * viewH, vis: q.vis }; };
-    const gm = proj(v.gz.x, v.gz.y + 78, R3.gazelleZ());
-    if (gm.vis) drawGzMarks(gm.x, gm.y + 84, v.gz, t);
-    drawValleyFx((x, y) => proj(x, y));
-    if (v.phase === 'walk' && !v.delivered) { const tg = proj(v.caught ? ZONE_X : v.gz.x, 40); drawTargetArrow(tg.x, clamp(proj(v.p.x, 0).y - 70, 140, viewH - 200)); }
+    const g = S3.gz;
+    if (S3.phase === 'walk' && !S3.caught && Math.hypot(g.x - S3.p.x, g.z - S3.p.z) < 24) { // عدّاد الشك: بس إذا الغزال قدامك وقريب
+      const q = R3.project(g.x, R3.ground(g.x, g.z) + g.y + 1.95, g.z);
+      if (q.vis && q.x > 0.02 && q.x < 0.98 && q.y > 0.05 && q.y < 0.95) drawGzMarks(q.x * C.W, q.y * viewH + 84, { sus: g.sus, state: g.state, face: 1 }, t);
+    }
+    drawUParts();
+    if (state === 'valley' && !v.mapOpen) { if (S3.phase === 'walk') { drawCompass(); drawMinimap(); } drawJoystick(t); }
     if (v.fade > 0) { ctx.fillStyle = `rgba(255,255,255,${v.fade})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
   }
 
@@ -3259,5 +3546,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, want3D, get r3State() { return r3State; }, get R3() { return R3; } };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, want3D, get r3State() { return r3State; }, get R3() { return R3; }, openMap, closeMap, get J() { return J; } };
 })();

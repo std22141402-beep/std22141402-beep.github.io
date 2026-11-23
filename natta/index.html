@@ -119,6 +119,17 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 #dlg .who img{width:100%;height:100%;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px #8B5A2B}
 #dlg .nm{font-weight:900;color:#8B5A2B;font-size:14px}
 #dlgText{font-weight:700;color:#24305e;font-size:16px;line-height:1.45;min-height:46px}
+#app.v3d #toast{top:calc(env(safe-area-inset-top) + 236px)}
+#app.v3d #banner{top:calc(env(safe-area-inset-top) + 214px)}
+#mapv{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;gap:10px;padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 12px);background:rgba(10,14,30,.93)}
+#mapv[hidden]{display:none}
+#mapv .mtop{display:flex;align-items:center;gap:10px}
+#mapv .mhint{flex:1;font-size:14px;text-align:center}
+#mapC{flex:1;width:100%;min-height:0;touch-action:none;display:block}
+#mapv .mtools{display:flex;gap:8px;justify-content:center}
+#mapv .pin{flex:1;max-width:84px;border:0;border-radius:16px;padding:8px 4px;font-size:24px;background:rgba(255,255,255,.12);color:#fff;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:inherit}
+#mapv .pin small{font-size:11px;font-weight:800}
+#mapv .pin.on{background:#FFD23F;color:#24305e;box-shadow:0 3px 0 #c99300}
 #ending .card{background:linear-gradient(180deg,#fffdf4,#fff)}
 .e-path{font-size:30px;letter-spacing:2px;margin:8px 0 4px;direction:ltr}
 .e-title{font-size:28px;font-weight:900;color:#24305e}
@@ -217,7 +228,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   <div id="tut" hidden><div>اضغط هنا ⬅️</div><div>➡️ اضغط هنا</div></div>
   <div id="toast" class="out"></div>
   <button id="skip" hidden>تخطّى ⏩</button>
-  <div id="vbar" hidden><div id="vobj" class="chip">🪂</div><button class="hud-btn" id="vPause" aria-label="إيقاف">II</button></div>
+  <div id="vbar" hidden><div id="vobj" class="chip">🪂</div><button class="hud-btn" id="vMap" aria-label="الخريطة">🗺️</button><button class="hud-btn" id="vPause" aria-label="إيقاف">II</button></div>
   <div id="dlg" hidden><div class="who" id="dlgWho">👳🏻‍♂️</div><div><div class="nm">أبو جاسم التاجر</div><div id="dlgText"></div></div></div>
 
   <!-- إيقاف مؤقت -->
@@ -248,6 +259,18 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         <button class="btn primary" id="again" style="font-size:22px">مرة ثانية ↻</button>
         <div class="row"><button class="btn" id="toHome">الرئيسية</button><button class="btn" id="share">شارك 📤</button></div>
       </div>
+    </div>
+  </section>
+
+  <!-- 🗺️ خريطة الوادي -->
+  <section id="mapv" hidden>
+    <div class="mtop"><button class="hud-btn" id="mapX" aria-label="سد">✕</button><div class="chip mhint">اختار علامة واضغط عالخريطة 📍</div></div>
+    <canvas id="mapC"></canvas>
+    <div class="mtools">
+      <button class="pin on" data-t="camp">🏕️<small>التاجر</small></button>
+      <button class="pin" data-t="gazelle">🦌<small>غزال</small></button>
+      <button class="pin" data-t="flag">📍<small>علامة</small></button>
+      <button class="pin" data-t="del">🗑️<small>امسح</small></button>
     </div>
   </section>
 
