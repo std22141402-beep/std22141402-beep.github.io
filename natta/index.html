@@ -321,6 +321,11 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         <input id="codeIn" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" placeholder="اكتب الكود" dir="auto">
         <button class="btn primary" id="codeGo">تفعيل</button>
       </div>
+      <div id="codeWarp" class="stack" hidden>
+        <div class="lbl" style="font-size:15px;color:#24305e">🚀 انتقال سريع (بس إلك)<br>تروح كبل للقمة، أو تنزل كبل بالوادي</div>
+        <div class="row"><button class="btn primary" id="warpSummit">🏔️ القمة</button><button class="btn primary" id="warpValley">🏞️ الوادي</button></div>
+        <button class="btn" id="warpKill" style="font-size:15px">اقفل الانتقال</button>
+      </div>
       <div id="codeOn" class="stack" hidden>
         <div class="lbl" style="font-size:15px;color:#24305e">🦸 وضع البطل شغّال<br>ما تطيح، الوحوش ما تأذيك، وزر 🚀 يطيّرك وقت ما تريد</div>
         <button class="btn" id="codeKill">اطفي وضع البطل</button>

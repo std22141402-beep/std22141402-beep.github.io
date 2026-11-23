@@ -248,6 +248,20 @@ ok(errors.length === 0, 'ماكو أخطاء بالكونسول' + (errors.lengt
   const second = await G3(() => window.__natta.V.info);
   ok(second && (second.camp !== first.camp || Math.hypot(second.gazelle[0] - first.gazelle[0], second.gazelle[1] - first.gazelle[1]) > 10), `3D: كل مغامرة التاجر والغزال بمكان جديد (خيمة ${first.camp + 1} ← ${second.camp + 1})`);
   await G3(() => window.__natta.goHome());
+  // 🚀 الانتقال السريع (بكود سري): كبل للقمة وللوادي، وما يكسر الأرقام
+  const rec0 = await G3(() => [window.__natta.save.best, window.__natta.save.summits || 0]);
+  await G3(() => { window.__natta.unlockWarp(); window.__natta.openCode(); });
+  ok(await G3(() => !document.getElementById('codeWarp').hidden), 'الانتقال السريع: يطلع بشاشة الكود السري بعد ما ينفتح');
+  await p3.tap('#warpValley', { force: true });
+  ok(await until3(() => window.__natta.state === 'valley' && window.__natta.V && window.__natta.V.r3d, 15000), 'الانتقال السريع: كبل للوادي (3D)');
+  await p3.waitForTimeout(800); await shot3('3d-07-warp-valley');
+  await G3(() => window.__natta.goHome());
+  await G3(() => window.__natta.openCode()); await p3.tap('#warpSummit', { force: true });
+  ok(await until3(() => window.__natta.state === 'summit', 8000), 'الانتقال السريع: كبل للقمة');
+  await p3.waitForTimeout(800); await shot3('3d-08-warp-summit');
+  const rec1 = await G3(() => [window.__natta.save.best, window.__natta.save.summits || 0]);
+  ok(rec1[0] === rec0[0] && rec1[1] === rec0[1], `الانتقال السريع: ما يكسر أفضل نتيجة ولا يحسب قمة (${rec1})`);
+  await G3(() => window.__natta.goHome());
   ok(errs3.length === 0, '3D: ماكو أخطاء' + (errs3.length ? ': ' + errs3.slice(0, 3).join(' | ') : ''));
   await ctx3.close();
 }

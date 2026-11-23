@@ -2135,7 +2135,7 @@
       }
     }
     evs.length = 0;
-    if (live && !record && !world.hero && bestAtStart > 0 && Core.score(world) > bestAtStart) {
+    if (live && !record && !world.hero && !world.warp && bestAtStart > 0 && Core.score(world) > bestAtStart) {
       record = true; Sfx.record(); Music.celebrate(); toast('🏆 رقم قياسي جديد!', 1800); confetti();
     }
   }
@@ -2143,7 +2143,8 @@
   // ---------------------------------------------------------------- الكود السري ووضع البطل
   // الكود محفوظ كـ«بصمة» مو كنص، حتى اللي يقرا الكود ما يعرفه مباشرة
   const CODE_HASHES = [3773636336, 2348092680];
-  const normCode = (s) => String(s).normalize('NFKC').toLowerCase().replace(/[ً-ْٰـ\s]/g, '').replace(/[أإآ]/g, 'ا');
+  const WARP_HASHES = [1100595954]; // كود الانتقال السريع للقمة والوادي (محفوظ بصمته بس)
+  const normCode = (s) => String(s).normalize('NFKC').toLowerCase().replace(/[ً-ْٰـ\s]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
   const hashCode = (s) => { let h = 5381; for (const ch of normCode(s)) h = (Math.imul(h, 33) ^ ch.codePointAt(0)) >>> 0; return h; };
   let logoTaps = 0, logoT = 0;
   document.querySelector('.logo').addEventListener('pointerdown', () => {
@@ -2154,15 +2155,18 @@
   });
   function openCode() {
     Sfx.init(); Sfx.click();
-    $('codeOff').hidden = !!save.hero; $('codeOn').hidden = !save.hero;
+    $('codeOff').hidden = !!(save.hero && save.warp); $('codeOn').hidden = !save.hero; $('codeWarp').hidden = !save.warp;
     $('codeIn').value = ''; show('code');
-    if (!save.hero) setTimeout(() => { try { $('codeIn').focus(); } catch (e) { /* */ } }, 60);
+    if (!(save.hero && save.warp)) setTimeout(() => { try { $('codeIn').focus(); } catch (e) { /* */ } }, 60);
   }
   function tryCode() {
     const el = $('codeIn');
-    if (CODE_HASHES.includes(hashCode(el.value))) {
+    const h = hashCode(el.value);
+    if (CODE_HASHES.includes(h)) {
       save.hero = true; persist(); el.blur(); goHome();
       Sfx.hello(save.skin); toast('🦸 وضع البطل شغّال!', 1800);
+    } else if (WARP_HASHES.includes(h)) {
+      save.warp = true; persist(); el.blur(); Sfx.reward(); openCode(); toast('🚀 الانتقال السريع انفتح!', 1800);
     } else {
       el.classList.remove('bad'); void el.offsetWidth; el.classList.add('bad');
       Sfx.vanish(); toast('كود غلط ❌');
@@ -2171,6 +2175,35 @@
   $('codeGo').onclick = tryCode;
   $('codeX').onclick = () => { Sfx.click(); $('codeIn').blur(); goHome(); };
   $('codeKill').onclick = () => { save.hero = false; persist(); Sfx.click(); goHome(); toast('وضع البطل انطفى'); };
+  $('warpKill').onclick = () => { save.warp = false; persist(); Sfx.click(); openCode(); toast('الانتقال السريع انقفل'); };
+  $('warpSummit').onclick = () => warpTo('summit');
+  $('warpValley').onclick = () => warpTo('valley');
+  /** 🚀 انتقال سريع (بكود سري): كبل للقمة، أو كبل للوادي. ما يكسر أفضل نتيجة ولا يحسب قمة */
+  function warpTo(where) {
+    if (!save.warp) return;
+    Sfx.click(); $('codeIn').blur();
+    want3D(); startRun();
+    const w = world; w.warp = true;
+    $('tut').hidden = true; save.tut = true;
+    if (where === 'summit') {
+      Core.genUntil(w, C.SUMMIT_Y + 1200);
+      const s = w.platforms.find((p) => p.type === 's');
+      w.enemies = []; w.meteors = []; w.ev = null; w.nextEv = Infinity;
+      Object.assign(w.player, { x: s.x + s.w / 2, y: s.y + 170, vy: 80, vx: 0, rocket: 0, state: 'alive' });
+      w.camY = s.y - w.viewH * 0.45;
+      toast('🚀 للقمة!', 1300);
+      return;
+    }
+    state = 'warp'; $('hud').hidden = true; $('turbo').hidden = true; // ننتظر ملف الوادي إذا بعده ينزل
+    const t0 = performance.now();
+    const go = () => {
+      if (state !== 'warp' || world !== w) return;
+      if (r3State === 'loading' && performance.now() - t0 < 9000) { setTimeout(go, 120); return; }
+      startValley();
+    };
+    if (r3State === 'loading') toast('⏳ نجهّز الوادي…', 2500);
+    go();
+  }
   $('hHero').onclick = openCode;
   function useTurbo() {
     if (state !== 'play' || !Core.turbo(world)) return;
@@ -2353,7 +2386,7 @@
   const runStats = () => ({ coins: world.runCoins, stomps: world.stomps, score: Core.score(world), fevers: world.fevers, combo: world.maxCombo, springs: world.springs, clutches: world.clutches, meteors: world.meteorsSurvived });
   /** يفحص المهام: اللي تخلص تنطي عملات وتنبدل بمهمة أصعب */
   function checkMissions(final) {
-    if (!world || world.demo || world.hero) return;
+    if (!world || world.demo || world.hero || world.warp) return;
     const r = runStats();
     for (let i = 0; i < save.missions.length; i++) {
       const m = save.missions[i], d = MISSIONS[m.id], tg = misTarget(m.id, m.tier);
@@ -2451,14 +2484,15 @@
     state = 'summit';
     SUM = { t: 0, flag: 0, wind: 0, spin: 0, blown: false, bt: 0, msg: 0, dir: Math.random() < 0.5 ? -1 : 1, fade: 0 };
     const sc = Core.score(world);
-    if (!world.hero && sc > save.best) save.best = sc;
-    save.summits = (save.summits || 0) + 1;
-    save.coins += world.runCoins + 200; world.runCoins = 0; // مكافأة القمة
-    for (const sk of SKINS) if (sk.unlockScore && sc >= sk.unlockScore && !save.owned.includes(sk.id)) save.owned.push(sk.id);
+    const warp = !!world.warp; // بالانتقال السريع: ما ينحسب رقم ولا قمة ولا مكافأة
+    if (!world.hero && !warp && sc > save.best) save.best = sc;
+    if (!warp) { save.summits = (save.summits || 0) + 1; save.coins += world.runCoins + 200; } else save.coins += world.runCoins;
+    world.runCoins = 0;
+    if (!warp) for (const sk of SKINS) if (sk.unlockScore && sc >= sk.unlockScore && !save.owned.includes(sk.id)) save.owned.push(sk.id);
     persist();
     $('hud').hidden = true; $('turbo').hidden = true; $('tut').hidden = true; $('skip').hidden = false;
     Sfx.rocketStop(); Sfx.flag(); Music.celebrate();
-    banner('🏔️', 'وصلت القمة!', 'أعلى مكان باللعبة   +200 🪙', 'gold', 3600);
+    banner('🏔️', 'وصلت القمة!', warp ? 'انتقال سريع 🚀' : 'أعلى مكان باللعبة   +200 🪙', 'gold', 3600);
     confetti();
   }
   function skipSummit() { if (state === 'summit' && SUM && !SUM.blown) { SUM.t = Math.max(SUM.t, 24.5); if (SUM.msg < 2) { SUM.msg = 2; Sfx.wind(2); } Sfx.click(); } }
@@ -3518,7 +3552,7 @@
     if (dt > 0.1) dt = 0.1;
     if (window.__timeScale) dt *= window.__timeScale; // للتصوير البطيء فقط
     if (state === 'revive') updateRevive(dt);
-    const frozen = state === 'pause' || state === 'revive' || state === 'countdown';
+    const frozen = state === 'pause' || state === 'revive' || state === 'countdown' || state === 'warp';
     const realDt = dt;
     if (slowT > 0) { slowT -= realDt; dt *= 0.33; } // حركة بطيئة
     if (!frozen) {
@@ -3546,5 +3580,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, want3D, get r3State() { return r3State; }, get R3() { return R3; }, openMap, closeMap, get J() { return J; } };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, openCode, unlockWarp: () => { save.warp = true; persist(); }, warpTo, want3D, get r3State() { return r3State; }, get R3() { return R3; }, openMap, closeMap, get J() { return J; } };
 })();
