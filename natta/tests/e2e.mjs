@@ -64,7 +64,7 @@ ok((await G(() => window.__natta.save.music)) === true && (await page.textConten
 await page.tap('#openShop');
 await wait(700);
 await shot('2-shop');
-ok((await page.locator('.skin').count()) === 8, '8 شخصيات');
+ok((await page.locator('.skin').count()) === 9, '9 شخصيات (وبيها «المغامر» جائزة المغامرة)');
 await page.locator('.skin').nth(1).tap();
 await wait(300);
 ok((await page.textContent('#toast')).includes('تحتاج'), 'ما تكدر تشتري بلا عملات');

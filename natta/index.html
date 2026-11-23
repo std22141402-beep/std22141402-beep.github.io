@@ -104,6 +104,19 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 #bnIcon{font-size:36px;line-height:1}
 #bnTitle{font-size:22px;font-weight:900;line-height:1.2}
 #bnSub{font-size:13px;font-weight:700;opacity:.92}
+/* ---------- 🏔️ المغامرة ---------- */
+#skip{position:absolute;z-index:5;left:50%;bottom:calc(env(safe-area-inset-bottom) + 26px);transform:translateX(-50%);border:0;border-radius:999px;padding:11px 22px;font:inherit;font-size:17px;font-weight:900;color:#24305e;background:rgba(255,255,255,.88);box-shadow:0 4px 0 rgba(36,48,94,.22);touch-action:manipulation}
+#sumChip{font-size:15px;padding:4px 10px}
+#vbar{position:absolute;z-index:4;inset:0 0 auto 0;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 14px 0;pointer-events:none}
+#vobj{flex:1;font-size:18px;font-weight:900;padding:9px 14px;text-align:center}
+#dlg{position:absolute;z-index:6;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 18px);display:flex;gap:10px;align-items:flex-start;background:rgba(255,250,238,.97);border:3px solid #8B5A2B;border-radius:20px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;opacity:0;transform:translateY(20px);transition:opacity .25s,transform .3s cubic-bezier(.2,1.4,.4,1)}
+#dlg.show{opacity:1;transform:none}
+#dlg .who{flex:none;width:48px;height:48px;border-radius:50%;background:#f1e3c4;display:flex;align-items:center;justify-content:center;font-size:30px}
+#dlg .nm{font-weight:900;color:#8B5A2B;font-size:14px}
+#dlgText{font-weight:700;color:#24305e;font-size:16px;line-height:1.45;min-height:46px}
+#ending .card{background:linear-gradient(180deg,#fffdf4,#fff)}
+.e-path{font-size:30px;letter-spacing:2px;margin:8px 0 4px;direction:ltr}
+.e-title{font-size:28px;font-weight:900;color:#24305e}
 #count{position:absolute;z-index:7;inset:0;display:flex;align-items:center;justify-content:center;font-size:120px;font-weight:900;pointer-events:none}
 #count.pop{animation:cpop .5s}
 /* ---------- فرصة ثانية ---------- */
@@ -168,7 +181,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   <section id="home" class="screen">
     <h1 class="logo out">نطّة</h1>
     <div class="tag out" id="tag" style="--o:#24305e">اصعد لأعلى ما تكدر! ☁️</div>
-    <div class="stats"><span class="chip">🏆 <b id="hBest">0</b></span><span class="chip">🪙 <b id="hCoins">0</b></span><span class="chip hero-chip" id="hHero" hidden>🦸 بطل</span><button class="chip" id="hMis" style="border:0;font:inherit;font-weight:800">📋 المهام</button></div>
+    <div class="stats"><span class="chip">🏆 <b id="hBest">0</b></span><span class="chip">🪙 <b id="hCoins">0</b></span><span class="chip hero-chip" id="hHero" hidden>🦸 بطل</span><span class="chip" id="hSum">🏔️</span><button class="chip" id="hMis" style="border:0;font:inherit;font-weight:800">📋 المهام</button></div>
     <button class="btn primary big" id="play">العب ▶</button>
     <div class="row">
       <button class="btn" id="openShop">🎨 الشخصيات</button>
@@ -188,7 +201,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       <div class="chip hero-chip" id="heroChip" hidden>🦸</div>
       <button class="hud-btn" id="pauseBtn" aria-label="إيقاف">II</button>
     </div>
-    <div class="hud-row"><span class="fi">🔥</span><div id="fbar"><i></i></div><div id="combo" class="out" hidden></div><div class="chip" id="evChip" hidden></div></div>
+    <div class="hud-row"><span class="fi">🔥</span><div id="fbar"><i></i></div><div id="combo" class="out" hidden></div><div class="chip" id="evChip" hidden></div><div class="chip" id="sumChip" hidden></div></div>
     <div id="pbar" hidden><i></i></div>
   </div>
   <div id="banner"><div id="bnIcon"></div><div><div id="bnTitle"></div><div id="bnSub"></div></div></div>
@@ -196,6 +209,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   <button id="turbo" hidden aria-label="طيران">🚀</button>
   <div id="tut" hidden><div>اضغط هنا ⬅️</div><div>➡️ اضغط هنا</div></div>
   <div id="toast" class="out"></div>
+  <button id="skip" hidden>تخطّى ⏩</button>
+  <div id="vbar" hidden><div id="vobj" class="chip">🪂</div><button class="hud-btn" id="vPause" aria-label="إيقاف">II</button></div>
+  <div id="dlg" hidden><div class="who">👳🏻‍♂️</div><div><div class="nm">أبو جاسم التاجر</div><div id="dlgText"></div></div></div>
 
   <!-- إيقاف مؤقت -->
   <section id="pause" class="screen" hidden>
@@ -224,6 +240,24 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       <div class="stack">
         <button class="btn primary" id="again" style="font-size:22px">مرة ثانية ↻</button>
         <div class="row"><button class="btn" id="toHome">الرئيسية</button><button class="btn" id="share">شارك 📤</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 🏔️ نهاية المغامرة -->
+  <section id="ending" class="screen" hidden>
+    <div class="card">
+      <div class="e-path">🏔️ 💨 🪂 🦌 🏕️</div>
+      <div class="e-title">خلّصت المغامرة! 🎉</div>
+      <div class="lbl" style="margin-top:6px">وصلت أعلى قمة، طرت بالمظلة، ولزمت الغزال لأبو جاسم</div>
+      <div class="boxes">
+        <div>الجائزة<b id="eCoins" dir="ltr">+500</b></div>
+        <div>شخصية جديدة<b>المغامر 🤠</b></div>
+      </div>
+      <div class="stack">
+        <button class="btn primary" id="eWear" style="font-size:20px">البس المغامر 🤠</button>
+        <button class="btn" id="eAgain">جولة جديدة ↻</button>
+        <div class="row"><button class="btn" id="eHome">الرئيسية</button><button class="btn" id="eShare">شارك 📤</button></div>
       </div>
     </div>
   </section>

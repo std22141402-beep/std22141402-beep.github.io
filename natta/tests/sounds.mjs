@@ -101,7 +101,7 @@ console.log('  العيّنة: /tmp/natta-sounds.wav  —', plan.marks.map(([n, 
 // 3) أصوات عالم النار: انفجار، رعد قريب وبعيد، فقاعة حمم
 const fxStats = await page.evaluate(async () => {
   const out = [];
-  for (const [k, n, name] of [['boom', 1, 'انفجار'], ['thunder', 1, 'رعد قريب'], ['thunder', 0, 'رعد بعيد'], ['lavaPop', 1, 'فقاعة حمم'], ['jet', 1, 'طيارة تعبر'], ['whoosh', 1, 'انفجار السرب'], ['fever', 1, 'الحماس'], ['feverEnd', 1, 'نهاية الحماس'], ['combo', 10, 'كومبو'], ['slowmo', 1, 'حركة بطيئة'], ['warn', 1, 'إنذار نيزك'], ['event', 1, 'حدث خطر'], ['event', 0, 'حدث هدية'], ['revive', 1, 'فرصة ثانية'], ['mission', 1, 'مهمة'], ['count', 1, 'عد تنازلي']]) {
+  for (const [k, n, name] of [['boom', 1, 'انفجار'], ['thunder', 1, 'رعد قريب'], ['thunder', 0, 'رعد بعيد'], ['lavaPop', 1, 'فقاعة حمم'], ['jet', 1, 'طيارة تعبر'], ['whoosh', 1, 'انفجار السرب'], ['fever', 1, 'الحماس'], ['feverEnd', 1, 'نهاية الحماس'], ['combo', 10, 'كومبو'], ['slowmo', 1, 'حركة بطيئة'], ['warn', 1, 'إنذار نيزك'], ['event', 1, 'حدث خطر'], ['event', 0, 'حدث هدية'], ['revive', 1, 'فرصة ثانية'], ['mission', 1, 'مهمة'], ['count', 1, 'عد تنازلي'], ['flag', 1, 'علم القمة'], ['wind', 3, 'الهوا'], ['gust', 1, 'العاصفة'], ['chute', 1, 'المظلة'], ['thud', 1, 'الهبوط'], ['step', 1, 'خطوة'], ['snort', 1, 'الغزال'], ['catchIt', 1, 'لزمته'], ['talk', 1, 'كلام التاجر'], ['reward', 1, 'الجائزة']]) {
     const d = await window.__natta.renderSounds([['fx', k, 0, n]], 3.5);
     let peak = 0; for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
     out.push({ name, peak });
@@ -123,7 +123,7 @@ console.log('  عيّنة الطيارات: /tmp/natta-jets.wav');
 // 4) موسيقى الخلفية: كل نمط يعزف بعلو مناسب، وأوطى من المؤثرات
 const mus = await page.evaluate(async () => {
   const out = [];
-  for (const style of ['day', 'sunset', 'night', 'space', 'fire']) {
+  for (const style of ['day', 'sunset', 'night', 'space', 'fire', 'summit', 'valley']) {
     const [L] = await window.__natta.renderMusic([[0, { style, intensity: 0.7, bpm: 96 }], [4, { intensity: 4.4, bpm: 120, riser: true, fill: true }], [7, { celebrate: true }]], 10);
     let peak = 0, a = 0, b = 0; const h = L.length >> 1;
     for (let i = 0; i < L.length; i++) { peak = Math.max(peak, Math.abs(L[i])); if (i < 44100 * 3.5) a += L[i] * L[i]; else if (i > 44100 * 4.5) b += L[i] * L[i]; }

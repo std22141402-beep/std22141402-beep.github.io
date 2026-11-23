@@ -26,6 +26,9 @@
   C.REACH = (C.JUMP * C.JUMP) / (2 * C.G);
   C.FEVER_T = 6;      // مدة وضع الحماس
   C.EVENT_T = 9;      // مدة الحدث المفاجئ
+  C.SUMMIT = 7000;    // 🏔️ نتيجة القمة: نهاية الصعود
+  C.SUMMIT_Y = C.SUMMIT * C.SCORE_DIV;
+  C.SUMMIT_W = 240;   // عرض صخرة القمة
 
   function mulberry32(a) {
     return function () {
@@ -73,6 +76,16 @@
     gap = clamp(gap, 45, C.MAX_GAP);
     const y = y0 + gap;
 
+    // 🏔️ القمة: آخر منصة باللعبة، عريضة وثابتة، وتوصلها القفزة من اللي قبلها
+    if (!w.demo && y >= C.SUMMIT_Y - 40) {
+      const sy = y0 + Math.min(C.MAX_GAP, Math.max(60, C.SUMMIT_Y - y0));
+      const s = addPlatform(w, C.W / 2 - C.SUMMIT_W / 2, sy, 's', 1);
+      s.w = C.SUMMIT_W;
+      w.summitY = sy; w.genY = Infinity; // ما نولّد شي فوك القمة
+      return;
+    }
+    const nearTop = y > C.SUMMIT_Y - 900; // آخر مسافة قبل القمة: بدون وحوش ولا فخاخ
+
     // إذا الفراغ كبير، نخلي المنصة مو بعيدة أفقياً حتى تبقى اللعبة عادلة
     let x;
     if (gap > 140) x = clamp(w.lastMainX + (r() * 2 - 1) * 150, 0, C.W - C.PW);
@@ -115,7 +128,7 @@
 
     // ---- الوحوش (بعد نتيجة 1000) ----
     let enemy = false;
-    if (y0 > 10000 && gap > 110 && y - w.lastEnemyY > 900 && r() < lerp(0.05, 0.16, d)) {
+    if (!nearTop && y0 > 10000 && gap > 110 && y - w.lastEnemyY > 900 && r() < lerp(0.05, 0.16, d)) {
       const amp = 30 + r() * 70;
       const bx = amp + 25 + r() * (C.W - 2 * (amp + 25));
       w.enemies.push({ x: bx, bx, y: y0 + gap * 0.5, amp, sp: 0.8 + r() * 1.4, ph: r() * 6.28, dead: false, vy: 0, rot: 0 });
@@ -123,7 +136,7 @@
     }
 
     // ---- منصة تتكسر (فخ) بين المنصتين ----
-    if (!enemy && !early && y0 > 3000 && gap > 75 && r() < lerp(0.18, 0.45, d)) {
+    if (!enemy && !early && !nearTop && y0 > 3000 && gap > 75 && r() < lerp(0.18, 0.45, d)) {
       addPlatform(w, r() * (C.W - C.PW), y0 + gap * (0.35 + 0.3 * r()), 'b', d);
     }
 
@@ -173,6 +186,12 @@
 
       const fallV = P.vy;
       P.y = p.y;
+      if (p.type === 's') { // 🏔️ وصل القمة: يوكف عليها
+        Object.assign(P, { vy: 0, vx: 0, rocket: 0, squash: 1, state: 'summit' });
+        w.ev = null; w.meteors = []; w.feverT = 0;
+        w.events.push({ type: 'summit', x: P.x, y: p.y, ref: p, fv: fallV });
+        return;
+      }
       let v = C.JUMP * (w.hero ? 1.3 : 1), kind = 'jump';
       const it = p.item;
       if (it && (it.kind === 'spring' || it.kind === 'tramp')) {
@@ -286,6 +305,8 @@
         const gs = ev && ev.type === 'lowgrav' ? 1 - 0.38 * ev.k : 1; // الجاذبية الخفيفة
         P.vy = Math.max(P.vy - C.G * gs * dt, -C.MAX_FALL);
       }
+      // الصاروخ ما يعبر القمة: ينطفي فوكها وتنزل عليها
+      if (w.summitY && P.rocket > 0 && P.y > w.summitY + 40) { P.rocket = 0; P.vy = Math.min(P.vy, 450); emit(w, 'rocketEnd', P.x, P.y); }
       P.y += P.vy * dt;
       if (P.vy < 0 && P.rocket <= 0) landCheck(w, prevY);
       pickups(w, dt);
@@ -305,6 +326,7 @@
       const target2 = P.y - w.viewH * 0.42;
       if (target2 > w.camY) w.camY += (target2 - w.camY) * Math.min(1, dt * 10);
       if (P.y - w.camY > w.viewH * 0.8) w.camY = P.y - w.viewH * 0.8;
+      if (w.summitY) w.camY = Math.min(w.camY, w.summitY - w.viewH * 0.35); // الكاميرا ما تعبر القمة، حتى لو قفزت فوكها ترجع تنزل عليها
 
       if (P.y > w.maxY) {
         w.maxY = P.y;
@@ -312,6 +334,10 @@
         if (m > w.milestone) { w.milestone = m; emit(w, 'milestone', P.x, P.y, m * 1000); }
       }
       if (P.state === 'alive' && P.y < w.camY - 30) { P.state = 'fall'; P.deadT = 0; P.rocket = 0; w.camAtFall = w.camY; emit(w, 'fall', P.x, P.y); }
+    } else if (P.state === 'summit' || P.state === 'cinema') {
+      // 🏔️ فوك القمة: الكاميرا تتمركز على المنظر، والمشهد (game.js) هو اللي يحرك الشخصية
+      const tgt = P.y - w.viewH * 0.42;
+      w.camY += (tgt - w.camY) * Math.min(1, dt * 2);
     } else {
       // اللاعب طايح: جاذبية بس، بلا اصطدام
       P.deadT += dt;
@@ -387,7 +413,7 @@
   function updateEvents(w, dt) {
     if (w.demo) return;
     const P = w.player;
-    if (!w.ev && P.state === 'alive' && score(w) >= w.nextEv) startEvent(w);
+    if (!w.ev && P.state === 'alive' && score(w) >= w.nextEv && score(w) < C.SUMMIT - 700) startEvent(w); // قرب القمة ماكو أحداث
     const ev = w.ev;
     if (ev) {
       ev.t += dt;
