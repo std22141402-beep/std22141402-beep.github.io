@@ -67,19 +67,13 @@ export function createMountain(cfg) {
   function addPath(way, opts = {}) {
     const pts = way.map(([r, a]) => { const [x, z] = P2(r, a); return new Vector3(x, 0, z); });
     const curve = new CatmullRomCurve3(pts, false, 'centripetal');
-    const fine = [], sub = 30;
-    for (let i = 0; i < (pts.length - 1) * sub; i++) { const t = i / ((pts.length - 1) * sub); const p = curve.getPoint(t); fine.push([p.x, p.z, Math.floor(i / sub)]); }
-    const last = curve.getPoint(1); fine.push([last.x, last.z, pts.length - 2]);
-    const out = []; let acc = 0;
-    out.push(fine[0]);
-    for (let i = 1; i < fine.length; i++) {
-      const d = Math.hypot(fine[i][0] - fine[i - 1][0], fine[i][1] - fine[i - 1][1]); acc += d;
-      if (acc >= 0.8) { out.push(fine[i]); acc = 0; }
-    }
+    // نقاط بمسافات متساوية (كل ~0.8 م) على طول المنحنى
+    const L = curve.getLength(), n = Math.max(2, Math.ceil(L / 0.8)), out = [];
+    for (let k = 0; k <= n; k++) { const t = curve.getUtoTmapping(k / n), p = curve.getPoint(t); out.push([p.x, p.z, Math.min(pts.length - 2, Math.floor(t * (pts.length - 1)))]); }
     const seg = { id: segs.length, kind: opts.kind || 'trail', pts: out.map(([x, z, wi]) => ({ x, z, wi, y: 0, hw: opts.hw || 1.35, kind: (opts.kinds && opts.kinds[wi]) || opts.kind || 'trail' })) };
     // الارتفاع: الأرض الطبيعية بعد تنعيم قوي، حتى الطريق يصعد بهدوء
     const raw = seg.pts.map((p) => Hbase(p.x, p.z));
-    seg.pts.forEach((p, i) => { let s = 0, n = 0; for (let k = -12; k <= 12; k++) { const j = clamp(i + k, 0, raw.length - 1); s += raw[j]; n++; } p.y = s / n; });
+    seg.pts.forEach((p, i) => { let s = 0, n = 0; for (let k = -22; k <= 22; k++) { const j = clamp(i + k, 0, raw.length - 1); s += raw[j]; n++; } p.y = s / n; });
     if (opts.y0 != null || opts.y1 != null) { // نثبت الطرفين حتى تتصل الطرق ببعض بنفس المستوى
       const n = seg.pts.length - 1, a = opts.y0 != null ? opts.y0 - seg.pts[0].y : 0, b = opts.y1 != null ? opts.y1 - seg.pts[n].y : 0;
       seg.pts.forEach((p, i) => { p.y += lerp(a, b, i / (n || 1)); });
@@ -130,7 +124,7 @@ export function createMountain(cfg) {
       if (seg.pts[i].kind !== 'bridge') { i++; continue; }
       let j = i; while (j + 1 < seg.pts.length && seg.pts[j + 1].kind === 'bridge') j++;
       const a = seg.pts[Math.max(0, i - 1)], b = seg.pts[Math.min(seg.pts.length - 1, j + 1)], n = j - i + 1;
-      const gaps = n > 10 ? [Math.floor(n * 0.38), Math.floor(n * 0.66)] : [Math.floor(n / 2)];
+      const gaps = n > 10 ? [Math.floor(n * 0.3), Math.floor(n * 0.7)] : [Math.floor(n / 2)]; // فتحتين متباعدات: النطة بالركض ما توكّعك بالثانية
       for (let k = i; k <= j; k++) {
         const t = (k - i + 1) / (n + 1), p = seg.pts[k];
         p.y = lerp(a.y, b.y, t) - Math.sin(t * Math.PI) * 0.7;
@@ -176,7 +170,7 @@ export function createMountain(cfg) {
   }
 
   // ================================================================ الأرض (تتسوّى حوالين الطريق مثل حفر بجنب الجبل)
-  const checkpoints = [];
+  const checkpoints = [], signs = [];
   function H(x, z) {
     const r = Math.hypot(x, z);
     let h = Hnat(x, z);
@@ -368,7 +362,8 @@ export function createMountain(cfg) {
       for (let i = 0; i < 22; i++) { const x = w * (0.18 + r2() * 0.64), y = h * (0.42 + r2() * 0.28), rr = 18 + r2() * 30; const gr = g.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(250,252,255,.55)'); gr.addColorStop(1, 'rgba(240,246,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr, 0, TAU); g.fill(); }
     });
     for (let i = 0; i < 46; i++) {
-      const a = R() * TAU, r = 230 + R() * 330, sp = new Sprite(new SpriteMaterial({ map: ctex, transparent: true, opacity: 0.75 + R() * 0.25, depthWrite: false, fog: false }));
+      let a = R() * TAU; if (Math.abs(angDiff(a, DECK_A)) < 0.6) a += Math.sign(angDiff(DECK_A, a) || 1) * -1.2; // الإطلالة على الوادي تبقى صافية
+      const r = 230 + R() * 330, sp = new Sprite(new SpriteMaterial({ map: ctex, transparent: true, opacity: 0.75 + R() * 0.25, depthWrite: false, fog: false }));
       const w = 60 + R() * 90; sp.scale.set(w, w * 0.42, 1); sp.position.set(Math.cos(a) * r, 18 + R() * 40, Math.sin(a) * r); clouds.add(sp);
     }
   }
@@ -464,7 +459,7 @@ export function createMountain(cfg) {
       const ang = Math.atan2(z1 - z0, x1 - x0), sx = x0 + Math.cos(ang + 0.9) * 1.9, sz = z0 + Math.sin(ang + 0.9) * 1.9, y = H(sx, sz);
       P.push(tf(paint(new CylinderGeometry(0.06, 0.07, 1.9, 6), '#5C3A1A'), sx, y + 0.95, sz));
       const board = new Mesh(new PlaneGeometry(1.1, 0.28), new MeshLambertMaterial({ map: signTex, side: DoubleSide }));
-      board.position.set(sx + Math.cos(ang) * 0.45, y + 1.65, sz + Math.sin(ang) * 0.45); board.rotation.y = -ang + Math.PI; scene.add(board);
+      board.position.set(sx + Math.cos(ang) * 0.45, y + 1.65, sz + Math.sin(ang) * 0.45); board.rotation.y = -ang + Math.PI; scene.add(board); signs.push({ x: sx, z: sz });
     }
     // جذوع واقعة بنهايات المتاهة المسدودة
     for (const [k, deg] of mazeDeg) {
@@ -481,7 +476,7 @@ export function createMountain(cfg) {
   });
   // عملات: على الطريق الرئيسي، وكومة بكل نهاية مسدودة بالمتاهة
   const coins = [];
-  for (const s of [A, C2]) for (let k = 6; k < s.pts.length - 4; k += 14) { const p = s.pts[k]; if (p.kind === 'trail') coins.push({ x: p.x, y: p.y + 0.9, z: p.z, taken: false }); }
+  for (const s of [A, C2]) for (let k = 8; k < s.pts.length - 4; k += 17) { const p = s.pts[k]; if (p.kind === 'trail') coins.push({ x: p.x, y: p.y + 0.9, z: p.z, taken: false }); }
   for (const [k, deg] of mazeDeg) { if (deg !== 1 || k === key(0, 0) || k === key(3, 6)) continue; const [x0, z0] = cellP(Math.floor(k / 10), k % 10), q = nearest(x0, z0, null, 2), x = q ? q.p.x : x0, z = q ? q.p.z : z0, y = q ? q.y : H(x0, z0); for (let i = 0; i < 4; i++) { const pp = q.p.seg.pts[clamp(q.p.k + (i - 1.5) * 2 | 0, 0, q.p.seg.pts.length - 1)]; coins.push({ x: pp.x, y: pp.y + 0.9, z: pp.z, taken: false }); } } // كنز بالطرق المسدودة
   const coinMesh = new InstancedMesh(new CylinderGeometry(0.22, 0.22, 0.05, 20), new MeshPhongMaterial({ color: '#FFC93C', specular: '#FFF4C0', shininess: 90, emissive: '#6B4A00', emissiveIntensity: 0.55 }), coins.length);
   coinMesh.castShadow = true; coinMesh.frustumCulled = false; scene.add(coinMesh);
@@ -592,7 +587,7 @@ export function createMountain(cfg) {
     inter.push({ id: 'fountain', x: 0, z: 0, r: 3.4, label: '🪙 ارمِ عملة بالنافورة' });
     // فوانيس وأضواء ملونة
     const lampPosts = [45, 165 - 20, 255, 330].map((d) => d * D2R);
-    for (const a of lampPosts) { const x = Math.cos(a) * 12.2, z = Math.sin(a) * 12.2; P.push(tf(paint(new CylinderGeometry(0.06, 0.08, 3.2, 6), '#2E2E2E'), x, 1.6, z)); const lan = new Group(); lan.position.set(x, 3.0, z); const glass = new Mesh(new CylinderGeometry(0.11, 0.11, 0.26, 8), new MeshBasicMaterial({ color: '#FFD36B' })); const halo = new Sprite(new SpriteMaterial({ map: glowTex, color: '#FFC14D', transparent: true, opacity: 0.7, depthWrite: false, blending: AdditiveBlending })); halo.scale.setScalar(1.2); lan.add(glass, halo); plaza.add(lan); fx.lanterns.push(lan); }
+    for (const a of lampPosts) { const x = Math.cos(a) * 12.2, z = Math.sin(a) * 12.2; P.push(tf(paint(new CylinderGeometry(0.06, 0.08, 3.2, 6), '#2E2E2E'), x, 1.6, z)); const lan = new Group(); lan.position.set(x, 3.0, z); const glass = new Mesh(new CylinderGeometry(0.11, 0.11, 0.26, 8), new MeshBasicMaterial({ color: '#FFD36B' })); const halo = new Sprite(new SpriteMaterial({ map: glowTex, color: '#FFC14D', transparent: true, opacity: 0.7, depthWrite: false, blending: AdditiveBlending })); halo.scale.setScalar(0.75); lan.add(glass, halo); plaza.add(lan); fx.lanterns.push(lan); }
     const bulbs = []; for (let i = 0; i < 4; i++) { const a0 = lampPosts[i], a1 = lampPosts[(i + 1) % 4]; let da = angDiff(a0, a1); if (da < 0) da += TAU; for (let k = 1; k < 9; k++) { const a = a0 + (da * k) / 9, sag = Math.sin((k / 9) * Math.PI) * 0.6; bulbs.push([Math.cos(a) * 12.2, 3.05 - sag, Math.sin(a) * 12.2, k]); } }
     const bulbM = new InstancedMesh(new SphereGeometry(0.07, 8, 6), new MeshBasicMaterial({ color: '#FFFFFF' }), bulbs.length), oo = new Object3D(), bcols = ['#FF5D8F', '#FFD23F', '#7FD1FF', '#8DE26B'];
     bulbs.forEach(([x, y, z, k], n) => { oo.position.set(x, y, z); oo.updateMatrix(); bulbM.setMatrixAt(n, oo.matrix); bulbM.setColorAt(n, _c.set(bcols[n % 4])); });
@@ -851,7 +846,7 @@ export function createMountain(cfg) {
     if (id === 'bell') { fx.bell.v += 2.4; return true; }
     if (id === 'tea') { for (const n of npcs) if (n.kind === 'seller') { n.pour = 1.4; n.talk = 3; } return true; }
     if (id === 'chat') { const g = npcs.filter((n) => n.kind === 'tea'); g[Math.floor(Math.random() * g.length)].talk = 3; return true; }
-    if (id === 'scope') { S.scope = !S.scope; cam.scopeYaw = 0.03; cam.scopePitch = -0.2; return true; }
+    if (id === 'scope') { S.scope = !S.scope; cam.scopeYaw = 0.01; cam.scopePitch = -0.2; return true; }
     return true;
   }
   function nearInteract() {
@@ -987,7 +982,7 @@ export function createMountain(cfg) {
     for (let i = 0; i < coins.length; i++) { const c = coins[i]; if (c.taken) continue; if ((c.x - S.p.x) ** 2 + (c.z - S.p.z) ** 2 > 3600) continue; o3.position.set(c.x, c.y + Math.sin(t * 2 + i) * 0.08, c.z); o3.rotation.set(Math.PI / 2, t * 3 + i, 0); o3.scale.setScalar(1); o3.updateMatrix(); coinMesh.setMatrixAt(n++, o3.matrix); }
     coinMesh.count = n; coinMesh.instanceMatrix.needsUpdate = true;
     cpFlags.forEach((f, i) => { f.rotation.y = Math.sin(t * 2 + i) * 0.3; });
-    clouds.rotation.y = t * 0.003; clouds.visible = S.p.y > 30 || S.scope;
+    clouds.visible = S.p.y > 30 || S.scope;
     // الضباب: كثيف بالغابة، ويصفى كل ما تصعد للقمة
     const alt = smooth(55, 90, S.p.y);
     scene.fog.near = lerp(20, 90, alt); scene.fog.far = S.scope ? 1500 : lerp(115, 700, alt);
@@ -1008,7 +1003,7 @@ export function createMountain(cfg) {
   function talkNpc(kind, sec = 3) { for (const n of npcs) if (n.kind === kind) n.talk = sec; }
   return {
     setSize, enter, step, render, project, heading, interact, nearInteract, skipWait, talkNpc, threats, ground: H, surface, S, cam, U,
-    info: { RP, HS, checkpoints, coins, segs, stones, bridges, beasts, trailLen: Math.round(ALL.length * 0.8), area: Math.round(Math.PI * RP * RP) },
+    info: { RP, HS, checkpoints, coins, segs, stones, bridges, beasts, signs, trailLen: Math.round(ALL.length * 0.8), area: Math.round(Math.PI * RP * RP) },
     renderer, scene, camera, get pr() { return pr; },
   };
 }
