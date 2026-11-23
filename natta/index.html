@@ -25,6 +25,10 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 [hidden]{display:none!important}
 #app{position:absolute;top:0;left:50%;width:var(--app-w,100vw);height:var(--app-h,100vh);transform:translateX(-50%);overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,.45)}
 #game{display:block;width:100%;height:100%;touch-action:none}
+#g3d{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:-1}
+#g3d[hidden]{display:none}
+#vign{position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse 120% 90% at 50% 45%,rgba(0,0,0,0) 55%,rgba(20,30,60,.28) 100%)}
+#vign[hidden]{display:none}
 
 /* ---------- عناصر عامة ---------- */
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
@@ -112,6 +116,7 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 #dlg{position:absolute;z-index:6;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 18px);display:flex;gap:10px;align-items:flex-start;background:rgba(255,250,238,.97);border:3px solid #8B5A2B;border-radius:20px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25);pointer-events:none;opacity:0;transform:translateY(20px);transition:opacity .25s,transform .3s cubic-bezier(.2,1.4,.4,1)}
 #dlg.show{opacity:1;transform:none}
 #dlg .who{flex:none;width:48px;height:48px;border-radius:50%;background:#f1e3c4;display:flex;align-items:center;justify-content:center;font-size:30px}
+#dlg .who img{width:100%;height:100%;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px #8B5A2B}
 #dlg .nm{font-weight:900;color:#8B5A2B;font-size:14px}
 #dlgText{font-weight:700;color:#24305e;font-size:16px;line-height:1.45;min-height:46px}
 #ending .card{background:linear-gradient(180deg,#fffdf4,#fff)}
@@ -175,6 +180,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 </head>
 <body>
 <div id="app">
+  <canvas id="g3d" hidden aria-hidden="true"></canvas>
+  <div id="vign" hidden></div>
   <canvas id="game" aria-label="ساحة اللعب"></canvas>
 
   <!-- الرئيسية -->
@@ -211,7 +218,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   <div id="toast" class="out"></div>
   <button id="skip" hidden>تخطّى ⏩</button>
   <div id="vbar" hidden><div id="vobj" class="chip">🪂</div><button class="hud-btn" id="vPause" aria-label="إيقاف">II</button></div>
-  <div id="dlg" hidden><div class="who">👳🏻‍♂️</div><div><div class="nm">أبو جاسم التاجر</div><div id="dlgText"></div></div></div>
+  <div id="dlg" hidden><div class="who" id="dlgWho">👳🏻‍♂️</div><div><div class="nm">أبو جاسم التاجر</div><div id="dlgText"></div></div></div>
 
   <!-- إيقاف مؤقت -->
   <section id="pause" class="screen" hidden>

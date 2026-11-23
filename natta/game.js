@@ -617,7 +617,7 @@
 
   // ---------------------------------------------------------------- الشاشة
   const cvs = $('game');
-  const ctx = cvs.getContext('2d', { alpha: false });
+  const ctx = cvs.getContext('2d'); // شفاف، حتى يبين الوادي ثلاثي الأبعاد من تحته
   let cssW = 0, cssH = 0, dpr = 1, S = 1, viewH = 860, camY = 0;
   let world = null;
   function resize() {
@@ -629,6 +629,7 @@
     cvs.width = Math.round(cssW * dpr); cvs.height = Math.round(cssH * dpr);
     S = cssW / C.W; viewH = cssH / S;
     if (world) world.viewH = viewH;
+    if (R3 && V && V.r3d) R3.setSize(cssW, cssH, window.__r3dPR || Math.min(window.devicePixelRatio || 1, 2));
   }
   const Y = (y) => camY + viewH - y; // من إحداثيات العالم لإحداثيات الشاشة
 
@@ -2194,6 +2195,7 @@
     misTimer -= dt; if (misTimer <= 0) { misTimer = 0.5; checkMissions(false); }
     const left = C.SUMMIT - sc, smc = $('sumChip'); // كم باقي للقمة
     smc.hidden = sc < 4500; if (!smc.hidden) smc.textContent = `🏔️ ${Math.max(0, left)}`;
+    if (sc > 5200) want3D(); // نجهّز الوادي ثلاثي الأبعاد من هسه
     if (tutTimer > 0) {
       tutTimer -= dt;
       if (tutTimer < 0.5) $('tut').style.opacity = String(Math.max(0, tutTimer / 0.5));
@@ -2430,6 +2432,7 @@
 
   // ---------------------------------------------------------------- القمة
   function startSummit() {
+    want3D();
     state = 'summit';
     SUM = { t: 0, flag: 0, wind: 0, spin: 0, blown: false, bt: 0, msg: 0, dir: Math.random() < 0.5 ? -1 : 1, fade: 0 };
     const sc = Core.score(world);
@@ -2556,6 +2559,7 @@
     };
     for (let i = 0; i < 20; i++) V.coins.push({ x: 1500 + dir * 40 + Math.sin(i * 0.7) * 170, y: 1330 - i * 58, taken: false });
     vparts.length = 0; parts.length = 0; SUM = null;
+    V.r3d = enter3D();
     $('vobj').textContent = '🪂 انزل بالمظلة';
     Music.setMode('play');
   }
@@ -2563,7 +2567,7 @@
     if (!V) return;
     if (!V.delivered && V.coinsGot) { save.coins += V.coinsGot; persist(); }
     V = null; vparts.length = 0;
-    $('vbar').hidden = true; $('dlg').hidden = true;
+    $('vbar').hidden = true; $('dlg').hidden = true; $('g3d').hidden = true; $('vign').hidden = true;
   }
   function vburst(x, y, n, o) {
     for (let i = 0; i < n; i++) {
@@ -2630,6 +2634,7 @@
       if (v.caught && !v.delivered && Math.abs(p.x - ZONE_X) < 60) deliver();
     }
     if (v.chuteDrop) v.chuteDrop.t += dt;
+    if (v.focus) v.focus.t -= dt;
     if (v.delivered) { v.endT += dt; if (v.endT > 4.3 && state === 'valley') showEnding(); if (Math.random() < dt * 6) vburst(MER_X - 120 + rnd(-20, 20), 50, 1, { sp: 20, vy0: 30, vy1: 60, g: -20, life: 1.2, r: 5, colors: ['#FF5D8F'], kind: 'heart' }); }
     // الكاميرا
     const camTx = p.x < 760 ? lerp(345, p.x, clamp((p.x - 480) / 280, 0, 1)) : p.x; // قرب الخيمة نبيّن الخيمة والحظيرة ومكان التسليم سوا
@@ -2752,7 +2757,7 @@
   function catchGazelle() {
     const g = V.gz;
     V.caught = true; g.state = 'follow'; g.y = 0; g.vx = 0;
-    Sfx.catchIt(); shake = 0.12;
+    Sfx.catchIt(); shake = 0.12; V.focus = { t: 2.2, xs: [V.p.x, g.x] };
     vburst(g.x, 40, 14, { sp: 120, vy0: 20, vy1: 160, g: 120, life: 0.9, r: 5, colors: ['#FF5D8F', '#FFD23F', '#FFFFFF'], kind: 'heart' });
     banner('🦌', 'لزمته!', 'ودّيه لخيمة التاجر 🏕️ ⬅️', 'gold', 2800);
     $('vobj').textContent = '🏕️ ودّيه للتاجر';
@@ -2760,7 +2765,7 @@
     else { V.metMerchant = true; say('هلا يا بطل! 👋 آني أبو جاسم التاجر. جيبلي الغزال لخيمتي يم النهر ⬅️ وأنطيك جائزة 🎁', 6); }
   }
   function deliver() {
-    V.delivered = true; V.endT = 0; V.gz.state = 'pen';
+    V.delivered = true; V.endT = 0; V.gz.state = 'pen'; V.focus = { t: 4.4, xs: [ZONE_X - 50, V.p.x] }; // لقطة قريبة: البطل وأبو جاسم
     save.coins += 500 + V.coinsGot; V.paid = true;
     if (!save.owned.includes('explorer')) save.owned.push('explorer');
     save.adventures = (save.adventures || 0) + 1;
@@ -2913,6 +2918,10 @@
     ctx.fillStyle = '#C48A50'; ctx.beginPath(); ctx.ellipse(hx - 5, hy - 3, 5.5, 2.4, -0.5, 0, TAU); ctx.fill();
     ctx.fillStyle = '#1B1F3B'; ctx.beginPath(); ctx.arc(hx + 4, hy - 1.5, 1.9, 0, TAU); ctx.fill();
     ctx.restore();
+    drawGzMarks(x, base, g, t);
+  }
+  /** فوك الغزال: عدّاد الشك، ❗ لما ينتبه، 💦 لما يتعب */
+  function drawGzMarks(x, base, g, t) {
     if (!V.caught && (g.sus || 0) > 0.06 && g.state !== 'flee' && g.state !== 'alert' && g.state !== 'cornered' && g.state !== 'tired') { // عدّاد الشك
       const k = g.sus / 0.5;
       ctx.fillStyle = 'rgba(36,48,94,.55)'; rr(ctx, x - 17, base - 84, 34, 7, 4); ctx.fill();
@@ -2950,9 +2959,10 @@
     ctx.fillStyle = '#FFF6C4'; ctx.fillRect(-1.5, -5, 3, 9);
     ctx.restore();
   }
-  function drawValleyFx() {
+  function drawValleyFx(map) {
     for (const q of vparts) {
-      const x = vX(q.x), y = vY(q.y);
+      let x = vX(q.x), y = vY(q.y);
+      if (map) { const m = map(q.x, q.y); x = m.x; y = m.y; }
       ctx.globalAlpha = clamp(q.life / q.max, 0, 1);
       if (q.kind === 'star') star(ctx, x, y, q.r * 1.5, q.r * 0.6, q.c);
       else if (q.kind === 'heart') { ctx.fillStyle = q.c; ctx.font = `${q.r * 3.2}px -apple-system,system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('♥', x, y); }
@@ -3102,20 +3112,62 @@
       ctx.beginPath(); ctx.ellipse(x - 4 * fl, y, 4 * fl + 0.5, 3, 0, 0, TAU); ctx.ellipse(x + 4 * fl, y, 4 * fl + 0.5, 3, 0, 0, TAU); ctx.fill();
     }
     drawValleyFx();
-    // سهم الهدف إذا برّة الشاشة
-    if (v.phase === 'walk' && !v.delivered) {
-      const tx = v.caught ? ZONE_X : v.gz.x, sxT = vX(tx);
-      if (sxT < 8 || sxT > C.W - 8) {
-        const right = sxT > C.W, ax = right ? C.W - 26 : 26, ay = viewH - 210, m = Math.round(Math.abs(tx - p.x) / 10);
-        ctx.fillStyle = 'rgba(36,48,94,.85)'; rr(ctx, ax - 22, ay - 38, 44, 64, 14); ctx.fill();
-        ctx.fillStyle = '#FFD23F'; ctx.beginPath();
-        if (right) { ctx.moveTo(ax + 12, ay); ctx.lineTo(ax - 4, ay - 10); ctx.lineTo(ax - 4, ay + 10); } else { ctx.moveTo(ax - 12, ay); ctx.lineTo(ax + 4, ay - 10); ctx.lineTo(ax + 4, ay + 10); }
-        ctx.fill();
-        ctx.font = '20px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(v.caught ? '🏕️' : '🦌', ax, ay - 22);
-        ctx.font = '900 11px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFFFFF'; ctx.fillText(m + 'م', ax, ay + 18);
+    if (v.phase === 'walk' && !v.delivered) drawTargetArrow(vX(v.caught ? ZONE_X : v.gz.x), viewH - 210);
+    if (v.fade > 0) { ctx.fillStyle = `rgba(255,255,255,${v.fade})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
+  }
+
+  /** سهم يأشّر عالهدف (الغزال أو الخيمة) إذا طالع برّة الشاشة، وبيه المسافة وعدّاد الشك */
+  function drawTargetArrow(sxT, ay) {
+    const v = V, p = v.p;
+    if (sxT >= 8 && sxT <= C.W - 8) return;
+    const tx = v.caught ? ZONE_X : v.gz.x, right = sxT > C.W, ax = right ? C.W - 26 : 26, m = Math.round(Math.abs(tx - p.x) / 10);
+    const sus = !v.caught && (v.gz.sus || 0) > 0.06 ? Math.min(1, v.gz.sus / 0.5) : 0;
+    ctx.fillStyle = 'rgba(36,48,94,.85)'; rr(ctx, ax - 22, ay - 38, 44, sus ? 74 : 64, 14); ctx.fill();
+    ctx.fillStyle = '#FFD23F'; ctx.beginPath();
+    if (right) { ctx.moveTo(ax + 12, ay); ctx.lineTo(ax - 4, ay - 10); ctx.lineTo(ax - 4, ay + 10); } else { ctx.moveTo(ax - 12, ay); ctx.lineTo(ax + 4, ay - 10); ctx.lineTo(ax + 4, ay + 10); }
+    ctx.fill();
+    ctx.font = '20px -apple-system,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(v.caught ? '🏕️' : '🦌', ax, ay - 22);
+    ctx.font = '900 11px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFFFFF'; ctx.fillText(m + 'م', ax, ay + 18);
+    if (sus) { ctx.fillStyle = 'rgba(255,255,255,.25)'; rr(ctx, ax - 15, ay + 27, 30, 5, 3); ctx.fill(); ctx.fillStyle = sus > 0.7 ? '#FF7A3D' : '#FFD23F'; rr(ctx, ax - 15, ay + 27, 30 * sus, 5, 3); ctx.fill(); }
+  }
+
+  // ---------------------------------------------------------------- 🏞️ الوادي ثلاثي الأبعاد
+  // ملف valley3d.js (three.js) ينزل بس لما تقرب من القمة. إذا ما اشتغل (جهاز قديم/بدون نت) يرجع للوادي الـ 2D.
+  let R3 = null, r3State = 'none';
+  function want3D() {
+    if (r3State !== 'none' || window.__no3d) return;
+    r3State = 'loading';
+    const sc = document.createElement('script');
+    sc.src = 'valley3d.js'; sc.async = true;
+    sc.onload = () => { try { r3State = self.NattaValley3D && self.NattaValley3D.supported() ? 'ready' : 'failed'; } catch (e) { r3State = 'failed'; } };
+    sc.onerror = () => { r3State = 'failed'; };
+    document.head.appendChild(sc);
+  }
+  function enter3D() {
+    if (r3State !== 'ready' || window.__no3d) return false;
+    try {
+      if (!R3) {
+        R3 = self.NattaValley3D.create($('g3d'), { VW, MER_X, ZONE_X, sign: 'خيمة أبو جاسم' });
+        $('g3d').addEventListener('webglcontextlost', (e) => { e.preventDefault(); r3State = 'failed'; if (V) V.r3d = false; $('g3d').hidden = true; $('vign').hidden = true; });
       }
-    }
+      $('g3d').hidden = false; $('vign').hidden = false;
+      R3.setSize(cssW, cssH, window.__r3dPR || Math.min(window.devicePixelRatio || 1, 2));
+      R3.enter(skinById(save.skin));
+      if (!$('dlgWho').dataset.p) { try { $('dlgWho').innerHTML = `<img alt="" src="${R3.portrait()}">`; $('dlgWho').dataset.p = '1'; } catch (e) { /* يبقى الإيموجي */ } }
+      return true;
+    } catch (e) { console.warn('3D', e); r3State = 'failed'; $('g3d').hidden = true; return false; }
+  }
+  function renderValley3D() {
+    const v = V, t = time;
+    R3.render(v, t, { shake });
+    ctx.setTransform(S * dpr, 0, 0, S * dpr, 0, 0);
+    ctx.clearRect(-10, -10, C.W + 20, viewH + 20);
+    const proj = (x, y, z) => { const q = R3.project(x, y, z); return { x: q.x * C.W, y: q.y * viewH, vis: q.vis }; };
+    const gm = proj(v.gz.x, v.gz.y + 78, R3.gazelleZ());
+    if (gm.vis) drawGzMarks(gm.x, gm.y + 84, v.gz, t);
+    drawValleyFx((x, y) => proj(x, y));
+    if (v.phase === 'walk' && !v.delivered) { const tg = proj(v.caught ? ZONE_X : v.gz.x, 40); drawTargetArrow(tg.x, clamp(proj(v.p.x, 0).y - 70, 140, viewH - 200)); }
     if (v.fade > 0) { ctx.fillStyle = `rgba(255,255,255,${v.fade})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
   }
 
@@ -3139,7 +3191,7 @@
   const STEP = 1 / 120;
   let lastT = performance.now(), acc = 0, time = 0;
   function render() {
-    if (inValley()) { renderValley(); return; }
+    if (inValley()) { if (V.r3d && R3) renderValley3D(); else renderValley(); return; }
     const P = world.player;
     let sx = 0, sy = 0;
     if (shake > 0) { const m = shake * 12 * S * dpr; sx = rnd(-m, m); sy = rnd(-m, m); }
@@ -3207,5 +3259,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; } };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, want3D, get r3State() { return r3State; }, get R3() { return R3; } };
 })();
