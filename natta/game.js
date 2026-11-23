@@ -716,6 +716,44 @@
     v: ['#F4F6FF', '#A9B2D8', '#FFFFFF'],
     b: ['#B57A4F', '#7A4A2A', '#DDB08A'],
   };
+  // ---- انحناء المنصة تحت الشخصية: مكان الضربة ينزل، الطرفين يتقوسون، وبعدين ترجف وترجع
+  const bending = new Set();
+  function bendPlatform(p, px, fv, kind) {
+    if (!p || p.type === 'g' || p.type === 'v' || p.type === 'b') return;
+    const force = clamp(Math.abs(fv || 500) / 820, 0, 1.4); // كل ما تنزل أقوى، الانحناء أعمق
+    const depth = (7 + 5.5 * force) * (kind === 'jump' ? 1 : 0.65); // النابض والترامبولين ياخذون جزء من الضربة
+    const hx = clamp(Core.wrapDx(px, p.x + p.w / 2), -p.w * 0.25, p.w * 0.25);
+    p.bend = { a: p.bend ? p.bend.a : 0, v: depth * 32, hx };
+    bending.add(p);
+  }
+  function updateBends(dt) {
+    if (window.__freezeBend) return; // للفحص فقط
+    for (const p of bending) {
+      const b = p.bend;
+      if (!b) { bending.delete(p); continue; }
+      b.v += (-1000 * b.a - 10 * b.v) * dt; // نابض مخمَّد (مثل الجيلي)
+      b.a += b.v * dt;
+      if (Math.abs(b.a) < 0.04 && Math.abs(b.v) < 0.8) { p.bend = null; bending.delete(p); }
+    }
+  }
+  /** شكل الانحناء: أعمق نقطة مكان الضربة، ويقل كل ما نبتعد، والطرفين يرتفعون شوية */
+  const bendDy = (p, x) => {
+    const b = p.bend;
+    if (!b) return 0;
+    const d = (x - (p.x + p.w / 2 + b.hx)) / (p.w * 0.5);
+    return b.a * (1.3 * Math.exp(-2.2 * d * d) - 0.3); // المركز ينزل كامل، والطرفين يرتفعون حوالي ربع
+  };
+  function bentPath(p, y0, h, inset = 0) {
+    const r = h / 2, x0 = p.x + inset, w = p.w - inset * 2, n = 14;
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) { const x = x0 + r + ((w - 2 * r) * i) / n, yy = y0 + bendDy(p, x); if (i) ctx.lineTo(x, yy); else ctx.moveTo(x, yy); }
+    const slope = (x) => Math.atan(bendDy(p, x + 0.5) - bendDy(p, x - 0.5)); // الأطراف تلف ويا الانحناء
+    const xr = x0 + w - r, aR = slope(xr); ctx.arc(xr, y0 + bendDy(p, xr) + r, r, aR - Math.PI / 2, aR + Math.PI / 2);
+    for (let i = n; i >= 0; i--) { const x = x0 + r + ((w - 2 * r) * i) / n; ctx.lineTo(x, y0 + bendDy(p, x) + h); }
+    const xl = x0 + r, aL = slope(xl); ctx.arc(xl, y0 + bendDy(p, xl) + r, r, aL + Math.PI / 2, aL + Math.PI * 1.5);
+    ctx.closePath();
+  }
+
   function drawPlatform(p, t) {
     if (p.type === 'g') return;
     const y = Y(p.y);
@@ -739,17 +777,27 @@
       rr(ctx, -p.w / 2, -C.PH / 2, p.w, C.PH, 8); ctx.fillStyle = main; ctx.fill(); ctx.restore();
       return;
     }
-    rr(ctx, p.x, y, p.w, C.PH, 8); ctx.fillStyle = dark; ctx.fill();
-    rr(ctx, p.x, y, p.w, C.PH - 5, 8); ctx.fillStyle = main; ctx.fill();
-    rr(ctx, p.x + 9, y + 3, p.w - 18, 3, 2); ctx.fillStyle = hi; ctx.fill();
+    const bent = p.bend && Math.abs(p.bend.a) > 0.05;
+    if (bent) { // منصة منحنية
+      bentPath(p, y, C.PH); ctx.fillStyle = dark; ctx.fill();
+      bentPath(p, y, C.PH - 5); ctx.fillStyle = main; ctx.fill();
+      ctx.strokeStyle = hi; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath();
+      for (let i = 0; i <= 10; i++) { const x = p.x + 10.5 + ((p.w - 21) * i) / 10, yy = y + 4.5 + bendDy(p, x); if (i) ctx.lineTo(x, yy); else ctx.moveTo(x, yy); }
+      ctx.stroke(); ctx.lineCap = 'butt';
+    } else {
+      rr(ctx, p.x, y, p.w, C.PH, 8); ctx.fillStyle = dark; ctx.fill();
+      rr(ctx, p.x, y, p.w, C.PH - 5, 8); ctx.fillStyle = main; ctx.fill();
+      rr(ctx, p.x + 9, y + 3, p.w - 18, 3, 2); ctx.fillStyle = hi; ctx.fill();
+    }
     if (FT) { // حافة متوهجة حتى تبين المنصة بالسما الغامقة
       ctx.strokeStyle = p.type === 'b' ? 'rgba(255,90,30,.35)' : 'rgba(255,170,90,.6)'; ctx.lineWidth = 1.5;
-      rr(ctx, p.x - 0.5, y - 0.5, p.w + 1, C.PH + 1, 8.5); ctx.stroke();
+      if (bent) bentPath(p, y - 0.5, C.PH + 1, -0.5); else rr(ctx, p.x - 0.5, y - 0.5, p.w + 1, C.PH + 1, 8.5);
+      ctx.stroke();
     }
     if (FT && (p.type === 'n' || p.type === 'm')) { // شق متوهج بالصخر
-      const cx = p.x + 14 + (p.id % 4) * 11;
+      const cx = p.x + 14 + (p.id % 4) * 11, cy = y + bendDy(p, cx + 2);
       ctx.strokeStyle = `rgba(255,140,40,${0.55 + 0.3 * Math.sin(t * 3 + p.id)})`; ctx.lineWidth = 1.6;
-      ctx.beginPath(); ctx.moveTo(cx, y + 5); ctx.lineTo(cx + 5, y + 8); ctx.lineTo(cx + 2, y + 11); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy + 5); ctx.lineTo(cx + 5, cy + 8); ctx.lineTo(cx + 2, cy + 11); ctx.stroke();
     }
     if (p.type === 'b') {
       ctx.strokeStyle = FT ? `rgba(255,224,102,${0.7 + 0.3 * Math.sin(t * 6 + p.id)})` : dark; ctx.lineWidth = 2; ctx.beginPath();
@@ -762,11 +810,14 @@
     } else if (p.type === 'm') {
       ctx.fillStyle = FT ? 'rgba(255,160,80,.95)' : 'rgba(255,255,255,.85)';
       for (const s of [-1, 1]) {
-        const cx = p.x + p.w / 2 + s * 24;
-        ctx.beginPath(); ctx.moveTo(cx + s * 5, y + 5.5); ctx.lineTo(cx - s * 2, y + 1.5); ctx.lineTo(cx - s * 2, y + 9.5); ctx.fill();
+        const cx = p.x + p.w / 2 + s * 24, ay = y + bendDy(p, cx);
+        ctx.beginPath(); ctx.moveTo(cx + s * 5, ay + 5.5); ctx.lineTo(cx - s * 2, ay + 1.5); ctx.lineTo(cx - s * 2, ay + 9.5); ctx.fill();
       }
     }
-    if (p.item) drawItem(p, y, t);
+    if (p.item) { // العنصر فوك المنصة ينزل وياها
+      const it = p.item, ix = p.x + it.ox + (it.kind === 'tramp' ? 25 : it.kind === 'shield' ? 0 : 11);
+      drawItem(p, y + bendDy(p, ix), t);
+    }
   }
 
   function drawRocketShape(g, cx, by) {
@@ -1603,6 +1654,7 @@
   }
   let shake = 0, emberAcc = 0;
   function updateFx(dt) {
+    updateBends(dt);
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
       p.life -= dt;
@@ -1958,6 +2010,7 @@
     for (const e of evs) {
       switch (e.type) {
         case 'jump':
+          bendPlatform(e.ref, e.x, e.fv, e.v);
           if (e.v === 'jump') { burst(e.x, e.y, FT ? 6 : 5, FT ? FX.emberDust : FX.dust); if (live) Sfx.jump(save.skin); }
           else { if (FT) explode(e.x, e.y + 4, 0.55); else burst(e.x, e.y, 14, FX.boost); if (live) Sfx.boost(save.skin, e.v); }
           break;
@@ -2346,6 +2399,7 @@
     let dt = (now - lastT) / 1000; lastT = now;
     if (!(dt > 0)) dt = 0;
     if (dt > 0.1) dt = 0.1;
+    if (window.__timeScale) dt *= window.__timeScale; // للتصوير البطيء فقط
     if (state === 'revive') updateRevive(dt);
     const frozen = state === 'pause' || state === 'revive' || state === 'countdown';
     const realDt = dt;
@@ -2370,5 +2424,5 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, get slowT() { return slowT; } };
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; } };
 })();

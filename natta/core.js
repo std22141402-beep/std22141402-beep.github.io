@@ -184,7 +184,7 @@
       }
       if (w.feverT > 0 && kind === 'jump') v *= 1.15;
       P.vy = v; P.squash = 1;
-      emit(w, 'jump', P.x, p.y, kind);
+      w.events.push({ type: 'jump', x: P.x, y: p.y, v: kind, ref: p, fv: fallV }); // ref و fv للرسم: المنصة تنحني حسب قوة الضربة
       if (!w.demo) landed(w, p, kind, fallV);
       if (p.type === 'v') { p.gone = true; p.pop = 0.0001; emit(w, 'vanish', p.x + p.w / 2, p.y); }
       return;
