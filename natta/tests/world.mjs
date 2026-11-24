@@ -259,6 +259,16 @@ ok(await until(() => document.getElementById('actBtn').textContent.includes('ا�
 await page.tap('#actBtn', { force: true });
 ok(await until(() => window.__natta.WD.S.hero.mode === 'drive', 4000), 'يفتح الباب ويكعد بالمقعد ويشغّل');
 await wait(600); await shot('11a-seated');
+{ // 🕹️ الجويستك سرعة بس، و🛞 الدركسون من سحب الشاشة باليمين
+  const steer = () => G(() => window.__natta.WD.S.car.steer);
+  await page.mouse.move(80, 650); await page.mouse.down(); await page.mouse.move(150, 650, { steps: 4 }); await wait(450);
+  const sJoy = await steer(); await page.mouse.up(); await wait(400);
+  await page.mouse.move(280, 420); await page.mouse.down(); await page.mouse.move(350, 420, { steps: 5 }); await wait(450);
+  const sR = await steer(); await page.mouse.move(210, 420, { steps: 6 }); await wait(500); const sL = await steer(); await page.mouse.up(); await wait(700);
+  const s0 = await steer(), cy = await G(() => window.__natta.WD.cam.dragT);
+  ok(Math.abs(sJoy) < 0.03 && sR > 0.15 && sL < -0.15 && Math.abs(s0) < 0.08 && !(cy > 0), `🛞 الدركسون بسحب الشاشة: يمين ${sR.toFixed(2)}، يسار ${sL.toFixed(2)}، ترفع إصبعك يرجع ${s0.toFixed(2)}؛ والجويستك جنب ما يلف (${sJoy.toFixed(2)})`);
+  await G(() => { const c = window.__natta.WD.S.car; c.vx = c.vz = 0; });
+}
 const dims = await G(() => { const W = window.__natta.WD, v = W.view.heroDims ? 1 : 0, c = W.S.car; return { hy: +(W.S.hero.y - (c.y - 0.5)).toFixed(2), btn: document.getElementById('jumpBtn').textContent, horn: !document.getElementById('hornBtn').hidden }; });
 ok(dims.btn.includes('فرامل') && dims.horn, `بالسيارة: زر «${dims.btn.replace(/\s+/g, ' ')}» وهورن 📯 وعدّاد سرعة`);
 const phys = await G(() => {
