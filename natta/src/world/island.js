@@ -83,16 +83,17 @@ export function buildIsland(def, M, valleyDef) {
   function baseA(x, z) {
     const s = coastS(x, z), th = Math.atan2(z - MZ, x - MX), ck = cliffK(th, x, z);
     let a;
-    if (s < 0) a = Math.max(-38, s * lerp(0.035, 0.3, ck) - 0.4);
-    else a = 1.4 + Math.min(s, 1500) * 0.011 + (fbm(x * 0.0035 + 1, z * 0.0035 + 8) - 0.5) * 26 * smooth(40, 500, s) + (fbm(x * 0.03, z * 0.03) - 0.5) * 1.4 + ck * 26 * smooth(-4, 28, s);
+    // الشاطئ ينحدر بهدوء من الماي للرمل (بلا عتبة) — تمشي وتطلع بالبكي البرمائي من أي مكان؛ بس الجروف الصخرية تبقى حادة
+    if (s < 0) a = Math.max(-38, s * lerp(0.035, 0.3, ck) - 0.4 * smooth(0, 7, -s));
+    else a = 0.06 + 1.34 * smooth(0, 10, s) + Math.min(s, 1500) * 0.011 + (fbm(x * 0.0035 + 1, z * 0.0035 + 8) - 0.5) * 26 * smooth(40, 500, s) + (fbm(x * 0.03, z * 0.03) - 0.5) * 1.4 * smooth(0, 8, s) + ck * 26 * smooth(0, 28, s);
     const fade = smooth(-25, 160, s);
     if (fade > 0) {
       let m = massifA(x, z);
       for (const p of PEAKS) { const pa = peakA(p, x, z); if (pa > 0) m = lerp(m, smax(m, pa, 18), smooth(0, 15, pa)); }
       const hd = Math.hypot(x - HILLS.x, z - HILLS.z);
       if (hd < HILLS.r) a += HILLS.amp * smooth(HILLS.r, HILLS.r * 0.45, hd) * Math.pow(fbm(x * 0.0055 + 3, z * 0.0055 - 2), 1.5) * fade;
-      const mm = m * fade; a = lerp(Math.max(a, mm), smax(a, mm, 14), smooth(0, 12, mm));
-      const pl = plateauA(x, z) * fade; if (pl > 0) a = lerp(Math.max(a, pl), smax(a, pl, 10), smooth(0, 10, pl));
+      const mm = m * fade; a = lerp(a, lerp(Math.max(a, mm), smax(a, mm, 14), smooth(0, 12, mm)), smooth(0, 2, mm)); // بلا عتبة بقاع البحر
+      const pl = plateauA(x, z) * fade; if (pl > 0) a = lerp(a, lerp(Math.max(a, pl), smax(a, pl, 10), smooth(0, 10, pl)), smooth(0, 2, pl));
     }
     if (ISLET) {
       const d = Math.hypot(x - ISLET.x, z - ISLET.z);
@@ -297,7 +298,7 @@ export function buildIsland(def, M, valleyDef) {
     for (const L of LAKES) {
       const d = Math.hypot(x - L.x, z - L.z); if (d > L.r * 1.25 + 160) continue;
       const rL = lakeR(L, x, z);
-      if (d < rL) a = Math.min(a, L.lv - 0.2 - 3.6 * (1 - (d / rL) ** 2)); else a = Math.min(a, smin(L.lv + 0.35 + (d - rL) * 0.18, a, 1.5));
+      if (d < rL) a = Math.min(a, L.lv - 0.2 - 3.6 * (1 - (d / rL) ** 2)); else a = Math.min(a, smin(L.lv - 0.2 + 0.55 * smooth(0, 5, d - rL) + (d - rL) * 0.18, a, 1.5)); // ضفّة بلا عتبة
     }
     const dm = Math.hypot(x - MARSH.x, z - MARSH.z);
     if (dm < MARSH.r) { const tgt = 0.22 + (fbm(x * 0.022 + 4, z * 0.022) - 0.47) * 2.4; a = lerp(tgt, a, smooth(MARSH.r * 0.55, MARSH.r, dm)); }

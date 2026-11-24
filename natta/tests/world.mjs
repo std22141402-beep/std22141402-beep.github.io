@@ -295,7 +295,7 @@ const drv = await G(() => { const W = window.__natta.WD, c = W.S.car, h = W.S.he
 ok(drv.seat && drv.face, 'السايق يتحرك ويّا السيارة بمقعده');
 ok(await until(() => document.getElementById('actBtn').textContent.includes('انزل'), 3000), 'لمن توكف يطلع «انزل»');
 await page.tap('#actBtn', { force: true });
-ok(await until(() => window.__natta.WD.S.hero.mode === 'walk', 4000), '🚪 ينزل من الباب اليسار ويمشي');
+{ const okx = await until(() => window.__natta.WD.S.hero.mode === 'walk', 4000); ok(okx, '🚪 ينزل من الباب اليسار ويمشي' + (okx ? '' : JSON.stringify(await G(() => { const W = window.__natta.WD, c = W.S.car; return { m: W.S.hero.mode, vf: c.vf, vl: c.vl, vy: c.vy, air: c.air, belly: c.belly, door: c.door, btn: document.getElementById('actBtn').textContent, hid: document.getElementById('actBtn').hidden, sleep: c.sleep, kind: c.kind }; })))); }
 const outd = await G(() => { const W = window.__natta.WD, c = W.S.car, h = W.S.hero; return { d: +Math.hypot(h.x - c.x, h.z - c.z).toFixed(2), eng: c.engine }; });
 ok(outd.d > 0.9 && outd.d < 2.2 && !outd.eng, `واكف يم السيارة (${outd.d} م) والمحرك طافي`);
 const water = await G(() => { // 🌊 برمائي: يدخل الخليج، يطوف ويمشي مثل القارب، يلف ويرجع يطلع للشاطئ بالتايرات
@@ -327,6 +327,30 @@ ok(water.landed && water.mode === 'drive', `🏖️ لف ورجع طلع للش�
   ok(gq.far === 'walk' && gq.st.includes('load') && gq.st.includes('ride') && gq.ev.includes('gzLoad') && gq.obj.includes('بالبكي'), `🦌 الغزال نط لصندوق البكي (${gq.st.join('→')})، والمهمة: «${gq.obj}»؛ وإذا بعيد ما يركب`);
   ok(gq.dMax < 0.05 && gq.yMin > 0.1 && gq.kmh > 30, `🚙 يبقى بالصندوق وهو ماشي ${gq.kmh} كم/س (أبعد ${gq.dMax} م)`);
   ok(gq.ev.includes('gzUnload') && gq.endSt === 'follow' && gq.gd > 2 && gq.gd < 5 && Math.abs(gq.gy) < 0.05 && gq.mode === 'walk', `🦌 لمن تنزل ينط وراك (${gq.gd} م) ويرجع يمشي ويّاك`);
+}
+
+{ // 🧗 أرض وعرة جداً وجدول ماي: البكي يوصل بالخط المستقيم (منحدرات 25–40°، صخر وغابة)، بلا انقلاب وميلانه معقول
+  const off = await G(() => {
+    const W = window.__natta.WD, S = W.sim.S, c = S.car, R = [[1869, 2096, 1710, 2103], [1517, -1998, 1457, -2146], [2187, 1982, 2344, 2015], [1052, -533, 1208, -500], [-303, -1461, -461, -1435], [-591, -1302, -630, -1458]];
+    const res = [];
+    for (const [x, z, tx, tz] of R) {
+      S.hero.mode = 'drive'; c.driven = true; c.engine = true; W.G.ensureVeg(x, z, 220);
+      W.sim.placeCar(x, z, Math.atan2(tz - z, tx - x)); W.cam.yaw = c.yaw;
+      let ok = false, flips = 0, rMax = 0, air = 0, st = 0, rev = 0, det = 0, sgn = 1, t = 0;
+      for (; t < 60 * 45; t++) {
+        let d = Math.atan2(tz - c.z, tx - c.x) + (det > 0 ? (det -= 1 / 60, -0.9 * sgn) : 0) - c.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+        const kmh = c.vf * 3.6, want = Math.abs(d) > 0.6 ? 24 : 60; let jy = kmh < want ? 1 : kmh > want + 8 ? -0.6 : 0.1, jx = Math.max(-1, Math.min(1, d * 2.5));
+        if (rev > 0) { rev -= 1 / 60; jy = -1; jx = sgn; }
+        for (const e of W.sim.step(1 / 60, { jx, jy })) if (e[0] === 'carFlip') flips++;
+        if (c.air) air += 1 / 60; rMax = Math.max(rMax, Math.abs(c.roll));
+        if (Math.hypot(c.vx, c.vz) < 1) { if ((st += 1 / 60) > 1.2 && rev <= 0) { rev = 1.4; det = 3.4; sgn = -sgn; st = 0; } } else st = 0;
+        if (Math.hypot(tx - c.x, tz - c.z) < 8) { ok = true; break; }
+      }
+      res.push({ ok, t: +(t / 60).toFixed(1), flips, roll: Math.round(rMax * 57), air: +air.toFixed(1) });
+    }
+    return res;
+  });
+  ok(off.every((r) => r.ok && !r.flips && r.roll < 60), `🧗 البكي عبر ${off.filter((r) => r.ok).length}/${off.length} طرق وعرة وجدول (${off.map((r) => r.t + 'ث').join('، ')}) بلا انقلاب، أكثر ميلان ${Math.max(...off.map((r) => r.roll))}°`);
 }
 
 // 11ج) 🛣️ الطرق المعبّدة: شبكة تربط كل المناطق، جسور، لوحات، انحدار معقول، والأرض تحتها مضبوطة

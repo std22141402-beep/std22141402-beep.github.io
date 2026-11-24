@@ -30,7 +30,7 @@ export const BUGGY = {
 // تماسك ومقاومة تدحرج حسب الأرض
 const SURF = {
   plaza: [1.0, 0.015], path: [0.92, 0.03], pier: [0.9, 0.02], grass: [0.82, 0.045], forest: [0.78, 0.05], sand: [0.62, 0.085],
-  rock: [0.88, 0.035], trail: [0.9, 0.03], snow: [0.5, 0.06], mud: [0.55, 0.11], water: [0.5, 0.14],
+  rock: [0.88, 0.035], trail: [0.9, 0.03], snow: [0.5, 0.06], mud: [0.55, 0.11], water: [0.64, 0.12],
   asphalt: [1.02, 0.013], pavers: [0.95, 0.017], cobble: [0.86, 0.024], // معبّد
   track: [0.74, 0.05], dune: [0.6, 0.095], // 🏁 رمل مرصوص بالمسار، ورمل طري بالكثبان
 };
@@ -62,7 +62,10 @@ export function createBuggy(G, spawn) {
     const c = Math.cos(car.yaw), s = Math.sin(car.yaw);
     for (const w of wheels) {
       w.x = car.x + c * w.ox - s * w.oz; w.z = car.z + s * w.ox + c * w.oz;
-      w.g = groundY(w.x, w.z);
+      // التاير يلف فوك الحصو والطسّات الصغيرة (غلاف 28 إنج): نأخذ أعلى نقطة تحت المداس، فالطسّات الحادة تصير ناعمة
+      const g0w = groundY(w.x, w.z), ga = groundY(w.x + c * 0.2, w.z + s * 0.2), gb = groundY(w.x - c * 0.2, w.z - s * 0.2);
+      w.g = Math.max(g0w, (ga + g0w) / 2 + Math.max(0, ga - g0w) * 0.25, (gb + g0w) / 2 + Math.max(0, gb - g0w) * 0.25);
+      w.gs = (ga - gb) / 0.4; // ميلان الگاع تحت التاير بإتجاه السيارة
     }
   }
   /** مستوى سطح الماي هنا (أو null إذا ماكو ماي) */
@@ -120,11 +123,17 @@ export function createBuggy(G, spawn) {
       w.d = d; w.dv = (d - pd) / dt;
       const q = B.droop - d; w.q = q;
       let F = B.K * q - B.C * w.dv;
-      if (d < -B.bump) F += 90000 * (-B.bump - d) - 4000 * w.dv; // صدّام التعليق
+      if (d < -B.bump) F += clamp(90000 * (-B.bump - d) - 6000 * w.dv, 0, 1.2 * B.mass * g0); // صدّام التعليق (محدود: يمتص الضربة وما يقذف السيارة)
       F = Math.max(0, F); w.F = F;
       Fsum += F; Mp += F * w.ox; Mr += F * w.oz;
     }
-    if (nc) Mr -= B.ARB * car.roll * (nc / 4); // عمود الموازنة
+    if (nc) { // عمود الموازنة (نسبة لميلان الگاع، مو للأفق) + 🛡️ نظام اتزان: إذا مال أكثر من الگاع يرجّعه
+      const gRoll = Math.atan(((wheels[1].g + wheels[3].g) - (wheels[0].g + wheels[2].g)) / 2 / B.track), gPitch = Math.atan(((wheels[0].g + wheels[1].g) - (wheels[2].g + wheels[3].g)) / 2 / B.WB);
+      const er = car.roll - gRoll, ep = car.pitch - gPitch;
+      Mr -= B.ARB * er * (nc / 4) + (Math.abs(er) > 0.18 ? B.ARB * 2.5 * (er - Math.sign(er) * 0.18) : 0) + (Math.abs(car.roll) > 0.6 ? B.ARB * 3 * (car.roll - Math.sign(car.roll) * 0.6) : 0);
+      if (Math.abs(ep) > 0.2) Mp -= B.ARB * 2.5 * (ep - Math.sign(ep) * 0.2);
+      if (Math.abs(car.pitch) > 0.72) Mp -= B.ARB * 3 * (car.pitch - Math.sign(car.pitch) * 0.72); // ما يوگف على ذيله ولا على خشمه
+    }
     // ---- 🌊 الطفو: إذا الماي أعلى من أسفل التايرات، يدفعه لفوك (أرخميدس) ويهدّي الحركة العمودية
     const wy = waterY(car.x, car.z), sub0 = wy == null ? 0 : wy - (car.y - B.rideY);
     if (sub0 > 0) { const F = B.mass * g0 * clamp(sub0 / B.float.s0, 0, 2.4); Fsum += F; car.vy *= 1 - Math.min(1, 2.8 * dt * Math.min(1, sub0)); }
@@ -133,7 +142,7 @@ export function createBuggy(G, spawn) {
     // ---- القوى الأفقية
     const f = [c, s], r = [-s, c];
     let vf = car.vx * f[0] + car.vz * f[1], vl = car.vx * r[0] + car.vz * r[1];
-    const [mu0, crr0] = SURF[car.kind] || SURF.grass, mu = mu0 * (car.depth > 0.12 ? 0.8 : 1) * (1 + Math.min(0.12, Math.abs(car.vf || 0) / 300)); // جناح وعجلات عريضة: تماسك أكثر بالسرعة
+    const [mu0, crr0] = SURF[car.kind] || SURF.grass, mu = mu0 * (car.depth > 0.12 ? 0.92 : 1) * (1 + Math.min(0.12, Math.abs(car.vf || 0) / 300)); // جناح وعجلات عريضة: تماسك أكثر بالسرعة
     car.mu = mu;
     const N = Math.max(Fsum, 0), m = B.mass, grip = nc / 4;
     let aF = 0, aL = 0;
@@ -146,7 +155,7 @@ export function createBuggy(G, spawn) {
       const vf0 = vf;
       // محرك
       if (car.throttle > 0 && car.engine) { const v = Math.max(Math.abs(vf), 1.5), Fe = Math.min(B.fMax, B.power / v) * car.throttle * (vf > B.vmax ? 0 : 1); aF += Math.min(Fe, tracMax) / m; }
-      else if (car.throttle < 0 && car.engine) { if (vf > -B.vrev) aF += Math.max(-3200 * -car.throttle, -tracMax) / m * 1; }
+      else if (car.throttle < 0 && car.engine) { if (vf > -B.vrev) aF += Math.max(-B.fMax * 0.8 * -car.throttle, -tracMax) / m; } // ريوس بقوة المحرك (يطلع حتى من النزلات)
       // فرامل وفرامل يد
       const sgn = vf > 0 ? 1 : -1;
       let Fb = car.brake * 0.92 * tracMax + (car.hand ? 0.45 * tracMax * 0.5 : 0);
@@ -165,8 +174,9 @@ export function createBuggy(G, spawn) {
       // الاتجاه: الدراجة المبسطة + حد التماسك (بالسرعة العالية ما يلف حاد = أندرستير)
       let wt = vf * Math.tan(car.steer) / B.WB;
       const wLim = (0.96 * mu * g0 * Math.max(grip, 0.5)) / (Math.max(Math.abs(vf), 2) * nn); // ما يطلب أكثر من تماسك التايرات → ما يتزحلق جانبي بلا سبب
-      if (!car.hand) wt = clamp(wt, -wLim, wLim) + clamp(vl / Math.max(Math.abs(vf), 3), -0.7, 0.7) * 2.6 * Math.sign(vf || 1); else wt = wt * 1.7 + car.steer * Math.sign(vf) * 0.9; // بلا فرامل يد: الجسم يرجع يتعدّل ويّا اتجاه الحركة (يطلع من الزحلقة)
+      if (!car.hand) wt = clamp(wt, -wLim, wLim) + clamp(vl / Math.max(Math.abs(vf), 3), -0.7, 0.7) * 2.6 * Math.sign(vf || 1) * (1 - 0.65 * clamp(Math.abs(car.steer) / (B.steerMax / (1 + Math.abs(vf) / 13)), 0, 1)); else wt = wt * 1.7 + car.steer * Math.sign(vf) * 0.9; // بلا فرامل يد: الجسم يرجع يتعدّل ويّا اتجاه الحركة (يطلع من الزحلقة)
       car.yawRate = damp(car.yawRate, wt, (car.hand ? 3.5 : 9) * grip, dt);
+      if (sub0 > 0.12 && grip < 1) { const k = clamp((sub0 - 0.12) / 0.25, 0, 1) * (1 - grip), tk = clamp(Math.abs(vf) / 2.5, 0.35, 1) * (vf < -0.3 ? -1 : 1); car.yawRate = damp(car.yawRate, (car.steer / B.steerMax) * B.float.turn * tk, 2.4 * k, dt); vl *= Math.exp(-2.6 * k * dt); } // نص طايف: يلف مثل القارب + التايرات
       // لحظة الجسم من التسارع: يرفع راسه لمن تدوس، ويدنّك لمن تفرمل، ويميل بالدوران
       const along = (vf - vf0) / dt - aSlope, alat = vf * car.yawRate;
       Mp += m * along * B.hcg; Mr += m * alat * B.hcg;
@@ -186,7 +196,7 @@ export function createBuggy(G, spawn) {
     // ---- عمودي وميلان
     car.vy += (Fsum / m - g0) * dt;
     car.wp += (Mp * Math.cos(car.pitch) / B.Ip) * dt; car.wr += (Mr * Math.cos(car.roll) / B.Ir) * dt;
-    if (car.air) { car.wp *= 1 - 0.6 * dt; car.wr *= 1 - 0.6 * dt; car.wp += -car.pitch * 0.9 * dt; car.wr += -car.roll * 0.9 * dt; } // بالهوا: يعدل شوية
+    if (car.air) { car.wp *= 1 - 1.6 * dt; car.wr *= 1 - 2.4 * dt; car.wp += -(car.pitch + 0.04) * 2.6 * dt; car.wr += -car.roll * 4.5 * dt; } // بالهوا: يعدل نفسه (مركز ثقل واطي ووزن موزّع) فينزل على تايراته
     else if (!car.float) { car.wp *= 1 - 2.2 * dt; car.wr *= 1 - 2.6 * dt; } // ثابت: يهدى بسرعة بعد كل مطب
     // ---- تحريك
     const ox = car.x, oz = car.z, ovy = car.vy;
@@ -198,14 +208,19 @@ export function createBuggy(G, spawn) {
     car.deepT -= dt;
     // ---- تصادم: ثلاث دوائر على طول السيارة ضد الشجر والصخر والبيوت
     collide(dt);
-    // ---- الصدّام قدّام/ورا بحايط تراب (جرف أعلى من الجسم)
+    // ---- 🧗 جرف/حجرة أعلى من نص التاير قدّامه = حايط (يوگف بدل ما ينقذف لفوك)؛ الأقل منها يتسلّقها
+    if (!car.float) { const sg = car.vf >= 0 ? 1 : -1, c2 = Math.cos(car.yaw), s2 = Math.sin(car.yaw);
+      for (const w of wheels) { if (w.front !== (sg > 0) || Math.abs(car.vf) < 0.3) continue; const ax = w.x + c2 * sg * 0.5, az = w.z + s2 * sg * 0.5, rise = groundY(ax, az) - Math.max(w.g, car.y - B.rideY - 0.25);
+        if (rise > 0.46) { const v = Math.abs(car.vf); car.x -= c2 * sg * Math.min(0.15, v * dt); car.z -= s2 * sg * Math.min(0.15, v * dt); bump(v, -c2 * sg, -s2 * sg); car.vy = Math.min(car.vy, 0.5); car.wp *= 0.5; break; } } }    // ---- الصدّام قدّام/ورا بحايط تراب (جرف أعلى من الجسم)
     for (const sd of [1, -1]) {
       const bx = car.x + Math.cos(car.yaw) * sd * (B.L / 2 + 0.05), bz = car.z + Math.sin(car.yaw) * sd * (B.L / 2 + 0.05), gb = G.H(bx, bz), bottom = car.y - 0.17 + sd * (B.L / 2) * Math.sin(car.pitch);
       if (gb > bottom + 0.42 && car.vf * sd > 0) { const v = Math.abs(car.vf); car.x -= Math.cos(car.yaw) * sd * Math.min(0.2, v * dt * 2); car.z -= Math.sin(car.yaw) * sd * Math.min(0.2, v * dt * 2); bump(v, -Math.cos(car.yaw) * sd, -Math.sin(car.yaw) * sd); }
     }
     // ---- ما ينزل الجسم جوه الگاع
     const gc = G.H(car.x, car.z);
+    car.belly = car.y < gc + 0.2;
     if (car.y < gc + 0.16) { car.y = gc + 0.16; if (car.vy < 0) { car.landV = Math.max(car.landV, -car.vy); car.vy = 0; } } // الجسم لزم الگاع
+    if (car.belly && car.air) { car.air = false; car.airT = 0; const k = Math.exp(-1.5 * dt); car.vx *= k; car.vz *= k; if (car.throttle && car.engine) { car.vx += Math.cos(car.yaw) * car.throttle * 2.5 * dt; car.vz += Math.sin(car.yaw) * car.throttle * 2.5 * dt; } } // معلّگ على بطنه: يزحف ويطلع
     if (wasAir && !car.air) car.landV = Math.max(car.landV, -ovy);
     // ---- انقلاب: إذا مال هواية ووكف، يرجع يعدل وحده
     const flipped = Math.abs(car.roll) > 1.15 || Math.abs(car.pitch) > 1.2;

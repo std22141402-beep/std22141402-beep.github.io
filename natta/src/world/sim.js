@@ -719,5 +719,5 @@ export function createSim(G, opts = {}) {
   }
   S.tools = {}; S.fish = 0; S.tasks = []; S.items = [];
   const setTrack = (id) => { S.track = id; };
-  return { S, ents, beasts, gz, merchant, step, enter, interact, nearInteract, skipWait, objective, trackTarget, setTrack, setTools, have, snapshot, restore, respawn: () => { if (S.hero && S.hero.mode === 'walk') respawn(S.hero, 'menu'); }, hurt: (d) => hurt(S.hero, d, 'test') };
+  return { S, ents, beasts, gz, merchant, placeCar: (x, z, yaw) => { VEH.place(x, z, yaw); car.sleep = false; }, step, enter, interact, nearInteract, skipWait, objective, trackTarget, setTrack, setTools, have, snapshot, restore, respawn: () => { if (S.hero && S.hero.mode === 'walk') respawn(S.hero, 'menu'); }, hurt: (d) => hurt(S.hero, d, 'test') };
 }
