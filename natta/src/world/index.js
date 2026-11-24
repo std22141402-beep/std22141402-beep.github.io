@@ -40,7 +40,7 @@ export function createWorld(canvas, cfg = {}) {
   return {
     G, sim, view, S, cam, enter, step, interact, threats,
     render: view.render, setSize: view.setSize, project: view.project, heading: view.heading,
-    nearInteract: sim.nearInteract, skipWait: sim.skipWait, objective: sim.objective, respawn: sim.respawn, setTools: sim.setTools,
+    nearInteract: sim.nearInteract, skipWait: sim.skipWait, objective: sim.objective, trackTarget: sim.trackTarget, setTrack: sim.setTrack, have: sim.have, respawn: sim.respawn, setTools: sim.setTools,
     mapShot: view.mapShot, portrait: view.portrait, ground: G.H,
     warm: (x, z, y) => view.IV.warm(x, z, y), info: { HALF: G.HALF, M: G.M, V: G.V, I: G.I, SEA: G.SEA, rest: G.restPoints, buildMs, geoMs: Math.round(tGeo) },
     renderer: view.renderer, scene: view.scene, camera: view.camera, U: view.U, get pr() { return view.pr; },

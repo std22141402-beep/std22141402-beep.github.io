@@ -3,7 +3,11 @@
 // بالمستقبل أوامر اللاعبين الثانيين تجي من الإنترنت بنفس الشكل، والمحاكاة تشتغل على السيرفر (ما بيها رسم).
 import { TAU, clamp, lerp, smooth, damp, rng, angDiff, dampAngle } from '../lib3d.js';
 
-const GRAV = 14, SLOPE_MAX = 1.0, SLIDE = 1.15, BOOT_SLOPE = 1.45, BOOT_SLIDE = 1.6; // 🥾 جزمة الجبل: تصعد منحدرات أشد
+const GRAV = 9.81, SLOPE_MAX = 1.0, SLIDE = 1.15, BOOT_SLOPE = 1.45, BOOT_SLIDE = 1.6; // 🥾 جزمة الجبل: تصعد منحدرات أشد
+// 🚶 سرعات إنسان حقيقي (م/ث): مشي 1.45 (5 كم/س)، ركض 4.2 (15 كم/س)، سباحة 1.0–1.5. والجاذبية 9.81 والنطة ~0.7 م
+export const SPEED = { walk: 1.45, walkMin: 0.55, run: 4.2, swim: 1.0, swimFast: 1.5, jumpV: 3.7, jumpH: 3.2 };
+/** طول الخطوة حسب السرعة (المشي ~0.75 م، الركض ~1.55 م) */
+export const stepLen = (v) => lerp(0.62, 1.55, clamp((v - 1.0) / 3.2, 0, 1));
 
 export function createSim(G, opts = {}) {
   const M = G.M, V = G.V;
@@ -31,7 +35,7 @@ export function createSim(G, opts = {}) {
   // ---------------------------------------------------------------- الحركة المشتركة (البطل والحيوانات)
   /** يمشّي الكائن باتجاه (wx,wz) بسرعة spd: منحدرات، جروف، جسور بحبال، عوائق، وماي */
   function moveChar(e, wx, wz, spd, dt, o = {}) {
-    const ctrl = e.air ? 3 : 10, tg = e.air ? Math.max(spd, e.airSpd || 0) : spd;
+    const ctrl = e.air ? 2.5 : e.kind === 'hero' ? 9 : 10, tg = e.air ? Math.max(spd, e.airSpd || 0) : spd;
     const px = o.pushX || 0, pz = o.pushZ || 0;
     e.vx = damp(e.vx, wx * tg + px, ctrl, dt); e.vz = damp(e.vz, wz * tg + pz, ctrl, dt);
     const ox = e.x, oz = e.z;
@@ -64,10 +68,17 @@ export function createSim(G, opts = {}) {
       e.vy -= GRAV * dt;
       const ny = e.y + e.vy * dt;
       let s = G.surfaceAt(nx, nz, Math.max(e.y, ny) + 0.05, true);
-      if (s.y > e.y + 0.45) { nx = e.x; nz = e.z; e.vx *= -0.15; e.vz *= -0.15; s = G.surfaceAt(nx, nz, e.y + 0.05, true); } // ضرب بحايط وهو بالهوا
+      if (s.y > e.y + 0.45) {
+        const up = e.kind === 'hero' ? G.surfaceAt(nx, nz, e.y + 1.15, true) : null;
+        if (up && up.y > e.y && up.y <= e.y + 1.15 && !e.mantled) { // 🧗 حافة لحد صدرك: تمسكها وتطلع (مثل الإنسان)
+          e.mantled = true; e.x = nx; e.z = nz; e.y = up.y; e.air = false; e.vy = 0; e.vx *= 0.4; e.vz *= 0.4; e.landT = 0.3; e.surf = up.kind; e.plat = up.plat; e.peak = 0;
+          e.speed = Math.hypot(e.x - ox, e.z - oz) / dt; e.onLand && e.onLand(0, up); return;
+        }
+        nx = e.x; nz = e.z; e.vx *= -0.15; e.vz *= -0.15; s = G.surfaceAt(nx, nz, e.y + 0.05, true); // ضرب بحايط وهو بالهوا
+      }
       if (ny <= s.y && e.vy <= 0) {
         const drop = (e.peak || e.y) - s.y;
-        e.x = nx; e.z = nz; e.y = s.y; e.air = false; e.vy = 0; e.landT = 0.25; e.surf = s.kind; e.plat = s.plat;
+        e.x = nx; e.z = nz; e.y = s.y; e.air = false; e.vy = 0; e.landT = 0.25; e.surf = s.kind; e.plat = s.plat; e.mantled = false;
         if (s.kind === 'stone' && s.plat) { const d = Math.hypot(e.x - s.plat.x, e.z - s.plat.z), m = 0.35; if (d > m) { e.x = s.plat.x + ((e.x - s.plat.x) / d) * m; e.z = s.plat.z + ((e.z - s.plat.z) / d) * m; } e.vx *= 0.2; e.vz *= 0.2; }
         e.onLand && e.onLand(drop, s);
       } else { e.x = nx; e.z = nz; e.y = ny; e.peak = Math.max(e.peak || ny, ny); }
@@ -77,7 +88,7 @@ export function createSim(G, opts = {}) {
 
   // ---------------------------------------------------------------- البطل
   function makeHero(skinId, at) {
-    const h = spawn('hero', at.x, at.z, { r: 0.5, skin: skinId, hp: 100, maxHp: 100, st: 100, stT: 0, swim: false, lastHurt: -99, mode: 'walk', chute: 0, airSpd: 0, water: null, inTorrent: 0, faintT: 0, face: at.face || 0 });
+    const h = spawn('hero', at.x, at.z, { r: 0.32, skin: skinId, hp: 100, maxHp: 100, swim: false, sneak: false, lastHurt: -99, mode: 'walk', chute: 0, airSpd: 0, water: null, inTorrent: 0, faintT: 0, face: at.face || 0 });
     h.y = at.y != null ? at.y : G.H(at.x, at.z);
     h.onLand = (drop, s) => {
       emit(s.kind === 'stone' ? 'landStone' : 'land');
@@ -91,16 +102,11 @@ export function createSim(G, opts = {}) {
     emit(['hurt', dmg, cause, e.hp]);
     if (e.hp <= 0) { e.mode = 'faint'; e.faintT = 0; e.vx = e.vz = 0; emit(['faint', cause]); }
   }
-  function stamina(h, drain, dt) {
-    if (drain > 0) { h.st = Math.max(0, h.st - drain * dt); h.stT = 0; if (h.st <= 0 && !h.outBreath) { h.outBreath = true; emit('breath'); } }
-    else { h.stT += dt; if (h.stT > 0.8) h.st = Math.min(100, h.st + dt * (h.speed < 0.3 ? 22 : 13)); }
-    if (h.st > 30) h.outBreath = false;
-  }
-  /** 🏊 سباحة: بطيئة وتخلّص النفَس، وإذا خلص تبدي تغرگ */
+  /** 🏊 سباحة بسرعة إنسان (1–1.5 م/ث) */
   function swim(h, c, dt, w, mag, fast) {
     h.swim = true; h.air = false; h.vy = 0;
     const ml = Math.hypot(c.mx || 0, c.mz || 0), wx = ml > 1e-4 ? c.mx / ml : 0, wz = ml > 1e-4 ? c.mz / ml : 0;
-    const sp = mag < 0.08 ? 0 : fast ? 2.5 : 1.6;
+    const sp = mag < 0.08 ? 0 : fast ? SPEED.swimFast : SPEED.swim;
     h.vx = damp(h.vx, wx * sp, 4, dt); h.vz = damp(h.vz, wz * sp, 4, dt);
     let nx = h.x + h.vx * dt, nz = h.z + h.vz * dt;
     if (G.I.coastS(nx, nz) < -700) { nx = h.x; nz = h.z; h.vx *= -0.3; h.vz *= -0.3; if (!h.farWarn) { h.farWarn = true; emit('farSea'); } } else h.farWarn = false;
@@ -108,15 +114,13 @@ export function createSim(G, opts = {}) {
     h.y = Math.max(w.level - 0.7 + Math.sin(S.t * 2.2) * 0.05, G.H(nx, nz));
     h.speed = Math.hypot(h.vx, h.vz); h.surf = 'water';
     if (h.speed > 0.3) h.face = dampAngle(h.face, Math.atan2(h.vz, h.vx), 6, dt);
-    stamina(h, mag > 0.08 ? (fast ? 9 : 4) : 1.5, dt);
-    if (h.st <= 0) { h.sinkT = (h.sinkT || 0) + dt; if (h.sinkT > 1) { h.sinkT = 0; hurt(h, 8, 'water'); } } else h.sinkT = 0;
-    const prev = h.hopPh || 0; h.hopPh = h.speed < 0.3 ? 0 : prev + h.speed * dt * 1.6;
+    const prev = h.hopPh || 0; h.hopPh = prev + (h.speed < 0.15 ? 0.9 : 1.6 + h.speed * 1.4) * dt; // ضربات الإيدين
     if (h.hopPh && Math.floor(prev / Math.PI) !== Math.floor(h.hopPh / Math.PI)) emit('splash');
     if (S.t - h.lastHurt > 6 && h.hp < h.maxHp) h.hp = Math.min(h.maxHp, h.hp + dt * 3);
   }
   function respawn(e, why) {
     const r = S.rest || G.restPoints[0];
-    Object.assign(e, { x: r.x, z: r.z, y: G.H(r.x, r.z), vx: 0, vy: 0, vz: 0, air: false, stun: 0, rot: 0, mode: 'walk', face: r.face || 0, inTorrent: 0, surf: null, st: 100, swim: false });
+    Object.assign(e, { x: r.x, z: r.z, y: G.H(r.x, r.z), vx: 0, vy: 0, vz: 0, air: false, stun: 0, rot: 0, mode: 'walk', face: r.face || 0, inTorrent: 0, surf: null, swim: false, hopPh: 0 });
     if (r.plaza) e.y = M.HS;
     if (why === 'faint') { e.hp = e.maxHp; const lose = Math.ceil(S.coinsGot * 0.2); S.coinsGot -= lose; emit(['respawn', r.name, lose]); }
     else emit(['respawn', r.name, 0]);
@@ -130,14 +134,13 @@ export function createSim(G, opts = {}) {
     const brake = smooth(z.L - 70, z.L - 12, Z.s); if (brake > 0) Z.v = lerp(Z.v, 3.2, clamp(brake * dt * 4, 0, 1));
     Z.s += Z.v * dt; Z.t = (Z.t || 0) + dt;
     const p = z.at(Z.s), q = z.at(Z.s + 2);
-    h.x = p.x; h.y = p.y - 2.1; h.z = p.z; h.face = Math.atan2(q.z - p.z, q.x - p.x); h.vx = Math.cos(h.face) * Z.v; h.vz = Math.sin(h.face) * Z.v; h.speed = Z.v;
+    h.x = p.x; h.y = p.y - 2.4; h.z = p.z; // معلّك بالمقبض: إيديك فوك راسك والبكرة على الحبل h.face = Math.atan2(q.z - p.z, q.x - p.x); h.vx = Math.cos(h.face) * Z.v; h.vz = Math.sin(h.face) * Z.v; h.speed = Z.v;
     if (Z.s >= z.L - 0.4) { const e = z.end; Object.assign(h, { x: e.x, z: e.z, y: G.H(e.x, e.z), mode: 'walk', air: false, vx: 0, vz: 0, vy: 0, surf: null, peak: 0 }); S.zip = null; emit(['zipEnd', z.name]); }
   }
   function startClimb(a) { const h = S.hero; S.climbing = { a, t: 0, dur: Math.max(3, a.h / 2.6) }; h.mode = 'climb'; h.vx = h.vz = 0; h.rot = 0; h.face = Math.atan2(a.top.z - a.bot.z, a.top.x - a.bot.x); emit(['climbStart', a.name, Math.round(a.h)]); }
   function stepClimb(h, dt) {
     const C = S.climbing, a = C.a; C.t += dt; const k = clamp(C.t / C.dur, 0, 1), kk = smooth(0, 1, k);
-    h.x = lerp(a.bot.x, a.top.x, smooth(0.75, 1, k)); h.z = lerp(a.bot.z, a.top.z, smooth(0.75, 1, k)); h.y = lerp(a.bot.y, a.top.y, kk) + Math.sin(k * Math.PI) * 0.4;
-    stamina(h, 5, dt);
+    h.x = lerp(a.bot.x, a.top.x, kk); h.z = lerp(a.bot.z, a.top.z, kk); h.y = Math.max(G.H(h.x, h.z), lerp(a.bot.y, a.top.y, kk) - 0.6); // رجليك على وجه الجرف وإيديك على الحبل
     if (k >= 1) { Object.assign(h, { x: a.top.x, z: a.top.z, y: G.H(a.top.x, a.top.z), mode: 'walk', air: false, surf: null }); S.climbing = null; emit(['climbEnd', a.name]); }
   }
   function startFish(w) { const h = S.hero; S.fishing = { t: 0, bite: 3 + Math.random() * 4.5, kind: w.kind }; h.mode = 'fish'; h.vx = h.vz = 0; h.rot = 0; h.air = false; emit('fishStart'); }
@@ -160,14 +163,12 @@ export function createSim(G, opts = {}) {
     let mag = clamp(c.mag || 0, 0, 1);
     if (h.stun > 0) { h.stun -= dt; mag = 0; }
     const run = mag > 0.62 && !c.sneak;
-    let spd = mag < 0.08 ? 0 : run ? 5.6 : 2.3 * clamp(mag / 0.62, 0.4, 1);
+    h.sneak = !!c.sneak && mag > 0.08;
+    let spd = mag < 0.08 ? 0 : run ? lerp(3.2, SPEED.run, clamp((mag - 0.62) / 0.3, 0, 1)) : h.sneak ? 0.9 : lerp(SPEED.walkMin, SPEED.walk, clamp((mag - 0.08) / 0.5, 0, 1));
     G.ensureVeg(h.x, h.z);
     const w = G.water(h.x, h.z, h.y); h.water = w ? w.kind : null;
     const deep = w && (w.kind === 'sea' || w.kind === 'lake' || w.kind === 'marsh') ? w.level - G.H(h.x, h.z) : 0;
-    // 💨 النفَس: الركض والصعود الحاد والسباحة تخلّصه، والوكفة ترجّعه
-    const tired = h.st <= 0.5;
-    if (tired && spd > 2.4) spd = 2.4;
-    if (deep > 1.15 && !h.air) return swim(h, c, dt, w, mag, run && !tired);
+    if (deep > 1.15 && !h.air) return swim(h, c, dt, w, mag, run);
     if (deep > 0.25) spd *= lerp(1, 0.5, clamp(deep / 1.15, 0, 1));
     h.swim = false;
     const gk = !h.air ? (h.surf && h.surf !== 'path' ? h.surf : G.groundKind(h.x, h.z, h.y)) : null;
@@ -178,21 +179,17 @@ export function createSim(G, opts = {}) {
     if (w && w.kind === 'torrent' && !h.air) { pushX += w.dx * 3.4; pushZ += w.dz * 3.4; h.inTorrent += dt; if (h.inTorrent > 0.9) { emit('swept'); hurt(h, 12, 'water'); if (h.mode === 'walk') respawn(h, 'swept'); return; } }
     else h.inTorrent = 0;
     if (c.jump && !h.air && h.stun <= 0) {
-      h.air = true; h.vy = 6.0; h.peak = h.y; emit('jump');
-      const hs = Math.hypot(h.vx, h.vz); if (hs > 0.4 && hs < 3.4) { h.vx *= 3.4 / hs; h.vz *= 3.4 / hs; }
-      h.airSpd = mag > 0.08 ? Math.max(3.4, hs) : 0;
+      h.air = true; h.vy = SPEED.jumpV; h.peak = h.y; h.mantled = false; emit('jump');
+      const hs = Math.hypot(h.vx, h.vz); if (hs > 0.4 && hs < SPEED.jumpH) { h.vx *= SPEED.jumpH / hs; h.vz *= SPEED.jumpH / hs; } // دفعة النطة لقدّام
+      h.airSpd = mag > 0.08 ? Math.max(SPEED.jumpH, hs) : 0;
     }
     const ml = Math.hypot(c.mx || 0, c.mz || 0), wx = ml > 1e-4 ? c.mx / ml : 0, wz = ml > 1e-4 ? c.mz / ml : 0;
-    const y0 = h.y;
     moveChar(h, wx, wz, spd, dt, { pushX, pushZ });
-    const climb = !h.air && h.speed > 0.5 ? (h.y - y0) / (h.speed * dt) : 0;
-    const drain = (run && h.speed > 3 ? 9 : 0) + (climb > 0.3 ? 7 * clamp((climb - 0.3) / 0.4, 0, 1) * (h.boots ? 0.55 : 1) : 0);
-    stamina(h, drain, dt);
-    h.run = run && h.speed > 3;
+    h.run = run && h.speed > 2.6;
     if (h.speed > 0.3 && !h.air) h.face = dampAngle(h.face, Math.atan2(h.vz - pushZ, h.vx - pushX), 12, dt);
     else if (h.air && Math.hypot(h.vx, h.vz) > 0.5) h.face = dampAngle(h.face, Math.atan2(h.vz, h.vx), 8, dt);
     if (h.air && h.vy < -7) h.rot += dt * 5; else if (!h.air) h.rot *= Math.pow(0.001, dt);
-    const prev = h.hopPh; h.hopPh = h.speed < 0.3 || h.air ? 0 : h.hopPh + h.speed * dt * 2.1;
+    const prev = h.hopPh; h.hopPh = h.speed < 0.25 || h.air ? 0 : h.hopPh + (h.speed / stepLen(h.speed)) * Math.PI * dt; // كل π = خطوة (كعب الرجل على الگاع)
     if (h.hopPh && Math.floor(prev / Math.PI) !== Math.floor(h.hopPh / Math.PI)) emit(h.water ? 'splash' : ['step', h.run, gk]);
     h.landT = Math.max(0, h.landT - dt);
     if (S.t - h.lastHurt > 6 && h.hp < h.maxHp) h.hp = Math.min(h.maxHp, h.hp + dt * 3); // ترتاح وترجع صحتك شوية شوية
@@ -204,6 +201,11 @@ export function createSim(G, opts = {}) {
     }
     // العملات
     for (const k of S.coins) if (!k.taken && Math.abs(k.x - h.x) < 1.25 && Math.abs(k.z - h.z) < 1.25 && Math.hypot(k.x - h.x, k.z - h.z) < 1.0 && Math.abs(k.y - (h.y + 0.6)) < 1.2) { k.taken = true; S.coinsGot++; emit(['coin', k]); }
+    // 📜 أغراض الطلبات (زعتر، محار، عسل، ريشة)
+    for (const it of S.items) if (!it.taken && Math.abs(it.x - h.x) < 1.6 && Math.abs(it.z - h.z) < 1.6 && Math.hypot(it.x - h.x, it.z - h.z) < 1.45 && Math.abs(it.y - h.y) < 1.8) {
+      it.taken = true; const t = task(it.task); t.got++; emit(['pick', it.task, t.got, t.def.need]);
+      if (!S.track || S.track === it.task || task(S.track).done) S.track = it.task;
+    }
     // القمة
     if (!S.summit && M.rad(h.x, h.z) < M.RP - 1 && Math.abs(h.y - M.HS) < 1 && !S.carry) {
       S.summit = { t: 0, phase: 'wait', wind: 0 };
@@ -297,7 +299,7 @@ export function createSim(G, opts = {}) {
           if (b.t > (wolf ? 0.6 : 0.9)) { b.state = wolf ? 'chase' : 'charge'; b.t = 0; if (!wolf) { const l = d || 1; b.charge = [dx / l, dz / l]; } emit([wolf ? 'howl' : 'grunt', b.kind]); }
           break;
         case 'chase':
-          go(h.x, h.z, 4.7);
+          go(h.x, h.z, 4.0); // أبطأ شوية من ركضك: تكدر تفلت منه بالسهل، بس بالغابة يلحگك
           if (!alive || d > 22 || b.t > 7 || Math.hypot(b.x - b.home.x, b.z - b.home.z) > 32) { b.state = 'return'; b.cool = 3; }
           break;
         case 'charge': {
@@ -317,6 +319,12 @@ export function createSim(G, opts = {}) {
       }
     }
   }
+
+  // ---------------------------------------------------------------- 📜 طلبات أبو جاسم (اللوحة بساحة الفجر)
+  const TASKS = G.I.tasks;
+  const task = (id) => S.tasks.find((t) => t.id === id);
+  /** شگد عندك من الطلب هسه */
+  function have(t) { return t.id === 'gazelle' ? (S.vq.caught ? 1 : 0) : t.id === 'fish' ? Math.min(S.fish, t.def.need) : t.got; }
 
   // ---------------------------------------------------------------- الوادي: الغزال وأبو جاسم
   const L = (x, z) => [x - V.x, z - V.z];
@@ -347,7 +355,7 @@ export function createSim(G, opts = {}) {
     if (g.state !== 'flee' && g.state !== 'leap') g.stamina = Math.min(4, g.stamina + dt * (g.state === 'tired' ? 0.5 : 0.8));
     if (!vq.caught && ['graze', 'look', 'walk', 'alert'].includes(g.state)) {
       const near = d < 22 ? 1 + (1 - d / 22) * 1.6 : 0, watching = g.state !== 'graze';
-      const rate = sp > 4 ? (watching ? 2.6 : 1.4) : sp > 0.5 ? (watching ? 1.1 : 0.06) : 0;
+      const rate = sp > 2.6 ? (watching ? 2.6 : 1.4) : sp > 1.0 ? (watching ? 1.1 : 0.06) : sp > 0.3 ? (watching ? 0.35 : 0) : 0;
       g.sus = clamp(g.sus + (rate * near > 0 ? rate * near : -0.3) * dt, 0, 1);
     }
     const okAt = (x, z) => { const [lx, lz] = L(x, z); return G.slope(x, z) < 0.7 && lx > 1 && lx < V.VL - 1 && Math.abs(lz) < V.FLOOR + 1; };
@@ -453,8 +461,17 @@ export function createSim(G, opts = {}) {
     const talkYaw = Math.atan2(vq.merW.z - M.z, vq.merW.x - M.x);
     if (!vq.called && dm < 24 && Math.abs(h.y - merchant.y) < 8) { vq.called = true; emit('call'); }
     if (!vq.met && dm < 4.2) { vq.met = true; S.focus = { t: 3.4, dist: 6.2, x: (h.x + vq.merW.x) / 2, z: (h.z + vq.merW.z) / 2, yaw: talkYaw, talk: true }; emit('meet'); }
+    if (dm < 3.6 && Math.abs(h.y - merchant.y) < 3) { // 🎒 تسلّم كل طلب كامل لأبو جاسم
+      for (const t of S.tasks) {
+        if (t.done || t.id === 'gazelle' || have(t) < t.def.need) continue;
+        t.done = true; if (t.id === 'fish') S.fish -= t.def.need;
+        S.focus = { t: 3.2, dist: 6.4, x: (h.x + vq.merW.x) / 2, z: (h.z + vq.merW.z) / 2, yaw: talkYaw, talk: true };
+        emit(['handIn', t.id, t.def.reward]);
+        if (S.track === t.id) S.track = null;
+      }
+    }
     if (vq.caught && !vq.delivered && Math.hypot(h.x - vq.zoneW.x, h.z - vq.zoneW.z) < 1.7) {
-      vq.delivered = true; gz.state = 'pen'; S.req = { kind: 'fish', need: 2, done: false }; // الطلب الجاي: سمچ
+      vq.delivered = true; gz.state = 'pen'; task('gazelle').done = true; task('gazelle').got = 1; if (S.track === 'gazelle') S.track = null;
       S.focus = { t: 4.6, dist: 6.6, x: (h.x + vq.merW.x) / 2, z: (h.z + vq.merW.z) / 2, yaw: talkYaw, talk: true };
       emit('deliver');
     }
@@ -475,7 +492,9 @@ export function createSim(G, opts = {}) {
     gz.y = G.H(gz.x, gz.z);
     Object.assign(S.vq, { met: false, called: false, caught: false, delivered: false }); campRest.on = false;
     S.coins = M.coins.map((k) => ({ ...k, taken: false }));
-    S.zip = null; S.climbing = null; S.fishing = null; S.fish = 0; S.req = null;
+    S.zip = null; S.climbing = null; S.fishing = null; S.fish = 0;
+    S.tasks = TASKS.map((def) => ({ id: def.id, def, got: 0, done: false })); S.track = null; S.boardRead = false;
+    S.items = TASKS.flatMap((def) => def.items.map((it) => ({ ...it, task: def.id, taken: false })));
     S.coinsGot = 0; S.summit = null; S.scope = false; S.carry = null; S.focus = null; S.wind = 0; S.t = 0; S.drop = null;
     S.climb = { done: false, time: 0, t0: 0 };
     S.reached = new Set();
@@ -494,6 +513,7 @@ export function createSim(G, opts = {}) {
     if (kind === 'rope') { const a = G.anchors[+n]; if (!a) return false; if (!S.tools.rope) { emit(['needTool', 'rope']); return false; } if (S.hero.mode === 'walk') startClimb(a); return true; }
     if (kind === 'fish') { const w = fishWater(S.hero); if (!S.tools.rod) { emit(['needTool', 'rod']); return false; } if (w) startFish(w); return true; }
     if (kind === 'shop') { emit('shop'); return true; }
+    if (kind === 'board') { S.boardRead = true; emit('board'); return true; }
     if (id === 'scope') { S.scope = !S.scope; return true; }
     if (id === 'tea') { S.hero.hp = S.hero.maxHp; return true; }
     return true;
@@ -507,21 +527,39 @@ export function createSim(G, opts = {}) {
       if (S.vq.met) { const d = Math.hypot(h.x - S.vq.merW.x, h.z - S.vq.merW.z); if (d < 3.2 && d < bd && !(S.vq.caught && !S.vq.delivered)) { bd = d; best = { id: 'shop', label: '🛒 دكان أبو جاسم', r: 3.2 }; } }
     }
     for (const a of G.anchors) { const d = Math.hypot(h.x - a.bot.x, h.z - a.bot.z); if (d < 2.2 && Math.abs(h.y - a.bot.y) < 1.6 && d < bd) { bd = d; best = { id: 'rope:' + a.i, label: S.tools.rope ? `🧗 اتسلّق ${Math.round(a.h)} م` : '🧗 تحتاج حبل تسلّق', r: 2.2 }; } }
+    { const b = G.I.board, dx = h.x - b.x, dz = h.z - b.z, d = Math.hypot(dx, dz); if (d < 7 && dx * b.fx + dz * b.fz > 0.8 && Math.abs(h.y - G.H(b.x, b.z)) < 2 && d < bd) { bd = d; best = { id: 'board', label: '📜 اقرا لوحة الطلبات', r: 7 }; } }
     if (!best && !h.swim && fishWater(h)) best = { id: 'fish', label: S.tools.rod ? '🎣 اصطاد سمچ' : '🎣 تحتاج سنارة', r: 3 };
     return best;
   }
+  /** الطلب اللي تتبعه هسه (اللي اخترته باللوحة، أو أول طلب ما خلص) */
+  function tracked() { const t = S.track && task(S.track); return t && !t.done ? t : S.tasks.find((q) => !q.done) || null; }
   function objective() {
     const h = S.hero, vq = S.vq;
     if (h.mode === 'faint') return '😵 …';
-    if (vq.delivered) return S.req && !S.req.done ? (S.tools.rod ? `🐟 جيب ${S.req.need} سمچات لأبو جاسم (${Math.min(S.fish, S.req.need)}/${S.req.need})` : '🎣 اشتري سنارة من أبو جاسم وصيد سمچ') : '🌍 استكشف الجزيرة';
-    if (vq.caught) return '🏔️ رجّع الغزال لأبو جاسم بالقمة';
-    if (vq.met) return '🦌 جيب غزال من وادي الغزلان';
-    if (S.summit) return vq.called ? '👳 كلّم أبو جاسم' : '☕ ساحة القمة';
-    return '⛰️ اطلع للقمة: أبو جاسم ينتظرك';
+    if (vq.caught && !vq.delivered) return '🏔️ رجّع الغزال لأبو جاسم بالقمة';
+    if (!S.boardRead && !vq.met && !S.track) return '📜 اقرا لوحة الطلبات بساحة الفجر';
+    const t = tracked(); if (!t) return '🌍 كمّلت كل الطلبات! استكشف الجزيرة';
+    const d = t.def, n = have(t), zn = (G.I.zones.find((z) => z.id === d.zone) || {}).name || '';
+    if (n >= d.need) return `⛰️ سلّم ${d.icon} ${d.name} لأبو جاسم بالقمة`;
+    if (t.id === 'fish' && !S.tools.rod) return '🎣 اشتري سنارة من دكان أبو جاسم بالقمة';
+    if (t.id === 'gazelle') return `🦌 جيب ${d.name} من ${zn}`;
+    return `${d.icon} ${d.name} ${n}/${d.need} — ${zn}`;
+  }
+  /** وين تروح للطلب المتتبَّع: أقرب غرض باقي، أو منطقته، أو القمة إذا كمل */
+  function trackTarget() {
+    const h = S.hero, vq = S.vq;
+    if (vq.caught && !vq.delivered) return { x: M.x, z: M.z, icon: '🏔️' };
+    const t = tracked(); if (!t) return null;
+    const d = t.def;
+    if (have(t) >= d.need || (t.id === 'fish' && !S.tools.rod)) return { x: M.x, z: M.z, icon: '🏔️' };
+    let best = null, bd = 1e9; for (const it of S.items) if (it.task === t.id && !it.taken) { const dd = Math.hypot(it.x - h.x, it.z - h.z); if (dd < bd) { bd = dd; best = it; } }
+    if (best && bd < 600) return { x: best.x, z: best.z, icon: d.icon, item: true };
+    return { x: d.at.x, z: d.at.z, icon: d.icon };
   }
 
   // ---------------------------------------------------------------- خطوة وحدة
   function step(dt, cmd) { // الأحداث من الضغطات (interact) تطلع ويّا أول خطوة بعدها
+    if (!(dt > 0)) return []; // فريم بلا وقت: ما نقسم على صفر
     S.t += dt;
     const h = S.hero; if (!h) return [];
     stepHero(h, cmd || {}, dt);
@@ -534,6 +572,7 @@ export function createSim(G, opts = {}) {
     if (S.focus) { S.focus.t -= dt; if (S.focus.t <= 0) S.focus = null; }
     const out = ev.slice(); ev.length = 0; return out;
   }
-  S.tools = {}; S.fish = 0;
-  return { S, ents, beasts, gz, merchant, step, enter, interact, nearInteract, skipWait, objective, setTools, respawn: () => { if (S.hero && S.hero.mode === 'walk') respawn(S.hero, 'menu'); }, hurt: (d) => hurt(S.hero, d, 'test') };
+  S.tools = {}; S.fish = 0; S.tasks = []; S.items = [];
+  const setTrack = (id) => { S.track = id; };
+  return { S, ents, beasts, gz, merchant, step, enter, interact, nearInteract, skipWait, objective, trackTarget, setTrack, setTools, have, respawn: () => { if (S.hero && S.hero.mode === 'walk') respawn(S.hero, 'menu'); }, hurt: (d) => hurt(S.hero, d, 'test') };
 }

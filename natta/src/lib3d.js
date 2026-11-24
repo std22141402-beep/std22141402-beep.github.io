@@ -314,6 +314,202 @@ export function makeHero(sk, glowTex) {
   return { id: sk.id, root, inner, eyes, pupils, smile, ooh, feet, acc, flames, bodyMat, fire, chute, canopy, canopyHolder, lines, drop, rope, turn: 0, blink: 0, nextBlink: 2 };
 }
 
+// ---------------------------------------------------------------- 🧍 البطل: إنسان طبيعي بطول 1.72 م بهيكل مفاصل حقيقي
+// المقاسات (متر): الورك 0.92، الفخذ 0.42، الساق 0.42، الكاحل 0.08، الكتف 1.43، العين 1.62، الراس 1.72
+export const BODY = { hip: 0.92, thigh: 0.42, shin: 0.42, ankle: 0.08, waist: 0.1, neck: 0.45, upper: 0.31, fore: 0.265, shW: 0.195, hipW: 0.092, height: 1.72 };
+const OUTFITS = {
+  green: { shirt: '#4CB963', trim: '#D9F7D2', pants: '#34507A', shoes: '#4A3324', hair: '#2B1D14' },
+  orange: { shirt: '#FF9A3A', trim: '#FFE2BC', pants: '#5B4636', shoes: '#33261D', hair: '#3A2416' },
+  ghost: { shirt: '#F4F6FF', trim: '#AAB4E0', pants: '#8E9AC8', shoes: '#5E6893', hair: '#E7E9F2' },
+  ninja: { shirt: '#30354A', trim: '#14172A', pants: '#1E2233', shoes: '#14172A', hair: '#141414', long: true },
+  alien: { shirt: '#9BE878', trim: '#3E8F2E', pants: '#2F5F2A', shoes: '#1F3A1C', hair: '#2B1D14' },
+  fire: { shirt: '#FF7A1A', trim: '#FFE07A', pants: '#4A1608', shoes: '#2A1208', hair: '#2B1D14' },
+  king: { shirt: '#F5C534', trim: '#FFF2B3', pants: '#6E1A26', shoes: '#3A1F10', hair: '#2B1D14', long: true },
+  rainbow: { shirt: 'rainbow', trim: '#FFFFFF', pants: '#3C2E6B', shoes: '#2A2044', hair: '#2B1D14' },
+  explorer: { shirt: '#DDB06A', trim: '#9A6326', pants: '#6B4A2B', shoes: '#4A2E16', hair: '#2B1D14', boots: true },
+};
+export function makeHuman(sk, glowTex) {
+  const B = BODY, O = OUTFITS[sk.id] || OUTFITS.green;
+  const fire = sk.body === 'fire', rainbow = O.shirt === 'rainbow';
+  const skinM = phong('#D49C70', { shininess: 16, specular: '#4A3426' });
+  const shirtM = rainbow ? phong('#FFFFFF', { vertexColors: true, shininess: 10 }) : fire ? phong(O.shirt, { emissive: '#FF3D00', emissiveIntensity: 0.35, shininess: 10 }) : phong(O.shirt, { shininess: 8, specular: '#1A1A1A' });
+  const trimM = phong(O.trim, { shininess: 8 }), pantsM = phong(O.pants, { shininess: 6, specular: '#141414' }), shoeM = phong(O.shoes, { shininess: 26 }), soleM = phong('#2A211B', { shininess: 4 });
+  const hairM = phong(O.hair, { shininess: 22, specular: '#3A3A3A' });
+  const root = new Group(), body = new Group(), rig = new Group(); // body: محور ميلان الجسم كله (سباحة/غيبة) على ارتفاع 1 م
+  body.position.y = 1.0; rig.position.y = -1.0; root.add(body); body.add(rig);
+  const add = (p, g, x = 0, y = 0, z = 0) => { const m = new Mesh(g, p); m.position.set(x, y, z); return m; };
+  const cyl = (r0, r1, h, seg = 12) => new CylinderGeometry(r0, r1, h, seg);
+  // الحوض + الحزام
+  const pelvis = new Group(); pelvis.position.y = B.hip; rig.add(pelvis);
+  const hips = add(pantsM, new SphereGeometry(0.16, 20, 12), 0, 0.03, 0); hips.scale.set(1, 0.72, 0.74); pelvis.add(hips);
+  // الجذع (قميص): مقطع بيضوي، كتوف أعرض من الخصر
+  const spine = new Group(); spine.position.y = B.waist; pelvis.add(spine);
+  const prof = [[0.001, -0.13], [0.148, -0.13], [0.15, -0.03], [0.148, 0.06], [0.152, 0.16], [0.162, 0.26], [0.166, 0.32], [0.16, 0.375], [0.135, 0.425], [0.09, 0.455], [0.062, 0.466]].map(([r, y]) => new Vector2(r, y));
+  let torsoG = new LatheGeometry(prof, 28);
+  if (rainbow) torsoG = paint(torsoG, (c, x, y, z) => c.setHSL(((Math.atan2(z, x) / TAU + 1) % 1 + y * 0.6) % 1, 0.72, 0.6));
+  const torso = add(shirtM, torsoG); torso.scale.z = 0.68; spine.add(torso);
+  const collar = add(trimM, new TorusGeometry(0.068, 0.012, 6, 20), 0, 0.455, 0); collar.rotation.x = Math.PI / 2; collar.scale.y = 0.75; spine.add(collar);
+  const belt = add(phong('#3A2618', { shininess: 30 }), cyl(0.156, 0.155, 0.045, 24), 0, -0.095, 0); belt.scale.z = 0.7; spine.add(belt);
+  spine.add(add(phong('#D8B25A', { shininess: 90, specular: '#FFF2B0' }), new BoxGeometry(0.05, 0.036, 0.012), 0, -0.095, 0.108));
+  // جنطة ظهر (تشيل بيها الأغراض اللي يطلبها التاجر)
+  const pack = new Group(); pack.position.set(0, 0.2, -0.112); spine.add(pack);
+  if (sk.id !== 'king') {
+    const pk = phong(sk.id === 'ninja' ? '#262A3A' : '#8A5A32', { shininess: 12 }), pkD = phong(sk.id === 'ninja' ? '#14172A' : '#5E3B1F', { shininess: 10 });
+    const bag = add(pk, new CapsuleGeometry(0.1, 0.17, 4, 12), 0, 0, -0.045); bag.scale.set(1.25, 1, 0.62); pack.add(bag);
+    const flap = add(pkD, new SphereGeometry(0.105, 14, 8, 0, TAU, 0, Math.PI / 2), 0, 0.07, -0.045); flap.scale.set(1.2, 0.55, 0.66); pack.add(flap);
+    const pocket = add(pkD, new BoxGeometry(0.15, 0.09, 0.04), 0, -0.06, -0.115); pack.add(pocket);
+    for (const s of [-1, 1]) { const st = add(pkD, new BoxGeometry(0.035, 0.26, 0.012), s * 0.085, 0.31, 0.118); st.rotation.x = -0.1; spine.add(st); }
+  }
+  // الرقبة والراس
+  const neck = new Group(); neck.position.y = B.neck; spine.add(neck);
+  neck.add(add(skinM, cyl(0.05, 0.056, 0.12, 12), 0, 0.04, 0));
+  const head = new Group(); head.position.y = 0.135; neck.add(head);
+  const skull = add(skinM, new SphereGeometry(0.1, 28, 20)); skull.scale.set(0.8, 1.08, 0.98); head.add(skull);
+  const jaw = add(skinM, new SphereGeometry(0.08, 20, 14), 0, -0.05, 0.016); jaw.scale.set(0.86, 0.78, 0.9); head.add(jaw);
+  const nose = add(phong('#BC7F55', { shininess: 16 }), new SphereGeometry(0.016, 10, 8), 0, -0.012, 0.098); nose.scale.set(0.78, 1.45, 1.15); head.add(nose);
+  for (const s of [-1, 1]) { const ear = add(skinM, new SphereGeometry(0.024, 10, 8), s * 0.079, -0.004, -0.004); ear.scale.set(0.42, 1, 0.72); head.add(ear); }
+  const eyes = [], sclM = phong('#F7F3EE', { shininess: 60 }), irisM = phong('#2A1A10', { shininess: 120, specular: '#FFFFFF' }), browM = phong(O.hair === '#E7E9F2' ? '#C9CDDB' : '#2A1D15');
+  for (const s of [-1, 1]) {
+    const eg = new Group(); eg.position.set(s * 0.032, 0.012, 0.081); head.add(eg);
+    const scl = add(sclM, new SphereGeometry(0.0135, 12, 10)); scl.scale.set(1.2, 0.82, 0.7); eg.add(scl);
+    eg.add(add(irisM, new SphereGeometry(0.0078, 10, 8), 0, 0, 0.0072));
+    eg.add(add(new MeshBasicMaterial({ color: '#FFFFFF' }), new SphereGeometry(0.0022, 6, 4), 0.0025, 0.0028, 0.0146));
+    eyes.push(eg);
+    const brow = add(browM, new BoxGeometry(0.032, 0.008, 0.01), s * 0.033, 0.033, 0.09); brow.rotation.z = -s * 0.1; head.add(brow);
+  }
+  const lipM = new MeshBasicMaterial({ color: '#8C4A3A' });
+  const smile = add(lipM, new TorusGeometry(0.017, 0.0035, 5, 14, Math.PI * 0.7), 0, -0.046, 0.088); smile.rotation.z = Math.PI + Math.PI * 0.15; head.add(smile);
+  const ooh = add(new MeshBasicMaterial({ color: '#4A1A14' }), new SphereGeometry(0.011, 10, 8), 0, -0.05, 0.09); ooh.scale.set(1, 1.3, 0.5); ooh.visible = false; head.add(ooh);
+  const hair = add(hairM, new SphereGeometry(0.106, 24, 14, 0, TAU, 0, Math.PI * 0.56)); hair.scale.set(0.84, 1.06, 1.02); hair.rotation.x = -0.32; hair.position.set(0, 0.012, -0.006); head.add(hair);
+  const nape = add(hairM, new SphereGeometry(0.1, 18, 10, Math.PI * 1.12, Math.PI * 0.76, Math.PI * 0.4, Math.PI * 0.3)); nape.scale.set(0.83, 1.06, 1.0); head.add(nape);
+  // الإيدين: كتف ← عضد ← زند ← كف (المفاصل مجاميع تتدوّر)
+  const long = !!O.long;
+  const arms = [];
+  for (const s of [1, -1]) { // +1 = اليسار (+x)، -1 = اليمين
+    const sh = new Group(); sh.position.set(s * B.shW, 0.405, 0); spine.add(sh);
+    const delt = add(shirtM, new SphereGeometry(0.056, 14, 10), 0, -0.012, 0); delt.scale.set(0.95, 1, 1.05); sh.add(delt);
+    sh.add(add(long ? shirtM : skinM, cyl(0.046, 0.039, B.upper), 0, -B.upper / 2, 0));
+    if (!long) sh.add(add(shirtM, cyl(0.06, 0.053, 0.15, 14), 0, -0.07, 0));
+    const el = new Group(); el.position.y = -B.upper; sh.add(el);
+    el.add(add(long ? shirtM : skinM, new SphereGeometry(0.04, 10, 8)));
+    el.add(add(long ? shirtM : skinM, cyl(0.039, 0.03, B.fore), 0, -B.fore / 2, 0));
+    if (sk.id === 'explorer') el.add(add(shirtM, cyl(0.047, 0.045, 0.05, 12), 0, -0.01, 0)); // كم ملفوف
+    const wr = new Group(); wr.position.y = -B.fore; el.add(wr);
+    const palm = add(skinM, new SphereGeometry(0.05, 14, 10), 0, -0.075, 0.004); palm.scale.set(0.5, 1.55, 0.86); wr.add(palm);
+    const thumb = add(skinM, new CapsuleGeometry(0.011, 0.04, 3, 6), -s * 0.006, -0.045, 0.036); thumb.rotation.x = 0.45; wr.add(thumb);
+    arms.push({ s, sh, el, wr });
+  }
+  // الرجلين: ورك ← فخذ ← ركبة ← ساق ← كاحل ← قندرة
+  const legs = [];
+  for (const s of [1, -1]) {
+    const hp = new Group(); hp.position.set(s * B.hipW, 0, 0); pelvis.add(hp);
+    hp.add(add(pantsM, new SphereGeometry(0.077, 14, 10)));
+    hp.add(add(pantsM, cyl(0.077, 0.056, B.thigh, 14), 0, -B.thigh / 2, 0));
+    const kn = new Group(); kn.position.y = -B.thigh; hp.add(kn);
+    kn.add(add(pantsM, new SphereGeometry(0.056, 12, 10)));
+    kn.add(add(pantsM, cyl(0.055, 0.043, B.shin, 14), 0, -B.shin / 2, 0));
+    if (O.boots) kn.add(add(shoeM, cyl(0.054, 0.05, 0.2, 14), 0, -B.shin + 0.08, 0));
+    const an = new Group(); an.position.y = -B.shin; kn.add(an);
+    const shoe = add(shoeM, new BoxGeometry(0.098, 0.07, 0.2), 0, -0.042, 0.03); an.add(shoe);
+    const toe = add(shoeM, new SphereGeometry(0.05, 12, 8, 0, TAU, 0, Math.PI / 2), 0, -0.077, 0.13); toe.scale.set(0.98, 1.0, 1.25); an.add(toe);
+    const heel = add(shoeM, new SphereGeometry(0.05, 12, 8), 0, -0.04, -0.07); heel.scale.set(0.98, 0.78, 0.7); an.add(heel);
+    const sole = add(soleM, new BoxGeometry(0.104, 0.014, 0.27), 0, -0.075, 0.035); an.add(sole);
+    legs.push({ s, hp, kn, an });
+  }
+  // الإكسسوارات حسب الشخصية
+  const acc = new Group(); head.add(acc);
+  const flames = [];
+  let cape = null, star = null;
+  if (sk.acc === 'hat') { // قبعة المغامر ووشاح أحمر
+    const khaki = phong('#8E5E2E', { shininess: 12 }), dark = phong('#3E2612', { shininess: 10 });
+    const hat = new Group(); hat.position.set(0, 0.07, -0.004); hat.rotation.set(-0.1, 0, 0.04); acc.add(hat);
+    const brim = add(khaki, cyl(0.175, 0.18, 0.012, 32)); brim.scale.z = 0.92; hat.add(brim);
+    const crown = add(khaki, cyl(0.088, 0.1, 0.1, 24), 0, 0.055, 0); crown.scale.z = 1.08; hat.add(crown);
+    const dent = add(khaki, new SphereGeometry(0.089, 18, 8, 0, TAU, 0, Math.PI / 2), 0, 0.1, 0); dent.scale.set(1, 0.3, 1.08); hat.add(dent);
+    const bnd = add(dark, cyl(0.1, 0.1, 0.026, 24, 1), 0, 0.018, 0); bnd.scale.z = 1.08; hat.add(bnd);
+    const red = phong('#C8283A', { shininess: 12, side: DoubleSide });
+    const sc = add(red, new TorusGeometry(0.068, 0.018, 8, 22), 0, 0.43, 0.006); sc.rotation.x = Math.PI / 2 + 0.12; spine.add(sc);
+    const tri = new Shape(); tri.moveTo(-0.07, 0); tri.lineTo(0.07, 0); tri.lineTo(0.0, -0.09); tri.closePath();
+    const knot = add(red, new ShapeGeometry(tri), 0, 0.42, 0.075); knot.rotation.x = -0.25; spine.add(knot);
+  } else if (sk.acc === 'crown') { // تاج ذهب وعباية حمرة
+    const gold = phong('#FFC400', { shininess: 110, specular: '#FFF2B0', emissive: '#5A3D00', emissiveIntensity: 0.3 });
+    const band = add(gold, cyl(0.092, 0.088, 0.045, 24, 1), 0, 0.085, 0); band.material.side = DoubleSide; acc.add(band);
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU; acc.add(add(gold, new ConeGeometry(0.018, 0.055, 6), Math.sin(a) * 0.088, 0.13, Math.cos(a) * 0.088)); acc.add(add(phong(i % 2 ? '#2EA8FF' : '#E63946', { shininess: 140, specular: '#FFFFFF' }), new SphereGeometry(0.01, 8, 6), Math.sin(a) * 0.093, 0.085, Math.cos(a) * 0.093)); }
+    cape = new Group(); cape.position.set(0, 0.43, -0.1); spine.add(cape);
+    const cg = new PlaneGeometry(0.46, 1.05, 4, 8); cg.translate(0, -0.525, 0);
+    const cp = cg.attributes.position; for (let i = 0; i < cp.count; i++) { const x = cp.getX(i), y = cp.getY(i); cp.setZ(i, -Math.abs(x) * 0.35 * (0.4 - y * 0.6) - 0.02); cp.setX(i, x * (1 - y * 0.5)); }
+    cg.computeVertexNormals(); cape.add(add(phong('#A81E2D', { side: DoubleSide, shininess: 18 }), cg));
+  } else if (sk.acc === 'band') { // نينجا: عصابة حمرة وقناع
+    const red = phong('#D62839');
+    const b = add(red, new TorusGeometry(0.087, 0.011, 6, 28), 0, 0.03, 0.002); b.rotation.x = Math.PI / 2 - 0.12; b.scale.set(0.92, 1.12, 1); acc.add(b);
+    for (const s of [-1, 1]) { const t = add(red, new BoxGeometry(0.025, 0.012, 0.15), s * 0.02, 0.02, -0.16); t.rotation.set(0.6, s * 0.35, 0); acc.add(t); acc.userData['tail' + s] = t; }
+    const mask = add(phong('#22263A', { side: DoubleSide }), new SphereGeometry(0.103, 22, 10, Math.PI * 0.1, Math.PI * 0.8, Math.PI * 0.52, Math.PI * 0.34)); mask.scale.set(0.84, 1.1, 1.02); acc.add(mask);
+  } else if (sk.acc === 'antenna') {
+    for (const s of [-1, 1]) {
+      const st = add(phong('#2C6B23'), cyl(0.005, 0.005, 0.13, 6), s * 0.045, 0.14, 0); st.rotation.z = -s * 0.35; acc.add(st);
+      acc.add(add(phong('#FF5DA2', { emissive: '#FF5DA2', emissiveIntensity: 0.35 }), new SphereGeometry(0.02, 10, 8), s * 0.068, 0.2, 0));
+    }
+  } else if (sk.acc === 'leaf') {
+    const st = add(phong('#6B3E1F'), cyl(0.004, 0.005, 0.05, 6), 0, 0.125, 0.01); st.rotation.z = -0.2; acc.add(st);
+    const lf = add(phong('#3FB950'), new SphereGeometry(0.04, 12, 8), 0.03, 0.15, 0.01); lf.scale.set(1, 0.2, 0.5); lf.rotation.z = 0.45; acc.add(lf);
+  } else if (sk.acc === 'star') {
+    const sh = new Shape(); for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 0.03 : 0.07; i ? sh.lineTo(Math.cos(a) * r, -Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, -Math.sin(a) * r); }
+    star = add(phong('#FFE066', { emissive: '#FFB703', emissiveIntensity: 0.5, shininess: 90 }), new ExtrudeGeometry(sh, { depth: 0.02, bevelEnabled: true, bevelSize: 0.006, bevelThickness: 0.006, bevelSegments: 1 }), 0, 0.26, 0); acc.add(star);
+  }
+  if (sk.acc === 'blush' || sk.id === 'orange') for (const s of [-1, 1]) { const b = add(new MeshBasicMaterial({ color: '#FF7896', transparent: true, opacity: 0.45 }), new CircleGeometry(0.014, 12), s * 0.05, -0.022, 0.083); b.rotation.y = s * 0.55; head.add(b); }
+  if (fire) {
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI - Math.PI / 2, f = add(new MeshBasicMaterial({ color: i % 2 ? '#FFB13B' : '#FF5A1F', transparent: true, opacity: 0.85, depthWrite: false, blending: AdditiveBlending }), new ConeGeometry(0.045, 0.2, 8, 1, true), Math.sin(a) * 0.15, 0.42, -0.06 - Math.abs(Math.cos(a)) * 0.04);
+      f.userData.ph = i; spine.add(f); flames.push(f);
+    }
+    const g = new Sprite(new SpriteMaterial({ map: glowTex, color: '#FF6A1F', transparent: true, opacity: 0.45, depthWrite: false, blending: AdditiveBlending })); g.scale.setScalar(1.8); g.position.y = 0.25; spine.add(g);
+  }
+  // 🎣 سنارة بالإيد اليمنى (تبين بس وقت الصيد)
+  const rod = new Group(); root.add(rod); rod.visible = false;
+  const stick = add(phong('#7A5230', { shininess: 30 }), cyl(0.006, 0.013, 2.4, 6), 0, 1.0, 0); rod.add(stick);
+  rod.add(add(phong('#2E2E2E'), cyl(0.024, 0.024, 0.05, 10), 0.03, 0.12, 0));
+  const tip = new Object3D(); tip.position.y = 2.2; rod.add(tip);
+  compactRig(root, new Set([torso, smile, ooh, ...flames, ...(star ? [star] : [])]));
+  shadowAll(root);
+  // المظلة والحبل (مشتركة ويّا الشكل القديم)
+  const ex = heroExtras();
+  return { id: sk.id, human: true, root, body, rig, pelvis, spine, neck, head, torso, arms, legs, eyes, smile, ooh, acc, flames, fire, cape, star, pack, rod, rodTip: tip, bodyMat: shirtM, ...ex, turn: 0, blink: 0, nextBlink: 2 };
+}
+/** يدمج قطع كل مفصل (نفس اللون والمادة) بقطعة وحدة: ~75 قطعة ← ~20 (أخف على الآيفون) */
+const rigMat = new MeshPhongMaterial({ color: '#FFFFFF', vertexColors: true, shininess: 14, specular: '#2A2A2A' });
+function compactRig(root, keep) {
+  const groups = []; root.traverse((o) => { if (!o.isMesh) groups.push(o); });
+  for (const g of groups) {
+    const parts = g.children.filter((m) => m.isMesh && !keep.has(m) && m.material && m.material.isMeshPhongMaterial && m.material.side !== DoubleSide && !(m.material.emissive && m.material.emissive.getHex()) && !m.material.transparent);
+    if (parts.length < 1) continue;
+    const list = [];
+    for (const m of parts) {
+      m.updateMatrix();
+      let geo = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+      for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal' && !(k === 'color' && m.material.vertexColors)) geo.deleteAttribute(k);
+      if (!geo.attributes.normal) geo.computeVertexNormals();
+      geo.applyMatrix4(m.matrix);
+      if (!geo.attributes.color) { const n = geo.attributes.position.count, c = new Float32Array(n * 3), col = m.material.color; for (let i = 0; i < n; i++) { c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b; } geo.setAttribute('color', new BufferAttribute(c, 3)); }
+      list.push(geo); g.remove(m); m.geometry.dispose();
+    }
+    const one = new Mesh(merge(list), rigMat); one.castShadow = true; g.add(one);
+  }
+}
+function heroExtras() {
+  const chute = new Group();
+  const gcol = ['#E63946', '#FFFFFF', '#FFB703', '#FFFFFF', '#2EA8FF', '#FFFFFF'];
+  const cg = paint(new SphereGeometry(1.7, 24, 8, 0, TAU, 0, Math.PI * 0.42), (c, x, y, z) => c.set(gcol[Math.floor(((Math.atan2(z, x) / TAU + 1) % 1) * 12 + 0.0001) % 6]));
+  const cmat = new MeshLambertMaterial({ vertexColors: true, side: DoubleSide, transparent: true, opacity: 1 });
+  const canopy = new Mesh(cg, cmat); canopy.scale.set(1, 0.62, 1); canopy.castShadow = true;
+  const lp = new Float32Array(10 * 6), lines = new LineSegments(new BufferGeometry(), new LineBasicMaterial({ color: '#4A4A5A', transparent: true, opacity: 0.85 }));
+  lines.geometry.setAttribute('position', new BufferAttribute(lp, 3)); lines.frustumCulled = false;
+  const canopyHolder = new Group(); canopyHolder.position.y = 1.6; canopyHolder.add(canopy);
+  chute.add(canopyHolder, lines); chute.visible = false;
+  const drop = new Mesh(cg, cmat.clone()); drop.visible = false; drop.castShadow = false;
+  const rope = new Mesh(new BufferGeometry(), phong('#8B5A2B', { shininess: 5 })); rope.visible = false; rope.castShadow = true;
+  return { chute, canopy, canopyHolder, lines, drop, rope };
+}
+
 // ---------------------------------------------------------------- رجل بالزي العربي (أبو جاسم، بائع الشاي، الناس)
 export function makeMan(o = {}) {
   const C = { skin: '#C98E62', thobe: '#F2EEE4', bisht: '#5B3A24', shmagh: '#C8102E', agal: '#141414', beard: '#4A4440', beads: true, gold: true, ...o };

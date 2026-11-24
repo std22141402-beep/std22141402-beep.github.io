@@ -274,7 +274,7 @@ export function buildIsland(def, M, valleyDef) {
     for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2 + 0.2; addSite({ kind: 'palm', ...L(Math.cos(a) * 15, Math.sin(a) * 15), s: 0.95 + (k % 3) * 0.08 }, false); }
     for (let k = 0; k < 5; k++) addSite({ kind: 'stall', ...L(-18 + k * 9, -38), rot: Math.PI / 2, w: 3.2, d: 2.4, h: 2.6, tint: k });
     addSite({ kind: 'teahouse', ...L(-20, 30), rot: Math.atan2(-30, 20), w: 6, d: 10, h: 3.3 }); // تواجه النافورة
-    addSite({ kind: 'board', ...L(9, -9), rot: -Math.PI / 2, w: 2.4, d: 0.4, h: 2.4 });
+    addSite({ kind: 'board', ...L(25, 0), rot: Math.PI, w: 1.9, d: 4.6, h: 4.2 }); // 📜 لوحة الطلبات: بمحور الساحة (البوابة ← النافورة ← اللوحة) وظهرها للخليج
     addSite({ kind: 'signpost', ...L(-26, 8), rot: 0 }, false);
     addSite({ kind: 'gate', ...L(-31, 0), rot: 0, w: 1.2, d: 9, h: 5.2 }, false);
     for (const [u, v] of [[-30, -46], [-30, 46], [30, -46], [30, 46], [0, -46], [0, 46], [-30, 22], [-30, -22]]) addSite({ kind: 'lamp', ...L(u, v) }, false);
@@ -378,6 +378,7 @@ export function buildIsland(def, M, valleyDef) {
   function reserved(x, z) {
     if (Math.hypot(x - FAJR.x, z - FAJR.z) < 62) return true;
     for (const r of rest) if (Math.hypot(x - r.fx, z - r.fz) < 7) return true; // حوالين نار الاستراحة
+    if (TASKS && taskNear(x, z, 4.5)) return true; // فسحة حوالين أغراض الطلبات
     if (Math.hypot(x - HUTS.x, z - HUTS.z) < HUTS.r - 8) return true;
     if (Math.hypot(x - FORT.x, z - FORT.z) < 26) return true;
     if (Math.hypot(x - LIGHT.x, z - LIGHT.z) < 30) return true;
@@ -430,7 +431,27 @@ export function buildIsland(def, M, valleyDef) {
   const rest = [];
   for (const zz of ZONES) { const p = REST_AT[zz.id]; if (!p) continue; const face = Math.atan2(MZ - p[1], MX - p[0]); rest.push({ id: 'z_' + zz.id, x: p[0] - Math.cos(face) * 3.4, z: p[1] - Math.sin(face) * 3.4, fx: p[0], fz: p[1], name: zz.name, icon: zz.icon, face, flag: false, fire: true }); } // تصحى يم النار وإنت تباوع للجبل
   rest.sort((a, b) => (b.id === 'z_fajr') - (a.id === 'z_fajr')); // ساحة الفجر أول وحدة (البداية)
-  { const f = rest[0], face = Math.atan2(MZ - FAJR.z, MX - FAJR.x); Object.assign(f, { x: FAJR.x + 12, z: FAJR.z + 2, face }); } // تبدي بنص الساحة: النافورة والسوق والبوابة والجبل قدّامك
+  { const f = rest[0]; Object.assign(f, { x: FAJR.x + 18.5, z: FAJR.z, face: 0, start: true }); } // تبدي بنص الساحة قبال لوحة الطلبات، والجبل وراك
+
+  // ================================================================ 📜 طلبات أبو جاسم: كل غرض بمنطقته (أماكن ثابتة بأرض تنمشي)
+  const TR = rng((def.seed || 7) * 31 + 5), TAU2 = Math.PI * 2;
+  const slopeAt = (x, z) => Math.hypot(A(x + 1, z) - A(x - 1, z), A(x, z + 1) - A(x, z - 1)) / 2;
+  const landOK = (x, z) => { const a = A(x, z); if (a < 0.6 || coastS(x, z) < 12) return false; if (water(x, z, SEA + a + 0.05)) return false; const q = nearRoad(x, z); if (q && q.d < q.hw + 3) return false; const rv = nearRiver(x, z); if (rv && rv.d < rv.w + 6) return false; return !sites.some((st) => Math.hypot(st.x - x, st.z - z) < 12); };
+  function spots(cx, cz, rad, n, gap, ok) { const out = []; for (let k = 0; k < 6000 && out.length < n; k++) { const a = TR() * TAU2, r = Math.sqrt(TR()) * rad, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r; if (!ok(x, z) || out.some((q) => Math.hypot(q.x - x, q.z - z) < gap)) continue; out.push({ x, z }); } return out; }
+  function peakTop(p) { let b = { x: p.x, z: p.z, a: -1e9 }; for (let i = -40; i <= 40; i++) for (let j = -40; j <= 40; j++) { const x = p.x + i * 6, z = p.z + j * 6, a = A(x, z); if (a > b.a) b = { x, z, a }; } return { x: b.x, z: b.z }; }
+  const THYME = { x: -1650, z: 1560 };
+  const TASKS = [
+    { id: 'gazelle', icon: '🦌', name: 'غزال حي', need: 1, reward: 500, zone: 'valley', at: { x: VAL.x, z: VAL.z }, note: 'بوادي الغزلان شرق الجبل. امشِ يمّه على هونك… إذا ركضت يشرد', items: [] },
+    { id: 'thyme', icon: '🌿', name: 'باقات زعتر بري', need: 5, reward: 150, zone: 'thyme', at: THYME, note: 'تنبت بين صخور تلال الزعتر، جنوب شرق الجبل', items: spots(THYME.x, THYME.z, 330, 5, 55, (x, z) => landOK(x, z) && slopeAt(x, z) < 0.45) },
+    { id: 'pearl', icon: '🦪', name: 'محار بيه لؤلؤ', need: 3, reward: 250, zone: 'pearl', at: PEARL, note: 'على رمل شاطئ اللؤلؤ يم الماي، جنوب الجزيرة', items: spots(PEARL.x, PEARL.z, 420, 3, 45, (x, z) => { const cs = coastS(x, z), a = A(x, z); return cs > 3 && cs < 18 && a > 0.35 && a < 4 && !water(x, z, SEA + a + 0.05) && slopeAt(x, z) < 0.22; }) },
+    { id: 'honey', icon: '🍯', name: 'جرّة عسل بري', need: 1, reward: 200, zone: 'oaks', at: OAKS, note: 'خلية نحل قديمة بنص غابة البلوط… وانتبه من الخنازير 🐗', items: spots(OAKS.x - 60, OAKS.z - 80, 180, 1, 0, (x, z) => landOK(x, z) && slopeAt(x, z) < 0.3) },
+    { id: 'feather', icon: '🪶', name: 'ريشة صقر', need: 1, reward: 300, zone: 'falcons', at: { x: PEAKS[0].x, z: PEAKS[0].z }, note: 'بعش الصقر فوك قمة جبل الصقور، شمال شرق الجزيرة', items: [peakTop(PEAKS[0])] },
+    { id: 'fish', icon: '🐟', name: 'سمچتين', need: 2, reward: 300, zone: 'lake', at: { x: LAKE.x, z: LAKE.z }, note: 'من رصيف الخليج أو بحيرة القمر… تحتاج سنارة من دكاني', items: [] },
+  ];
+  for (const t of TASKS) for (const it of t.items) it.y = H(it.x, it.z);
+  const taskNear = (x, z, r) => TASKS.some((t) => t.items.some((it) => Math.hypot(x - it.x, z - it.z) < r));
+  const boardSite = sites.find((st) => st.kind === 'board');
+  const BOARD = { x: boardSite.x, z: boardSite.z, fx: Math.cos(boardSite.rot), fz: Math.sin(boardSite.rot), w: boardSite.d };
 
   const BEASTS = [ // حيوانات برية بمناطقها: ذيابة بغابة الظلال، وخنازير بغابة البلوط وتلال الزعتر
     ...[[300, -1300], [650, -1050], [180, -1720]].map(([x, z]) => ({ kind: 'wolf', x, z })),
@@ -438,6 +459,6 @@ export function buildIsland(def, M, valleyDef) {
   ];
   return {
     SEA, HALF, SHOULDER, beasts: BEASTS, H, A, baseA, coastS, Rc, rivers, falls, lakes: LAKES, marsh: { ...MARSH, lv: MARSH_LV }, roads, sites, zones: ZONES, zoneAt, rest,
-    nearRoad, nearRiver, water, flora, reserved, peaks: PEAKS, plateau: PLATEAU, islet: ISLET, fajr: FAJR, shBay, valley: VAL, scarp: SCARP, fallsAt: FALLS,
+    nearRoad, nearRiver, water, flora, reserved, tasks: TASKS, board: BOARD, peaks: PEAKS, plateau: PLATEAU, islet: ISLET, fajr: FAJR, shBay, valley: VAL, scarp: SCARP, fallsAt: FALLS,
   };
 }

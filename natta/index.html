@@ -139,6 +139,26 @@ body{position:fixed;inset:0;background:radial-gradient(120% 80% at 50% 30%,#2237
 #mshop .tool .nm{flex:1;text-align:right;font-weight:900;color:#24305e;font-size:15px}
 #mshop .tool .nm small{display:block;font-weight:600;color:#5b6380;font-size:12px}
 #mshop .tool button{min-width:84px}
+#mboard{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(10,14,30,.62)}
+#mboard .bwrap{width:min(430px,100%);max-height:100%;overflow:auto;-webkit-overflow-scrolling:touch;background:linear-gradient(#A9794A,#8A5C33);border:6px solid #5A3720;border-radius:18px;box-shadow:0 0 0 3px #D4AF37 inset,0 14px 40px rgba(0,0,0,.45);padding:12px}
+#mboard .bhead{background:#5A3720;color:#FFE7A8;border-radius:12px;padding:10px;text-align:center;margin-bottom:12px;box-shadow:0 0 0 2px #D4AF37 inset}
+#mboard .bt{font-weight:900;font-size:20px}
+#mboard .bs{font-size:12px;opacity:.92;margin-top:4px;font-weight:700;line-height:1.5}
+#mboard .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px}
+#mboard .note{position:relative;background:#F6E8C6;border-radius:6px;padding:14px 8px 9px;text-align:center;color:#3A2614;box-shadow:0 4px 0 rgba(0,0,0,.22);transform:rotate(var(--r,0deg));border:2px solid #C9A86A}
+#mboard .note:before{content:'';position:absolute;top:-7px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--pin,#E63946);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+#mboard .note.on{border-color:#E63946;box-shadow:0 0 0 3px #E63946,0 4px 0 rgba(0,0,0,.22)}
+#mboard .note.done{background:#E4EFD8;opacity:.86}
+#mboard .ic{font-size:36px;line-height:1.15}
+#mboard .nm{font-weight:900;font-size:15px;margin-top:2px}
+#mboard .zn{font-size:12px;font-weight:800;color:#6B4A2B}
+#mboard .ds{font-size:11px;font-weight:600;color:#5b4630;margin:5px 0;line-height:1.45;min-height:32px}
+#mboard .rw{font-weight:900;color:#9A6B00;font-size:14px;margin-top:3px}
+#mboard .pg{height:7px;border-radius:4px;background:rgba(0,0,0,.12);margin:5px 6px 2px;overflow:hidden}
+#mboard .pg i{display:block;height:100%;background:#2A9D8F}
+#mboard .st{position:absolute;top:34px;left:6px;transform:rotate(-14deg);font-weight:900;font-size:13px;border:2px solid;border-radius:6px;padding:1px 6px;background:rgba(255,255,255,.6)}
+#mboard .tr{margin-top:7px;width:100%;font-size:13px;padding:7px 4px;min-height:0}
+#mboard #mboardX{margin-top:14px;width:100%}
 #mapv .pin{flex:1;max-width:84px;border:0;border-radius:16px;padding:8px 4px;font-size:24px;background:rgba(255,255,255,.12);color:#fff;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:inherit}
 #mapv .pin small{font-size:11px;font-weight:800}
 #mapv .pin.on{background:#FFD23F;color:#24305e;box-shadow:0 3px 0 #c99300}
@@ -285,10 +305,18 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
       <div class="over-title">🛒 دكان أبو جاسم</div>
       <div class="lbl" id="mshopCoins"></div>
       <div class="tool"><span class="ic">🧗</span><span class="nm">حبل التسلّق<small>تصعد الجروف المعلّمة بعلامة حمرة 🚩</small></span><button class="btn primary" data-tool="rope" data-price="300">300 🪙</button></div>
-      <div class="tool"><span class="ic">🥾</span><span class="nm">جزمة الجبل<small>تصعد منحدرات أشد وتتعب أقل</small></span><button class="btn primary" data-tool="boots" data-price="250">250 🪙</button></div>
+      <div class="tool"><span class="ic">🥾</span><span class="nm">جزمة الجبل<small>تصعد منحدرات أشد وما تزلگ</small></span><button class="btn primary" data-tool="boots" data-price="250">250 🪙</button></div>
       <div class="tool"><span class="ic">🎣</span><span class="nm">سنارة<small>تصيد سمچ بالبحيرة والبحر والهور</small></span><button class="btn primary" data-tool="rod" data-price="150">150 🪙</button></div>
       <button class="btn" id="mshopSell" hidden></button>
       <button class="btn" id="mshopX">رجوع ↩</button>
+    </div>
+  </section>
+  <!-- 📜 لوحة طلبات أبو جاسم بساحة الفجر -->
+  <section id="mboard" hidden>
+    <div class="bwrap">
+      <div class="bhead"><div class="bt">📜 لوحة طلبات أبو جاسم</div><div class="bs">جيب الأغراض من مناطقها وسلّمها إله بقمة السحاب ⛰️<br>اختار طلب و🧭 البوصلة تدلّك عليه</div></div>
+      <div class="bgrid" id="mboardList"></div>
+      <button class="btn" id="mboardX">رجوع ↩</button>
     </div>
   </section>
 

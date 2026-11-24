@@ -9,9 +9,10 @@ import {
 } from 'three';
 import {
   TAU, clamp, lerp, smooth, damp, rng, hash2, vnoise, fbm, paint, tf, along, merge, mix, canvasTex, _c, _ca, _cb, angDiff, dampAngle,
-  phong, shadowAll, makeSky, glowTexture, waterNormalTexture, swayMat, seeThroughMat, palmGeo, treeGeo, bushGeo, rockGeo, reedGeo, tuftGeo, makeHero, makeMan,
+  phong, shadowAll, makeSky, glowTexture, waterNormalTexture, swayMat, seeThroughMat, palmGeo, treeGeo, bushGeo, rockGeo, reedGeo, tuftGeo, makeHuman, makeMan,
 } from '../lib3d.js';
 import { createIslandView } from './viewIsland.js';
+import { createHeroAnimator } from './heroAnim.js';
 
 const D2R = Math.PI / 180;
 
@@ -185,7 +186,7 @@ export function createView(cfg, G, sim) {
     const ctex = canvasTex(256, 128, (g, w, h) => { g.clearRect(0, 0, w, h); const r2 = rng(3); for (let i = 0; i < 22; i++) { const x = w * (0.18 + r2() * 0.64), y = h * (0.42 + r2() * 0.28), rr = 18 + r2() * 30; const gr = g.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(250,252,255,.55)'); gr.addColorStop(1, 'rgba(240,246,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr, 0, TAU); g.fill(); } });
     for (let i = 0; i < 46; i++) { const a = R() * TAU, r = 600 + R() * 6200, sp = new Sprite(new SpriteMaterial({ map: ctex, transparent: true, opacity: 0.45 + R() * 0.35, depthWrite: false, fog: false })); const w = 380 + R() * 520; sp.scale.set(w, w * 0.38, 1); sp.position.set(Math.cos(a) * r, G.SEA + 1400 + R() * 800, Math.sin(a) * r); clouds.add(sp); } // غيوم حقيقية (1.4–2.2 كم فوك البحر)
   }
-  IV = createIslandView({ scene, G, U, camera, waterN, glowTex, colorBase: colorAt });
+  IV = createIslandView({ scene, G, U, camera, waterN, glowTex, colorBase: colorAt, S });
   // ================================================================ الجسور، الحجار، الدرج، اللافتات، الاستراحات، صخور الجرف، الجذوع
   const signTex = (text, w = 256, h = 64, size = 34) => canvasTex(w, h, (g) => { g.fillStyle = '#8B5A2B'; g.fillRect(0, 0, w, h); g.strokeStyle = '#E8C170'; g.lineWidth = Math.max(4, h / 16); g.strokeRect(4, 4, w - 8, h - 8); g.fillStyle = '#FFF3D6'; g.font = `900 ${size}px -apple-system, "Geeza Pro", system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; try { g.direction = 'rtl'; } catch (e) { /* */ } g.fillText(text, w / 2, h / 2 + 2); });
   const flags = new Map();
@@ -429,12 +430,15 @@ export function createView(cfg, G, sim) {
   })();
   const mer = makeMan(); scene.add(mer.root);
   let hero = null;
-  // البطل بطول إنسان حقيقي (~1.72 م): شكل «حبّاية» أطول من عرضها حتى يمر من الجسور (1.24 م)
-  const HERO_W = 1.15, HERO_H = 1.6;
+  // 🧍 البطل إنسان طبيعي بطول 1.72 م (راس، رقبة، جذع، إيدين، رجلين) وحركته من منحنيات مشية الإنسان
+  const anim = createHeroAnimator();
+  const fishLine = new LineSegments(new BufferGeometry(), new LineBasicMaterial({ color: '#F4F4F4', transparent: true, opacity: 0.85 }));
+  fishLine.geometry.setAttribute('position', new BufferAttribute(new Float32Array(6), 3)); fishLine.frustumCulled = false; fishLine.visible = false; scene.add(fishLine);
+  const bob = new Mesh(new SphereGeometry(0.035, 10, 8), new MeshLambertMaterial({ color: '#E63946' })); bob.visible = false; scene.add(bob);
   function ensureHero(sk) {
     if (hero && hero.id === sk.id) return;
     if (hero) for (const o of [hero.root, hero.chute, hero.drop, hero.rope]) scene.remove(o);
-    hero = makeHero(sk, glowTex); hero.root.scale.set(HERO_W, HERO_H, HERO_W); scene.add(hero.root, hero.chute, hero.drop, hero.rope); hero.turn = 0; hero.blink = 0; hero.nextBlink = 2;
+    hero = makeHuman(sk, glowTex); scene.add(hero.root, hero.chute, hero.drop, hero.rope); anim.reset();
   }
   function placeCampVisual() { const c = S.vq.camp; campG.visible = false; campG.position.set(V.x + c.x, V.VF + c.base, V.z + c.z); campG.rotation.y = c.rot; zone.position.set(S.vq.zoneW.x, G.H(S.vq.zoneW.x, S.vq.zoneW.z), S.vq.zoneW.z); mer.root.rotation.y = c.rot; mer.yaw = c.rot; }
   // طيور وفراشات وذرات ضو بالوادي
@@ -455,11 +459,11 @@ export function createView(cfg, G, sim) {
     const h = S.hero; if (!h) return;
     if (S.scope) { const ex = M.x + RP + 4.75, ey = HS + 1.45, ez = M.z, yaw = cam.scopeYaw, pt = cam.scopePitch; cam.pos.set(ex, ey, ez); cam.tgt.set(ex + Math.cos(yaw) * 100 * Math.cos(pt), ey + Math.sin(pt) * 100, ez + Math.sin(yaw) * 100 * Math.cos(pt)); return; }
     const f = S.focus, story = h.mode === 'lift' || h.mode === 'carry' || h.mode === 'zip', glide = h.mode === 'glide';
-    _ct.set(f && f.x != null ? f.x : h.x, h.y + (story || glide ? 0.9 : 1.6), f && f.z != null ? f.z : h.z);
+    _ct.set(f && f.x != null ? f.x : h.x, h.y + (story || glide ? 0.9 : h.mode === 'zip' ? 1.6 : 1.42), f && f.z != null ? f.z : h.z); // نباوع على صدر/كتوف إنسان 1.72 م
     if (f) cam.yaw = dampAngle(cam.yaw, f.yaw, 2.2, dt);
     if (h.mode === 'carry') cam.yaw = dampAngle(cam.yaw, Math.atan2(h.z - cam.pos.z, h.x - cam.pos.x), 1.5, dt);
     if (h.mode === 'zip') cam.yaw = dampAngle(cam.yaw, h.face, 1.4, dt); // الكاميرا وراك على الحبل
-    const wantDist = f ? f.dist : h.mode === 'carry' ? 11 : h.mode === 'zip' ? 9.5 : story ? 7 : glide ? 9 : S.summit ? 6.8 : 6.3;
+    const wantDist = f ? f.dist * 0.85 : h.mode === 'carry' ? 11 : h.mode === 'zip' ? 7.2 : story ? 7 : glide ? 9 : h.swim ? 5.2 : S.summit ? 5.6 : 4.9;
     if (!cam.init) { cam.tgt.copy(_ct); cam.dist = wantDist; cam.effPitch = null; cam.effDist = null; cam.init = true; }
     const k = h.mode === 'faint' ? 2 : story ? 6 : 14;
     cam.tgt.x = damp(cam.tgt.x, _ct.x, k, dt); cam.tgt.z = damp(cam.tgt.z, _ct.z, k, dt); cam.tgt.y = damp(cam.tgt.y, _ct.y, h.air && !story && !glide ? 6 : 10, dt);
@@ -496,33 +500,45 @@ export function createView(cfg, G, sim) {
   const tmp = new Vector3(), tmp2 = new Vector3();
   function setSize(w, h, ratio) { cssW = w; cssH = h; pr = ratio; renderer.setPixelRatio(ratio); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
   const heroYaw = (face) => Math.PI / 2 - face;
+  const _hp = new Vector3(), _tp = new Vector3();
   function animateHero(t, dt) {
-    const e = S.hero, h = hero, walk = e.mode === 'walk' && !e.air;
-    const hop = walk ? Math.abs(Math.sin(e.hopPh)) * (e.run ? 0.17 : 0.08) : 0;
-    h.root.position.set(e.x, e.y + hop, e.z);
-    h.turn = dampAngle(h.turn, heroYaw(e.face), 14, dt); h.root.rotation.y = h.turn;
-    const lying = e.mode === 'faint';
-    h.inner.rotation.z = lying ? -Math.PI / 2 * Math.min(1, e.faintT * 4) : -e.rot;
-    let sq = e.landT > 0 ? e.landT * 2.4 : 0; if (e.air && e.mode === 'walk') sq = -0.12;
-    if (walk && e.speed > 0.3) sq += (1 - Math.abs(Math.sin(e.hopPh))) * 0.22 - 0.07;
-    h.inner.scale.set(1 + 0.2 * sq, 1 - 0.22 * sq, 1 + 0.2 * sq); h.inner.position.y = 0.55 * (1 - 0.22 * sq);
-    for (const [i, f] of h.feet.entries()) f.position.y = -0.49 + (walk && e.speed > 0.3 ? Math.max(0, Math.sin(e.hopPh * 2 + i * Math.PI)) * 0.06 : 0);
-    const scared = e.mode !== 'walk' && e.mode !== 'glide' && e.mode !== 'fish' && e.mode !== 'climb' || e.stun > 0 || (e.air && e.vy < -7) || S.wind > 0.5;
-    h.nextBlink -= dt; if (h.nextBlink < 0) { h.blink = 0.14; h.nextBlink = 2.5 + Math.random() * 2.5; } h.blink = Math.max(0, h.blink - dt);
-    for (const ee of h.eyes) ee.scale.set(scared ? 1.08 : 1, scared ? 1.15 : h.blink > 0 || lying ? 0.12 : 1, 1);
-    for (const pp of h.pupils) pp.scale.setScalar(scared ? 0.72 : 1);
+    const e = S.hero, h = hero;
+    // وين يباوع: أبو جاسم إذا قريب، الغزال، لوحة الطلبات، أو يتلفّت
+    let look = null;
+    const lookAt = (x, z, r) => { const d = Math.hypot(x - e.x, z - e.z); if (d < r && d > 0.8) { look = Math.PI / 2 - Math.atan2(z - e.z, x - e.x); return true; } return false; };
+    if (e.mode === 'walk' && !e.swim) { if (!(S.vq.merW && Math.abs(e.y - M.HS) < 4 && lookAt(S.vq.merW.x, S.vq.merW.z, 9))) if (!(!S.vq.caught && lookAt(sim.gz.x, sim.gz.z, 14)) && e.speed < 1.2) { const b = G.I.board; lookAt(b.x, b.z, 9); } }
+    const P = anim.update(h, e, S, t, dt, look);
+    h.root.position.set(e.x, e.y + P.by, e.z);
+    h.turn = dampAngle(h.turn, heroYaw(e.face), e.mode === 'walk' ? 11 : 6, dt); h.root.rotation.y = h.turn;
+    // الوجه: يرمش، ويتخرّع إذا وكع أو عضّه شي
+    const scared = e.mode === 'lift' || e.mode === 'carry' || e.stun > 0 || (e.air && e.vy < -7) || e.mode === 'faint';
+    h.nextBlink -= dt; if (h.nextBlink < 0) { h.blink = 0.13; h.nextBlink = 2.2 + Math.random() * 3; } h.blink = Math.max(0, h.blink - dt);
+    for (const ee of h.eyes) ee.scale.y = h.blink > 0 || (e.mode === 'faint' && e.faintT > 0.4) ? 0.12 : scared ? 1.25 : 1;
     h.smile.visible = !scared; h.ooh.visible = scared;
-    if (h.acc.userData.star) h.acc.userData.star.rotation.y = t * 2;
-    for (const s of [-1, 1]) { const tl = h.acc.userData['tail' + s]; if (tl) tl.rotation.x = 0.5 + Math.sin(t * 12 + s) * 0.25; }
-    if (h.fire) { h.bodyMat.emissiveIntensity = 0.5 + Math.sin(t * 13) * 0.1; for (const f of h.flames) f.scale.set(1, 0.8 + Math.sin(t * 14 + f.userData.ph * 1.7) * 0.25, 1); }
+    if (h.star) h.star.rotation.y = t * 2;
+    for (const s of [-1, 1]) { const tl = h.acc.userData['tail' + s]; if (tl) tl.rotation.x = 0.6 + Math.sin(t * 12 + s) * 0.2 + e.speed * 0.08; }
+    if (h.cape) h.cape.rotation.x = 0.08 + 0.55 * smooth(0, 4.2, e.speed) + Math.sin(t * 3) * 0.03;
+    if (h.fire) { h.bodyMat.emissiveIntensity = 0.32 + Math.sin(t * 13) * 0.08; for (const f of h.flames) f.scale.set(1, 0.8 + Math.sin(t * 14 + f.userData.ph * 1.7) * 0.25, 1); }
+    h.torso.scale.x = 1 + Math.sin(t * 1.65) * 0.008; // نَفَس خفيف
+    // 🎣 السنارة بالإيد اليمنى، والخيط للماي
+    const fishing = e.mode === 'fish'; h.rod.visible = fishing; fishLine.visible = bob.visible = fishing;
+    if (fishing) {
+      h.root.updateMatrixWorld(true); h.arms[1].wr.getWorldPosition(_hp); h.root.worldToLocal(_hp);
+      h.rod.position.copy(_hp); h.rod.position.y -= 0.05; h.rod.rotation.set(0.82, 0, 0); h.rod.updateMatrixWorld(true);
+      h.rodTip.getWorldPosition(_tp);
+      const fx = e.x + Math.cos(e.face) * 3.6, fz = e.z + Math.sin(e.face) * 3.6, w = G.water(fx, fz, G.H(fx, fz) + 0.05), wl = w ? w.level : e.y - 0.5;
+      const F = S.fishing, nib = F && F.t > F.bite - 0.6 ? Math.sin(t * 30) * 0.03 - 0.05 : 0;
+      bob.position.set(fx, wl + 0.02 + Math.sin(t * 2.6) * 0.012 + nib, fz);
+      const lp = fishLine.geometry.attributes.position; lp.setXYZ(0, _tp.x, _tp.y, _tp.z); lp.setXYZ(1, bob.position.x, bob.position.y, bob.position.z); lp.needsUpdate = true;
+    }
     const ch = h.chute; ch.visible = e.chute > 0.01;
     if (ch.visible) {
       ch.position.copy(h.root.position); ch.rotation.y = h.root.rotation.y;
       const k = e.chute, pop = k < 1 ? lerp(0.15, 1, k) + Math.sin(k * Math.PI) * 0.12 : 1;
-      h.canopyHolder.scale.set(pop, lerp(0.4, 1, k), pop); h.canopyHolder.position.y = lerp(1.0, 2.25, k);
+      h.canopyHolder.scale.set(pop, lerp(0.4, 1, k), pop); h.canopyHolder.position.y = lerp(2.2, 3.6, k);
       ch.rotation.z = -(Math.hypot(e.vx, e.vz) * 0.05) + Math.sin(t * 1.5) * 0.05; ch.rotation.x = Math.sin(t * 1.1) * 0.05;
       const lp = h.lines.geometry.attributes.position, top = h.canopyHolder.position.y, R0 = 1.7 * Math.sin(Math.PI * 0.42) * pop, ry = top + 1.7 * Math.cos(Math.PI * 0.42) * 0.62 * lerp(0.4, 1, k);
-      for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU, sx = i % 2 ? 0.22 : -0.22; lp.setXYZ(i * 2, Math.cos(a) * R0, ry, Math.sin(a) * R0); lp.setXYZ(i * 2 + 1, sx, 0.85, 0); }
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU, sx = i % 2 ? 0.22 : -0.22; lp.setXYZ(i * 2, Math.cos(a) * R0, ry, Math.sin(a) * R0); lp.setXYZ(i * 2 + 1, sx, 2.05, 0); }
       lp.needsUpdate = true;
     }
     const d = S.drop; h.drop.visible = !!(d && d.t < 2.4);
@@ -572,7 +588,7 @@ export function createView(cfg, G, sim) {
     const r = hero.rope; r.visible = S.vq.caught && !S.vq.delivered && gzM.root.visible;
     if (!r.visible) return;
     hero.root.updateMatrixWorld(); gzM.root.updateMatrixWorld();
-    const e = S.hero, a = tmp.set(e.x - Math.cos(e.face) * 0.3, hero.root.position.y + 0.8, e.z - Math.sin(e.face) * 0.3), b = gzM.collar.getWorldPosition(tmp2), mid = a.clone().lerp(b, 0.5); mid.y = Math.min(a.y, b.y) - 0.25;
+    const a = hero.arms[1].wr.getWorldPosition(tmp), b = gzM.collar.getWorldPosition(tmp2), mid = a.clone().lerp(b, 0.5); mid.y = Math.min(a.y, b.y) - 0.25; // من إيدك اليمنى لرگبة الغزال
     r.geometry.dispose(); r.geometry = new TubeGeometry(new QuadraticBezierCurve3(a.clone(), mid, b.clone()), 18, 0.016, 5);
   }
   function animatePlaza(t, dt) {
@@ -681,5 +697,7 @@ export function createView(cfg, G, sim) {
   const pourTea = () => { for (const n of npcs) if (n.kind === 'seller') { n.pour = 1.4; n.talk = 3; } };
   const talkNpc = (kind) => { const g = npcs.filter((n) => n.kind === kind); if (g.length) g[Math.floor(Math.random() * g.length)].talk = 3; };
   const ringBell = () => { fx.bell.v += 2.4; };
-  return { IV, setSize, render, project, heading, cam, portrait, mapShot, buildHi, setHero: ensureHero, pourTea, talkNpc, ringBell, renderer, scene, camera, U, fx, npcs, get pr() { return pr; }, get hiLeft() { return IV.pending(); } };
+  /** مقاسات البطل الحقيقية (للفحص): الطول، عرض الكتوف، طول الرجل */
+  function heroDims() { if (!hero) return null; hero.root.updateMatrixWorld(true); const v = new Vector3(), e = S.hero; hero.head.getWorldPosition(v); const top = v.y + 0.115 - (e.y + anim.pose.by); hero.arms[0].sh.getWorldPosition(v); const a = v.clone(); hero.arms[1].sh.getWorldPosition(v); return { height: +top.toFixed(3), shoulders: +a.distanceTo(v).toFixed(3), leg: +(hero.pelvis.position.y).toFixed(3) }; }
+  return { IV, setSize, render, project, heading, cam, portrait, mapShot, buildHi, setHero: ensureHero, heroDims, pourTea, talkNpc, ringBell, renderer, scene, camera, U, fx, npcs, get pr() { return pr; }, get hiLeft() { return IV.pending(); } };
 }

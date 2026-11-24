@@ -2,7 +2,7 @@
 // البحر والبحيرة والهور والأنهار والشلالات، المباني (بيوت طين، أكواخ، مضيف قصب، منارة، حصن)، ساحة الفجر، نيران الاستراحة، وصورة الخريطة.
 import {
   Mesh, Group, InstancedMesh, Object3D, Vector3, Color, BufferGeometry, BufferAttribute, PlaneGeometry, CircleGeometry, CylinderGeometry, ConeGeometry,
-  IcosahedronGeometry, DodecahedronGeometry, BoxGeometry, SphereGeometry, TubeGeometry, CatmullRomCurve3, MeshLambertMaterial, MeshPhongMaterial, MeshBasicMaterial, Sprite, SpriteMaterial,
+  IcosahedronGeometry, DodecahedronGeometry, BoxGeometry, SphereGeometry, TubeGeometry, TorusGeometry, CatmullRomCurve3, MeshLambertMaterial, MeshPhongMaterial, MeshBasicMaterial, Sprite, SpriteMaterial,
   AdditiveBlending, DoubleSide, RepeatWrapping,
 } from 'three';
 import { TAU, clamp, lerp, smooth, rng, hash2, vnoise, fbm, paint, tf, merge, mix, canvasTex, swayMat, seeThroughMat, palmGeo, bushGeo, rockGeo, reedGeo, tuftGeo, makeMan } from '../lib3d.js';
@@ -10,7 +10,7 @@ import { TAU, clamp, lerp, smooth, rng, hash2, vnoise, fbm, paint, tf, merge, mi
 const K1 = new Color(), K2 = new Color(), K3 = new Color(), KO = new Color(); // KO = لون الناتج (منفصل عن المؤقتات)
 const mixK = (out, a, b, t) => out.copy(K1.set(a)).lerp(K2.set(b), clamp(t, 0, 1));
 
-export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBase }) {
+export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBase, S }) {
   const I = G.I, SEA = G.SEA, M = G.M, HALF = G.HALF;
   const matVC = new MeshLambertMaterial({ vertexColors: true });
   const matFlat = new MeshLambertMaterial({ vertexColors: true, flatShading: true });
@@ -291,8 +291,22 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
       P.push(paint(tf(new BoxGeometry(3.1, 0.08, 2.3), 0, 2.62, 0, 0.12, 0, 0), (c, x) => c.set(Math.floor((x + 2) * 2.5) % 2 ? c0 : '#FFF5E0')));
       P.push(box(2.8, 0.85, 1.0, '#8B5E3C', 0, 0.43, 0.3));
       for (let i = 0; i < 6; i++) P.push(box(0.35, 0.3, 0.3, ['#E76F51', '#F4D35E', '#7FB069', '#C2185B', '#FFB703', '#8D6E63'][i], -1.1 + i * 0.44, 1.0, 0.3));
-    } else if (k === 'board') {
-      for (const sx of [-1, 1]) P.push(cyl(0.07, 0.08, 2.4, '#5B3A1F', 0, 1.2, sx * 1.05, 6));
+    } else if (k === 'board') { // 📜 لوحة الطلبات: دكّة حجر بدرجتين، عمودين خشب منقوش، إطار، سقف قرميد، وأحواض ورد
+      const stone = (c, x, y, z) => mix(c, '#C9B596', '#E3D3B5', 0.4 + (hash2(Math.round(x * 3), Math.round(z * 3 + y)) - 0.5) * 0.5);
+      P.push(paint(tf(new BoxGeometry(1.9, 0.18, 4.6), 0, 0.09, 0), stone), paint(tf(new BoxGeometry(1.25, 0.16, 4.1), -0.25, 0.26, 0), stone));
+      P.push(paint(tf(new BoxGeometry(1.95, 0.03, 4.65), 0, 0.185, 0), '#B39C78'));
+      for (const sz of [-1, 1]) {
+        P.push(box(0.2, 3.75, 0.2, '#5A3720', -0.3, 0.34 + 1.875, sz * 1.82), box(0.28, 0.16, 0.28, '#7A4E2A', -0.3, 0.42, sz * 1.82), box(0.26, 0.12, 0.26, '#7A4E2A', -0.3, 2.95, sz * 1.82));
+        P.push(paint(tf(new ConeGeometry(0.2, 0.22, 4), -0.3, 4.2, sz * 1.82, 0, Math.PI / 4, 0), '#4A2C16'));
+        P.push(paint(tf(new BoxGeometry(0.55, 0.42, 0.55), 0.55, 0.55, sz * 1.95), stone), paint(tf(new IcosahedronGeometry(0.3, 1), 0.55, 0.88, sz * 1.95, 0, 0, 0, 1, 0.6, 1), (c, x, y, z) => c.set(['#FF6B9A', '#FFD23F', '#FFFFFF', '#B28DFF', '#E63946', '#7FD16B'][Math.floor(hash2(x * 9 + sz, z * 9) * 6)])));
+      }
+      P.push(box(0.1, 2.05, 3.5, '#6E4526', -0.34, 0.34 + 0.75 + 1.025, 0)); // اللوح ورا الأوراق
+      for (const [y, h] of [[1.06, 0.1], [3.17, 0.1]]) P.push(box(0.16, h, 3.62, '#8A5A30', -0.27, y, 0));
+      for (const sz of [-1, 1]) P.push(box(0.16, 2.2, 0.1, '#8A5A30', -0.27, 2.12, sz * 1.76));
+      for (const [y, h] of [[1.0, 0.02], [3.23, 0.02]]) P.push(box(0.17, h, 3.64, '#D4AF37', -0.26, y, 0));
+      P.push(box(0.12, 0.5, 2.7, '#5A3720', -0.28, 3.55, 0)); // لوحة العنوان
+      for (const sx of [-1, 1]) P.push(paint(tf(new BoxGeometry(1.25, 0.08, 4.5), -0.3 + sx * 0.5, 4.22, 0, 0, 0, -sx * 0.62), (c, x, y, z) => c.set(Math.floor((z + 3) * 4.5) % 2 ? '#B5532F' : '#C8653A')));
+      P.push(box(0.16, 0.16, 4.6, '#7A3A1E', -0.3, 4.55, 0));
     } else if (k === 'signpost') {
       P.push(cyl(0.08, 0.1, 3.2, '#5B3A1F', 0, 1.6, 0, 6));
     } else if (k === 'gate') {
@@ -332,13 +346,24 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
     }
     return P;
   }
-  const siteObjs = [], lamps = [], fires = [], npcs = [];
+  const siteObjs = [], lamps = [], fires = [], npcs = [], boardLamps = []; let boardTex = null, boardKey = '';
   for (const st of I.sites) {
     const P = siteParts(st), grp = new Group();
     grp.position.set(st.x, st.float ? SEA + 0.15 : st.y, st.z); grp.rotation.y = -(st.rot || 0);
     if (P.length) { const m = new Mesh(merge(P), new MeshLambertMaterial({ vertexColors: true, side: DoubleSide })); m.castShadow = true; m.receiveShadow = true; grp.add(m); }
     if (st.kind === 'palm') { const m = new Mesh(NEAR.palm[0], nearMat.palm); m.scale.setScalar(2.4 * (st.s || 1)); m.castShadow = true; grp.add(m); }
-    if (st.kind === 'board') { const b = new Mesh(new PlaneGeometry(2.2, 1.5), new MeshLambertMaterial({ map: signTex('📜 طلبات أبو جاسم', 512, 360, 52, '#6B4423'), side: DoubleSide })); b.position.set(0.1, 1.7, 0); b.rotation.y = Math.PI / 2; grp.add(b); }
+    if (st.kind === 'board') {
+      const title = new Mesh(new PlaneGeometry(2.6, 0.46), new MeshLambertMaterial({ map: signTex('📜 طلبات أبو جاسم', 1024, 180, 96, '#5A3720', '#FFE7A8') })); title.position.set(-0.215, 3.55, 0); title.rotation.y = Math.PI / 2; grp.add(title);
+      boardTex = canvasTex(1024, 600, () => {}); const cards = new Mesh(new PlaneGeometry(3.4, 1.99), new MeshLambertMaterial({ map: boardTex, emissive: '#2A1C10', emissiveIntensity: 0.25 })); cards.position.set(-0.28, 2.12, 0); cards.rotation.y = Math.PI / 2; grp.add(cards);
+      for (const sz of [-1, 1]) { // فانوسين معلّقين
+        const ln = new Group(); ln.position.set(0.25, 3.9, sz * 2.05);
+        const cage = new Mesh(new CylinderGeometry(0.09, 0.11, 0.26, 6), new MeshLambertMaterial({ color: '#FFD27A', emissive: '#FFB347', emissiveIntensity: 0.9 })); cage.position.y = -0.3; ln.add(cage);
+        const cap = new Mesh(new ConeGeometry(0.13, 0.12, 6), new MeshLambertMaterial({ color: '#2E2E2E' })); cap.position.y = -0.12; ln.add(cap);
+        const ch2 = new Mesh(new CylinderGeometry(0.008, 0.008, 0.25, 4), new MeshLambertMaterial({ color: '#2E2E2E' })); ch2.position.y = 0.0; ln.add(ch2);
+        const gl = new Sprite(new SpriteMaterial({ map: glowTex, color: '#FFC85A', transparent: true, opacity: 0.85, depthWrite: false, blending: AdditiveBlending })); gl.position.y = -0.3; gl.scale.setScalar(1.3); ln.add(gl); lamps.push(gl);
+        grp.add(ln); boardLamps.push(ln);
+      }
+    }
     if (st.kind === 'signpost') ['⛰️ قمة السحاب', '🏘️ قرية الطين', '🌴 بساتين الرطب', '🗼 المنارة'].forEach((t, i) => { const b = new Mesh(new PlaneGeometry(1.9, 0.42), new MeshLambertMaterial({ map: signTex(t, 512, 112, 54), side: DoubleSide })); b.position.set(0, 2.9 - i * 0.5, 0); b.rotation.y = [Math.PI / 2, 0, Math.PI, -Math.PI / 2][i] + 0.2; b.translateX(0.95); grp.add(b); });
     if (st.kind === 'gate') { const b = new Mesh(new PlaneGeometry(4.2, 0.8), new MeshLambertMaterial({ map: signTex('⛰️ طريق القمة', 512, 100, 58), side: DoubleSide })); b.position.set(0.62, 5.6, 0); b.rotation.y = Math.PI / 2; grp.add(b); }
     if (st.kind === 'lamp' || st.kind === 'lighthouse') { const sp = new Sprite(new SpriteMaterial({ map: glowTex, color: '#FFC85A', transparent: true, opacity: 0.8, depthWrite: false, blending: AdditiveBlending })); sp.position.y = st.kind === 'lamp' ? 3.3 : 18.4; sp.scale.setScalar(st.kind === 'lamp' ? 1 : 7); grp.add(sp); lamps.push(sp); }
@@ -386,17 +411,69 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
     const sg = new Mesh(new PlaneGeometry(2.4, 0.6), new MeshLambertMaterial({ map: signTex(`🚡 ${z.name} ${z.icon}`, 512, 128, 56), side: DoubleSide })); sg.position.set(z.stand.x, M.HS + 2.2, z.stand.z); sg.rotation.y = -Math.atan2(z.stand.z - M.z, z.stand.x - M.x) + Math.PI / 2; scene.add(sg);
     const sp = new Mesh(new CylinderGeometry(0.06, 0.06, 2.4, 6), woodM); sp.position.set(z.stand.x, M.HS + 1.2, z.stand.z); scene.add(sp);
   }
-  const trolley = new Group(); { const wheel = new Mesh(new CylinderGeometry(0.16, 0.16, 0.1, 12), steel); wheel.rotation.x = Math.PI / 2; wheel.position.y = 2.1; trolley.add(wheel); for (const s of [-1, 1]) { const st = new Mesh(new CylinderGeometry(0.02, 0.02, 1.2, 4), new MeshLambertMaterial({ color: '#E63946' })); st.position.set(0, 1.45, s * 0.25); st.rotation.x = s * 0.2; trolley.add(st); } const bar = new Mesh(new CylinderGeometry(0.03, 0.03, 0.9, 6), steel); bar.rotation.x = Math.PI / 2; bar.position.y = 0.88; trolley.add(bar); }
+  // البكرة على الحبل (2.4 م فوك رجليك) ومقبض تمسكه بإيدينك فوك راسك، وحزام للخصر
+  const trolley = new Group(); { const red = new MeshLambertMaterial({ color: '#E63946' }); const wheel = new Mesh(new CylinderGeometry(0.11, 0.11, 0.08, 14), steel); wheel.rotation.x = Math.PI / 2; wheel.position.y = 2.4; trolley.add(wheel); const plate = new Mesh(new BoxGeometry(0.3, 0.2, 0.04), red); plate.position.set(0, 2.38, 0.06); trolley.add(plate); for (const s of [-1, 1]) { const st = new Mesh(new CylinderGeometry(0.012, 0.012, 0.36, 4), steel); st.position.set(0, 2.2, s * 0.17); st.rotation.x = s * 0.35; trolley.add(st); } const bar = new Mesh(new CylinderGeometry(0.022, 0.022, 0.62, 8), new MeshLambertMaterial({ color: '#2E2E2E' })); bar.rotation.x = Math.PI / 2; bar.position.y = 2.03; trolley.add(bar); const lan = new Mesh(new CylinderGeometry(0.012, 0.012, 1.3, 4), red); lan.position.set(0, 1.68, 0); trolley.add(lan); const hb = new Mesh(new TorusGeometry(0.17, 0.025, 6, 18), red); hb.rotation.x = Math.PI / 2; hb.scale.z = 0.72; hb.position.y = 1.0; trolley.add(hb); }
   trolley.visible = false; scene.add(trolley);
   const ropeM = new MeshLambertMaterial({ color: '#C8A46A' }), flagM = new MeshLambertMaterial({ color: '#E63946', side: DoubleSide });
   for (const a of G.anchors) { // 🧗 حبل معلّق على الجرف وعلامة حمرة تحت
-    const rp = new Mesh(new TubeGeometry(new CatmullRomCurve3([new Vector3(a.top.x, a.top.y + 0.8, a.top.z), new Vector3((a.top.x + a.bot.x) / 2, (a.top.y + a.bot.y) / 2, (a.top.z + a.bot.z) / 2), new Vector3(a.bot.x, a.bot.y + 0.2, a.bot.z)]), 12, 0.035, 4, false), ropeM); scene.add(rp);
+    const rpts = [new Vector3(a.top.x, a.top.y + 0.8, a.top.z)]; // الحبل ممدود على وجه الجرف (من الوتد للعلامة)
+    for (let i = 1; i <= 16; i++) { const k = i / 16, x = lerp(a.top.x, a.bot.x, k), z = lerp(a.top.z, a.bot.z, k); rpts.push(new Vector3(x, Math.max(G.H(x, z), lerp(a.top.y, a.bot.y, k) - 0.6) + 0.25, z)); }
+    const rp = new Mesh(new TubeGeometry(new CatmullRomCurve3(rpts), 40, 0.03, 4, false), ropeM); scene.add(rp);
     const peg = new Mesh(new CylinderGeometry(0.06, 0.06, 1.1, 6), steel); peg.position.set(a.top.x, a.top.y + 0.5, a.top.z); scene.add(peg);
     const pole = new Mesh(new CylinderGeometry(0.03, 0.03, 1.8, 5), woodM); pole.position.set(a.bot.x, a.bot.y + 0.9, a.bot.z); scene.add(pole);
     const fl = new Mesh(new PlaneGeometry(0.5, 0.32), flagM); fl.position.set(a.bot.x + 0.25, a.bot.y + 1.6, a.bot.z); scene.add(fl);
   }
-  const rod = new Group(); { const stick = new Mesh(new CylinderGeometry(0.015, 0.03, 2.6, 5), woodM); stick.rotation.z = -1.0; stick.position.set(1.1, 1.6, 0); rod.add(stick); const line = new Mesh(new CylinderGeometry(0.004, 0.004, 2.4, 3), new MeshBasicMaterial({ color: '#EEEEEE' })); line.position.set(2.2, 0.95, 0); rod.add(line); const bob = new Mesh(new SphereGeometry(0.06, 8, 6), new MeshLambertMaterial({ color: '#E63946' })); bob.position.set(2.2, -0.2, 0); rod.add(bob); rod.userData.bob = bob; }
-  rod.visible = false; scene.add(rod);
+
+  // ================================================================ 📜 أغراض الطلبات بالعالم: زعتر، محار، خلية نحل، عش صقر (كل وحدة بضو حتى تنلگى)
+  const itemObjs = [];
+  {
+    const thymeG = merge([...Array(9)].map((_, i) => { const a = i * 0.7, h = 0.26 + (i % 3) * 0.06; return paint(tf(new ConeGeometry(0.05, h, 5), Math.cos(a) * 0.07, h / 2, Math.sin(a) * 0.07, Math.sin(a) * 0.2, 0, Math.cos(a) * 0.2), (c, x, y) => mix(c, '#4E7A3A', '#9BBF7A', y / h + 0.3)); }).concat([paint(tf(new TorusGeometry(0.06, 0.012, 5, 12), 0, 0.08, 0, Math.PI / 2), '#C8283A')], [...Array(6)].map((_, i) => paint(tf(new SphereGeometry(0.018, 5, 4), Math.cos(i) * 0.08, 0.3 + (i % 2) * 0.04, Math.sin(i) * 0.08), '#B99CF0'))));
+    const shellG = merge([paint(tf(new SphereGeometry(0.11, 12, 6, 0, TAU, 0, Math.PI / 2), 0, 0.02, 0, 0, 0, 0, 1, 0.38, 0.8), (c, x, y, z) => mix(c, '#8A8378', '#D9D2C3', 0.5 + Math.sin(Math.atan2(z, x) * 9) * 0.3)), paint(tf(new SphereGeometry(0.11, 12, 6, 0, TAU, 0, Math.PI / 2), -0.02, 0.09, 0, 0, 0, 1.1, 1, 0.32, 0.8), (c, x, y, z) => mix(c, '#7D776B', '#CFC7B6', 0.5 + Math.sin(Math.atan2(z, x) * 9) * 0.3)), paint(tf(new SphereGeometry(0.03, 10, 8), 0.02, 0.05, 0), '#FFF8EE')]);
+    const hiveG = merge([box(0.7, 0.08, 0.7, '#6B4A2E', 0, 0.42, 0), ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => cyl(0.03, 0.03, 0.42, '#5B3A1F', sx * 0.28, 0.21, sz * 0.28, 5))), paint(tf(new CylinderGeometry(0.27, 0.3, 0.55, 12), 0, 0.73, 0), (c, x, y) => mix(c, '#C9963E', '#E8C170', Math.floor((y + 1) * 9) % 2 ? 0.2 : 0.8)), paint(tf(new ConeGeometry(0.33, 0.22, 12), 0, 1.11, 0), '#8C6A3A'), box(0.1, 0.06, 0.02, '#2A1C10', 0, 0.55, 0.29), paint(tf(new CylinderGeometry(0.09, 0.11, 0.16, 10), 0.24, 0.53, 0.18), '#E0A83A')]);
+    const nestG = merge([...Array(26)].map((_, i) => { const a = i * 0.26; return paint(tf(new CylinderGeometry(0.018, 0.018, 0.55, 4), Math.cos(a) * 0.3, 0.1 + (i % 3) * 0.05, Math.sin(a) * 0.3, Math.PI / 2, a + 0.3, 0.2 * (i % 2 ? 1 : -1)), (c) => c.set(i % 3 ? '#7A5A3A' : '#5E4228')); }).concat([paint(tf(new CircleGeometry(0.27, 12), 0, 0.08, 0, -Math.PI / 2), '#5E4228'), paint(tf(new SphereGeometry(0.06, 8, 6), 0.06, 0.12, 0.02, 0, 0, 0, 1, 0.78, 1), '#EFE6D6'), paint(tf(new SphereGeometry(0.06, 8, 6), -0.07, 0.12, -0.03, 0, 0, 0, 1, 0.78, 1), '#E8DCC6')]));
+    const featherG = merge([paint(tf(new CylinderGeometry(0.004, 0.006, 0.42, 4), 0, 0.21, 0), '#EFE6D6'), paint(tf(new SphereGeometry(0.06, 10, 6), 0, 0.25, 0, 0, 0, 0, 0.55, 2.6, 0.12), (c, x, y) => mix(c, '#5A3A22', '#D8B98A', 0.5 + Math.sin(y * 70) * 0.5))]);
+    const vcM = new MeshLambertMaterial({ vertexColors: true });
+    const beamM = new MeshBasicMaterial({ color: '#FFE38A', transparent: true, opacity: 0.22, depthWrite: false, blending: AdditiveBlending, side: DoubleSide });
+    const beamG = new CylinderGeometry(0.18, 0.5, 26, 10, 1, true); beamG.translate(0, 13, 0);
+    const defs = I.tasks.flatMap((d) => d.items.map((it) => ({ ...it, task: d.id })));
+    defs.forEach((it, idx) => {
+      const grp = new Group(); grp.position.set(it.x, it.y, it.z);
+      const g = it.task === 'thyme' ? thymeG : it.task === 'pearl' ? shellG : it.task === 'honey' ? hiveG : nestG;
+      const m = new Mesh(g, vcM); m.castShadow = true; m.rotation.y = hash2(it.x, it.z) * TAU; grp.add(m);
+      let fe = null; if (it.task === 'feather') { fe = new Mesh(featherG, vcM); fe.position.set(0.05, 0.12, 0); fe.rotation.z = -0.5; grp.add(fe); }
+      if (it.task === 'honey') { const jar = new Mesh(new CylinderGeometry(0.07, 0.08, 0.14, 10), new MeshLambertMaterial({ color: '#F2A922', emissive: '#7A4A00', emissiveIntensity: 0.4 })); jar.position.set(0.24, 0.53, 0.18); grp.add(jar); fe = jar; }
+      const beam = new Mesh(beamG, beamM); grp.add(beam); // عمود ضو تشوفه من بعيد
+      const gl = new Sprite(new SpriteMaterial({ map: glowTex, color: '#FFE38A', transparent: true, opacity: 0.7, depthWrite: false, blending: AdditiveBlending })); gl.position.y = it.task === 'honey' ? 0.9 : 0.35; gl.scale.setScalar(it.task === 'honey' ? 2.2 : 1.4); grp.add(gl);
+      scene.add(grp); itemObjs.push({ it, idx, grp, fe, beam, gl });
+    });
+  }
+  /** يرسم أوراق الطلبات على اللوحة (تتحدّث وية التقدّم) */
+  function drawBoard() {
+    if (!boardTex) return;
+    const key = S.tasks.map((t) => `${t.id}:${t.done ? 'D' : ''}${t.got}`).join('|') + '|' + S.fish + '|' + S.track + '|' + (S.vq.caught ? 1 : 0);
+    if (key === boardKey) return; boardKey = key;
+    const cv = boardTex.image, g = cv.getContext('2d'), W = cv.width, Hh = cv.height;
+    const bg = g.createLinearGradient(0, 0, 0, Hh); bg.addColorStop(0, '#A9794A'); bg.addColorStop(1, '#8E6238'); g.fillStyle = bg; g.fillRect(0, 0, W, Hh);
+    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${60 + (i % 5) * 20},${35 + (i % 3) * 12},15,.25)`; g.fillRect((i * 97.3) % W, (i * 53.7) % Hh, 3, 2); }
+    const cw = 318, chh = 270, gx = 18, gy = 22;
+    S.tasks.forEach((t, i) => {
+      const d = t.def, col = i % 3, row = Math.floor(i / 3), x = W - gx - cw - col * (cw + 18), y = gy + row * (chh + 18), have = t.id === 'gazelle' ? (S.vq.caught ? 1 : 0) : t.id === 'fish' ? Math.min(S.fish, d.need) : t.got, ready = !t.done && have >= d.need;
+      g.save(); g.translate(x + cw / 2, y + chh / 2); g.rotate(((i * 37) % 7 - 3) * 0.008);
+      g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(-cw / 2 + 6, -chh / 2 + 8, cw, chh);
+      g.fillStyle = t.done ? '#E4EFD8' : '#F6E8C6'; g.fillRect(-cw / 2, -chh / 2, cw, chh);
+      g.strokeStyle = S.track === t.id && !t.done ? '#E63946' : '#C9A86A'; g.lineWidth = S.track === t.id && !t.done ? 8 : 3; g.strokeRect(-cw / 2 + 4, -chh / 2 + 4, cw - 8, chh - 8);
+      g.fillStyle = ['#E63946', '#2A9D8F', '#457B9D'][i % 3]; g.beginPath(); g.arc(0, -chh / 2 + 16, 10, 0, TAU); g.fill();
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = 'rtl';
+      g.font = '72px -apple-system,system-ui,"Apple Color Emoji","Noto Color Emoji",sans-serif'; g.fillStyle = '#000'; g.fillText(d.icon, 0, -chh / 2 + 78);
+      g.fillStyle = '#3A2614'; g.font = '900 34px -apple-system,system-ui,sans-serif'; g.fillText(d.name, 0, -chh / 2 + 146);
+      const zn = (I.zones.find((z) => z.id === d.zone) || {}).name || '';
+      g.font = '700 25px -apple-system,system-ui,sans-serif'; g.fillStyle = '#6B4A2B'; g.fillText(d.need > 1 ? `${zn} · ${have}/${d.need}` : zn, 0, -chh / 2 + 186);
+      g.font = '900 30px -apple-system,system-ui,sans-serif'; g.fillStyle = '#9A6B00'; g.fillText(`${d.reward} 🪙`, 0, -chh / 2 + 230);
+      if (t.done || ready) { g.rotate(-0.22); g.strokeStyle = t.done ? 'rgba(46,140,60,.85)' : 'rgba(214,40,57,.85)'; g.lineWidth = 6; g.strokeRect(-110, -40, 220, 64); g.fillStyle = g.strokeStyle; g.font = '900 38px -apple-system,system-ui,sans-serif'; g.fillText(t.done ? '✔ تم' : 'جاهز 🎒', 0, -8); }
+      g.restore();
+    });
+    boardTex.needsUpdate = true;
+  }
 
   // ================================================================ 🗺️ صورة الخريطة: تنحسب شوية شوية (كل الجزيرة)
   const MAPN = 360, mapA = new Float32Array(MAPN * MAPN), mapF = new Float32Array(MAPN * MAPN); let mapRow = 0, mapCanvas = null;
@@ -438,7 +515,9 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
   // ================================================================ كل فريم
   let waterT = 0;
   function update(t, dt, cam, hero, budget) {
-    if (hero) { trolley.visible = hero.mode === 'zip'; if (trolley.visible) { trolley.position.set(hero.x, hero.y, hero.z); trolley.rotation.y = -hero.face; } rod.visible = hero.mode === 'fish'; if (rod.visible) { rod.position.set(hero.x, hero.y, hero.z); rod.rotation.y = -hero.face; rod.userData.bob.position.y = -0.2 + Math.sin(t * 3) * 0.05 - (G.S && 0); } }
+    if (hero) { trolley.visible = hero.mode === 'zip'; if (trolley.visible) { trolley.position.set(hero.x, hero.y, hero.z); trolley.rotation.y = -hero.face; } }
+    for (const o of itemObjs) { const live = S.items[o.idx], vis = !(live && live.taken) && (o.it.x - cam.x) ** 2 + (o.it.z - cam.z) ** 2 < 1500 * 1500; o.grp.visible = vis; if (!vis) continue; const d = Math.hypot(o.it.x - cam.x, o.it.z - cam.z); o.beam.visible = d > 6; o.beam.scale.set(1 + d / 220, 1 + d / 500, 1 + d / 220); o.gl.material.opacity = 0.55 + Math.sin(t * 3 + o.it.x) * 0.2; if (o.fe && o.it.task === 'feather') o.fe.rotation.y = t * 0.8; }
+    drawBoard(); for (const ln of boardLamps) ln.rotation.z = Math.sin(t * 1.4 + ln.position.z) * 0.06;
     selectTerrain(cam.x, cam.z, cam.y);
     const left = buildSome(budget * 0.45);
     updateVeg(cam.x, cam.z, budget * 0.4);

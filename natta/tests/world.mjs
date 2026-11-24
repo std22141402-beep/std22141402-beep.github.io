@@ -1,4 +1,4 @@
-// فحص جزيرة نطّة 🏝️ بمتصفح بمقاس آيفون: جزيرة 75 كم² بمناطق مسمّاة، جبل بالنص، حركة حرة، صحة ونفَس وسباحة، حيوانات، التاجر بالقمة، خريطة.
+// فحص جزيرة نطّة 🏝️ بمتصفح بمقاس آيفون: جزيرة 75 كم² بمناطق مسمّاة، جبل بالنص، بطل إنسان بطول وسرعة حقيقية، سباحة، حيوانات، لوحة طلبات التاجر، التاجر بالقمة، خريطة.
 // التشغيل: node natta/tests/world.mjs   (الصور بـ /tmp/natta-world)
 import http from 'node:http';
 import fs from 'node:fs';
@@ -57,12 +57,37 @@ ok(info.startZone === 'ساحة الفجر' && info.startAlt < 30, `البداي
 ok(info.valley[0] * info.valley[1] >= 2500 && info.vdist > 1000 && info.vdist < 1700, `وادي الغزلان ${info.valley[0]}×${info.valley[1]} م على كتف الجبل، ${info.vdist} م من القمة`);
 ok(info.len > 1000 && info.road > 15 && info.bridges >= 2 && info.stones >= 3 && info.rest >= 15, `درب القمة ${info.len} م، طرق ترابية ${info.road} كم، ${info.rest} نار استراحة`);
 ok(info.beasts.filter((k) => k === 'wolf').length >= 6 && info.beasts.filter((k) => k === 'boar').length >= 6, `حيوانات: ${info.beasts.length} (ذيابة وخنازير بمناطقها)`);
-const hero = await G(() => { const W = window.__natta.WD; W.camera.updateMatrixWorld(); const r = W.scene.getObjectByName ? 1 : 1; return { r: W.S.hero.r }; });
-ok(hero.r >= 0.45, `البطل بطول إنسان (~1.72 م) وعرضه يناسب الجسور (نص قطر ${hero.r} م)`);
+await wait(600);
+const hero = await G(() => { const W = window.__natta.WD; return { r: W.S.hero.r, ...W.view.heroDims() }; });
+ok(hero.height > 1.66 && hero.height < 1.78 && hero.shoulders > 0.36 && hero.shoulders < 0.44 && hero.leg > 0.85 && hero.leg < 0.95 && hero.r < 0.4, `🧍 البطل إنسان: طوله ${hero.height} م، بين الكتوف ${hero.shoulders} م، الورك ${hero.leg} م، نص قطره ${hero.r} م`);
 await until(() => !document.getElementById('jumpBtn').hidden, 5000);
 const ui = await G(() => ({ jump: !document.getElementById('jumpBtn').hidden, map: !document.getElementById('vMap').hidden, obj: document.getElementById('vobj').textContent, g3d: !document.getElementById('g3d').hidden }));
-ok(ui.jump && ui.map && ui.g3d && ui.obj.includes('قمة'), `الواجهة: نطة، خريطة، والهدف «${ui.obj}»`);
+ok(ui.jump && ui.map && ui.g3d && ui.obj.includes('لوحة'), `الواجهة: نطة، خريطة، والهدف «${ui.obj}»`);
 await wait(1500); await shot('01-start');
+
+// 1ب) 📜 لوحة الطلبات بساحة الفجر: تقراها، تختار طلب، تجمعه، وتسلّمه لأبو جاسم بالقمة
+ok(await until(() => !document.getElementById('actBtn').hidden && document.getElementById('actBtn').textContent.includes('لوحة'), 5000), '📜 تبدي قبال لوحة الطلبات وزر «اقرا لوحة الطلبات» يطلع');
+await page.tap('#actBtn', { force: true });
+ok(await until(() => !document.getElementById('mboard').hidden, 4000), 'اللوحة تنفتح');
+const bd = await G(() => ({ n: document.querySelectorAll('#mboard .note').length, names: [...document.querySelectorAll('#mboard .note .nm')].map((e) => e.textContent), on: document.querySelector('#mboard .note.on .nm') && document.querySelector('#mboard .note.on .nm').textContent }));
+ok(bd.n === 6 && bd.on === 'غزال حي', `بيها ${bd.n} طلبات: ${bd.names.join('، ')} (المتتبَّع: ${bd.on})`);
+await shot('01b-board');
+await page.tap('#mboard [data-track="thyme"]', { force: true });
+ok(await until(() => document.getElementById('mboard').hidden && document.getElementById('vobj').textContent.includes('زعتر'), 4000), `🧭 اختار «زعتر» والهدف صار: «${await G(() => document.getElementById('vobj').textContent)}»`);
+const tk = await G(() => { const W = window.__natta.WD, t = W.trackTarget(), h = W.S.hero; return { icon: t.icon, d: Math.round(Math.hypot(t.x - h.x, t.z - h.z)), zone: W.G.zoneAt(t.x, t.z).id, items: W.S.items.filter((i) => i.task === 'thyme').map((i) => W.G.zoneAt(i.x, i.z).id) }; });
+ok(tk.icon === '🌿' && tk.items.length === 5 && tk.items.every((z) => z === 'thyme'), `البوصلة تدل على 🌿 (${tk.d} م)، و٥ باقات زعتر كلها بتلال الزعتر`);
+const picks = await G(() => { const W = window.__natta.WD, h = W.S.hero; let n = 0; for (const it of W.S.items.filter((i) => i.task === 'thyme')) { Object.assign(h, { x: it.x + 0.6, z: it.z, y: it.y, air: false, vx: 0, vz: 0, mode: 'walk' }); for (let i = 0; i < 6; i++) for (const e of W.sim.step(1 / 60, {})) if (Array.isArray(e) && e[0] === 'pick') n++; } return { n, have: W.have(W.S.tasks.find((t) => t.id === 'thyme')), obj: W.objective() }; });
+ok(picks.n === 5 && picks.have === 5 && picks.obj.includes('سلّم'), `🌿 جمع ${picks.n} باقات زعتر، والهدف: «${picks.obj}»`);
+const c0 = await G(() => { const W = window.__natta.WD, M = W.info.M, mw = W.S.vq.merW, h = W.S.hero; Object.assign(h, { x: M.x + (mw.x - M.x) * 0.72, z: M.z + (mw.z - M.z) * 0.72, y: M.HS, air: false, vx: 0, vz: 0, mode: 'walk' }); W.warm(h.x, h.z, h.y); return window.__natta.save.coins; });
+const handed = await until(() => window.__natta.WD.S.tasks.find((t) => t.id === 'thyme').done && /سلّمت/.test(document.getElementById('bnTitle').textContent), 8000);
+const c1 = await G(() => window.__natta.save.coins);
+ok(handed && c1 >= c0 + 150, `🎁 سلّم الزعتر لأبو جاسم بالقمة: «${await G(() => document.getElementById('bnTitle').textContent)}» (+${c1 - c0} 🪙 مع مكافأة القمة)`);
+await shot('01c-handin');
+await G(() => window.__natta.WD.interact('board')); await until(() => !document.getElementById('mboard').hidden, 3000);
+ok(await G(() => [...document.querySelectorAll('#mboard .note.done .nm')].map((e) => e.textContent).includes('باقات زعتر بري')), '📜 الطلب صار «✔ تم» باللوحة');
+await page.tap('#mboardX', { force: true }); await wait(300);
+await G(() => { const W = window.__natta.WD, r = W.info.rest[0]; Object.assign(W.S.hero, { x: r.x, z: r.z, y: W.G.H(r.x, r.z), air: false, mode: 'walk' }); W.S.summit = null; W.warm(r.x, r.z, W.S.hero.y); W.cam.init = false; });
+await wait(800);
 
 // 2) جويستك وكاميرا ونطة
 const a0 = await H();
@@ -84,10 +109,11 @@ const free = await G(() => { const W = window.__natta.WD, h = W.S.hero, x0 = h.x
 ok(free[0] > 8, `يمشي بحرية بالسهل وبالغابة (${free[0].toFixed(1)} م، الأرض: ${free[1]})`);
 const cliff = await G(() => { const W = window.__natta.WD, M = W.info.M, h = W.S.hero, a = 200 * Math.PI / 180, r0 = 51; Object.assign(h, { x: M.x + Math.cos(a) * r0, z: M.z + Math.sin(a) * r0, air: false, vx: 0, vz: 0, mode: 'walk' }); h.y = W.G.H(h.x, h.z); const r1 = Math.hypot(h.x, h.z); for (let i = 0; i < 240; i++) W.sim.step(1 / 60, { mx: -Math.cos(a), mz: -Math.sin(a), mag: 1 }); return [r1, Math.hypot(h.x, h.z)]; });
 ok(cliff[1] > 46.5, `حزام الصخر حوالين المخروط ما ينصعد (${cliff[0].toFixed(1)} ← ${cliff[1].toFixed(1)} م من النص)`);
-const swim = await G(() => { const W = window.__natta.WD, sh = W.G.I.shBay, h = W.S.hero; Object.assign(h, { x: sh.x + 60, z: sh.z, y: W.G.SEA, air: false, vx: 0, vz: 0, mode: 'walk', st: 100 }); for (let i = 0; i < 240; i++) W.sim.step(1 / 60, { mx: 1, mz: 0, mag: 1 }); return { swim: h.swim, y: +(h.y - W.G.SEA).toFixed(2), st: Math.round(h.st), x: h.x - sh.x - 60 }; });
-ok(swim.swim && swim.y < 0 && swim.st < 100 && swim.x > 3, `🏊 بالبحر يسبح (يطفو ${swim.y} م، يمشي ${swim.x.toFixed(1)} م، النفَس ${swim.st}%)`);
-const run = await G(() => { const W = window.__natta.WD, h = W.S.hero, f = W.G.I.fajr; Object.assign(h, { x: f.x - 60, z: f.z, y: W.G.H(f.x - 60, f.z), air: false, vx: 0, vz: 0, mode: 'walk', st: 100, swim: false }); for (let i = 0; i < 300; i++) W.sim.step(1 / 60, { mx: -1, mz: 0.3, mag: 1 }); return Math.round(h.st); });
-ok(run < 70, `💨 الركض يخلّص النفَس (${run}%)`);
+const swim = await G(() => { const W = window.__natta.WD, sh = W.G.I.shBay, h = W.S.hero; Object.assign(h, { x: sh.x + 60, z: sh.z, y: W.G.SEA, air: false, vx: 0, vz: 0, mode: 'walk' }); for (let i = 0; i < 240; i++) W.sim.step(1 / 60, { mx: 1, mz: 0, mag: 1 }); return { swim: h.swim, y: +(h.y - W.G.SEA).toFixed(2), x: h.x - sh.x - 60, v: +h.speed.toFixed(2), st: 'st' in h }; });
+ok(swim.swim && swim.y < 0 && swim.x > 3 && swim.v > 1.2 && swim.v < 1.8 && !swim.st, `🏊 بالبحر يسبح بسرعة إنسان (${swim.v} م/ث، ${swim.x.toFixed(1)} م) وماكو عداد نفَس`);
+const gait = await G(() => { const W = window.__natta.WD, h = W.S.hero, f = W.G.I.fajr, sp = {}; for (const [k, mag] of [['walk', 0.58], ['run', 1]]) { Object.assign(h, { x: f.x - 10, z: f.z - 20, y: W.G.H(f.x - 10, f.z - 20), air: false, vx: 0, vz: 0, mode: 'walk', swim: false, hopPh: 0 }); let steps = 0; for (let i = 0; i < 240; i++) for (const e of W.sim.step(1 / 60, { mx: 0, mz: 1, mag })) if (Array.isArray(e) && e[0] === 'step') steps++; sp[k] = +h.speed.toFixed(2); sp[k + 'Cad'] = +(steps / 4).toFixed(1); } Object.assign(h, { x: f.x - 10, z: f.z - 20, y: W.G.H(f.x - 10, f.z - 20), air: false, vx: 0, vz: 0 }); const y0 = h.y; let top = 0; W.sim.step(1 / 60, { jump: true }); for (let i = 0; i < 90; i++) { W.sim.step(1 / 60, {}); top = Math.max(top, h.y - y0); } sp.jump = +top.toFixed(2); return sp; });
+ok(gait.walk > 1.25 && gait.walk < 1.6 && gait.run > 3.9 && gait.run < 4.5, `🚶 مشي ${gait.walk} م/ث (${gait.walkCad} خطوة/ث) و🏃 ركض ${gait.run} م/ث (${gait.runCad} خطوة/ث) — مثل الإنسان`);
+ok(gait.walkCad > 1.5 && gait.walkCad < 2.3 && gait.runCad > 2.3 && gait.runCad < 3.3 && gait.jump > 0.55 && gait.jump < 0.85, `👣 إيقاع الخطوات طبيعي، والنطة ${gait.jump} م`);
 
 // 4) الضرر: فتحة الجسر توكّعك بالوادي ← تغيب وتصحى بالاستراحة. والذيب ينقّص صحتك
 await G(() => { for (const b of window.__natta.WD.sim.beasts) b.cool = 1e9; });
@@ -114,7 +140,7 @@ const climb = await G(() => {
   const sim = W.sim; sim.enter('classic', { seed: 7 }); for (const b of sim.beasts) b.cool = 1e9;
   Object.assign(S.hero, { x: pts[0].x, z: pts[0].z, y: pts[0].y, air: false }); // من أول درب القمة
   let i = 3, t = 0, jumps = 0, hurts = 0, rests = 0, lastI = 0, stuck = 0;
-  while (t < 400) {
+  while (t < 900) {
     const P = S.hero; if (P.mode !== 'walk') { sim.step(1 / 60, {}); t += 1 / 60; continue; }
     while (i < pts.length - 1 && Math.hypot(pts[i].x - P.x, pts[i].z - P.z) < 0.95) i++;
     const tg = pts[i], dx = tg.x - P.x, dz = tg.z - P.z; let mx = dx, mz = dz, jump = false;
@@ -206,7 +232,7 @@ ok(await until(() => window.__natta.WD.S.vq.delivered, 6000), '🏔️ رجّع�
 await fast(3); ok(await until(() => window.__natta.state === 'ending', 20000), 'شاشة نهاية المغامرة'); await fast(0);
 ok(await G(() => !document.getElementById('eCont').hidden), 'بيها «كمّل تمشّى بالعالم»');
 await page.tap('#eCont', { force: true }); await wait(400);
-ok(await G(() => window.__natta.state === 'world' && /سمچ|استكشف/.test(document.getElementById('vobj').textContent)), `يرجع للجزيرة ويكمل، والطلب الجاي: «${await G(() => document.getElementById('vobj').textContent)}»`);
+ok(await G(() => window.__natta.state === 'world' && /زعتر|محار|عسل|ريشة|سمچ|استكشف/.test(document.getElementById('vobj').textContent)), `يرجع للجزيرة ويكمل، والطلب الجاي من اللوحة: «${await G(() => document.getElementById('vobj').textContent)}»`);
 
 // 12) 🛒 دكان أبو جاسم: يشتري أدوات تفتح طرق، 🚡 حبل منزلق، 🧗 تسلّق، 🎣 صيد وبيع
 await G(() => { window.__natta.save.coins = 1000; window.__natta.save.tools = {}; window.__natta.WD.setTools({}); const W = window.__natta.WD, M = W.info.M, mw = W.S.vq.merW; Object.assign(W.S.hero, { x: M.x + (mw.x - M.x) * 0.78, z: M.z + (mw.z - M.z) * 0.78, y: M.HS, air: false, mode: 'walk' }); });

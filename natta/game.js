@@ -3316,9 +3316,9 @@
     if (opts.at === 'summit') toast('🚀 للقمة!', 1300);
     else if (opts.at === 'valley') toast('🚀 للوادي!', 1300);
     else {
-      banner('🏝️', 'جزيرة نطّة', '🌅 ساحة الفجر — أبو جاسم ينتظرك بقمة الجبل ⛰️', 'gold', 3600);
-      setTimeout(() => { if (WS && state === 'world' && !WS.usedJ) toast('🕹️ إبهامك اليسار يمشي، ودفعة كاملة = ركض', 3400); }, 3600);
-      setTimeout(() => { if (WS && state === 'world' && !WD.S.summit) toast('🧭 اتبع «طريق الفجر» وعلامة 🏔️ بالبوصلة للقمة', 3400); }, 7400);
+      banner('🏝️', 'جزيرة نطّة', '🌅 ساحة الفجر — قدّامك لوحة طلبات أبو جاسم 📜', 'gold', 3600);
+      setTimeout(() => { if (WS && state === 'world' && !WD.S.boardRead) toast('📜 اضغط «اقرا لوحة الطلبات» وشوف شيريد التاجر', 3400); }, 3800);
+      setTimeout(() => { if (WS && state === 'world' && !WS.usedJ) toast('🕹️ إبهامك اليسار يمشي، ودفعة كاملة = ركض', 3400); }, 7600);
     }
   }
   function makeMap() {
@@ -3331,6 +3331,7 @@
     if (!WS) return;
     payCoins();
     if (WS.mapOpen) closeMap();
+    WS.boardOpen = false; WS.shopOpen = false; $('mboard').hidden = true; $('mshop').hidden = true;
     WD.S.scope = false;
     WS = null; J.id = null; CAMD.id = null; uparts.length = 0;
     $('jumpBtn').hidden = true; $('jumpBtn').classList.remove('on'); $('actBtn').hidden = true; $('skip').hidden = true; $('dlg').hidden = true;
@@ -3406,7 +3407,22 @@
         setTimeout(() => { if (WS && state === 'world' && !WD.S.vq.caught) toast('🗺️ الخريطة فوك: أشّر بيها الأماكن اللي تلگاها', 3400); }, 3600);
         break;
       case 'snort': Sfx.snort(); break;
-      case 'breath': toast('😮‍💨 نفَسك خلص! امشِ بهدوء أو وكّف شوية', 2200); break;
+      case 'board': openBoard(); break;
+      case 'pick': {
+        const t = S3.tasks.find((q) => q.id === a[0]), d = t.def; Sfx.coin(); Sfx.mission();
+        sparkleAt(h.x, h.y + 1.2, h.z, ['#FFD23F', '#FFF6C4', '#8DE26B'], 'star', 12);
+        if (a[1] >= a[2]) banner(d.icon, `كمّلت: ${d.name}!`, 'رجّعه لأبو جاسم بقمة السحاب ⛰️', 'gold', 3200);
+        else toast(`${d.icon} ${d.name} ${a[1]}/${a[2]} 🎒`, 1800);
+        break;
+      }
+      case 'handIn': {
+        const t = S3.tasks.find((q) => q.id === a[0]), d = t.def, rw = a[1];
+        save.coins += rw; save.reqs = (save.reqs || 0) + 1; persist(); Sfx.reward(); Music.celebrate();
+        banner('🎁', 'سلّمت الطلب!', `${d.icon} ${d.name}   +${rw} 🪙`, 'gold', 3000);
+        say({ thyme: 'الله! ريحة الزعتر البري 🌿 هذا أطيب من كل السوق… هاي حقّك', pearl: 'يا سلام! 🦪 لؤلؤ حقيقي من شاطئ اللؤلؤ… تعبك ما يروح', honey: 'عسل بري! 🍯 سلمت إيدك، والخنازير ما لزمتك؟ 😄', feather: 'ريشة صقر! 🪶 وصلت لعش الصقر بجبل الصقور؟ إنت بطل صدگ', fish: 'سمچ طازة! 🐟 الليلة عشانا سمچ مسگوف 😋' }[a[0]] + ` +${rw} 🪙`, 5.5, MERCHANT);
+        const mw = S3.vq.merW; sparkleAt(mw.x, h.y + 1.7, mw.z, ['#FFD23F', '#FFB703'], 'coin', 22, 1.3);
+        break;
+      }
       case 'zipStart': Sfx.whoosh(); Sfx.gust(); banner('🚡', a[0], 'تمسّك زين! ' + a[1], 'gold', 2600); break;
       case 'zipEnd': Sfx.thud(); shake = 0.12; toast(`🚡 وصلت! (${a[0]})`, 1800); break;
       case 'climbStart': Sfx.whoosh(); toast(`🧗 تتسلّق ${a[0]} (${a[1]} م)…`, 2000); break;
@@ -3418,9 +3434,9 @@
       case 'shop': openShop3d(); break;
       case 'farSea': toast('🌊 بعيد كلش عن الساحل… ارجع للجزيرة', 2200); break;
       case 'tired': toast('الغزال تعب! 😮‍💨 هسه فرصتك', 2400); break;
-      case 'call': say(S3.vq.caught ? 'هاااا! 🦌 جبت الغزال؟ تعال يمّي يا بطل!' : 'يا هلا! 👋 آني أبو جاسم التاجر… تعال يمّي، عندي إلك شغلة وجائزة 🎁', 6, MERCHANT); break;
+      case 'call': say(S3.vq.caught ? 'هاااا! 🦌 جبت الغزال؟ تعال يمّي يا بطل!' : 'يا هلا! 👋 آني أبو جاسم التاجر… تعال يمّي، شفت طلباتي على لوحة ساحة الفجر؟ 📜🎁', 6, MERCHANT); break;
       case 'meet':
-        if (!S3.vq.caught) { say('هلا بيك يا بطل! 🤝 أحتاج غزال 🦌 من «وادي الغزلان» شرق الجبل. جيبه لهنا للقمة وأنطيك 500 عملة 💰 وقبعة المغامر 🤠. وانتبه: إذا ركضت يمّه يهرب!', 9, MERCHANT); setTimeout(() => { if (WS && state === 'world' && !WD.S.vq.caught) toast('🦌 علامة الغزال بالبوصلة توديك للوادي', 3200); }, 9500); }
+        if (!S3.vq.caught) { say(S3.boardRead ? 'هلا بيك يا بطل! 🤝 شفت لوحتي بساحة الفجر 📜؟ كل طلب تجيبه لهنا أنطيك حقّه 💰. وأولها غزال 🦌 من «وادي الغزلان» شرق الجبل: 500 عملة وقبعة المغامر 🤠. وانتبه: إذا ركضت يمّه يهرب!' : 'هلا بيك يا بطل! 🤝 آني أبو جاسم التاجر. طلباتي معلّكة على لوحة بساحة الفجر 📜، وأولها غزال 🦌 من «وادي الغزلان» شرق الجبل: جيبه لهنا وأنطيك 500 عملة 💰 وقبعة المغامر 🤠. وانتبه: إذا ركضت يمّه يهرب!', 9, MERCHANT); setTimeout(() => { if (WS && state === 'world' && !WD.S.vq.caught) toast('🧭 علامة الطلب بالبوصلة توديك لمكانه', 3200); }, 9500); }
         else say('عفية عليك! 👏 جيبه لهنا، للدائرة الصفرة اللي يمّي', 5, MERCHANT);
         break;
       case 'catch': {
@@ -3436,7 +3452,7 @@
         if (!save.owned.includes('explorer')) save.owned.push('explorer');
         save.adventures = (save.adventures || 0) + 1; persist();
         Sfx.reward(); Music.celebrate();
-        say('تسلم إيدك يا بطل! 🙌 هاي جائزتك: 500 عملة 💰 وقبعة المغامر 🤠. وإذا تريد شغلة ثانية: جيبلي سمچتين 🐟 — عندي بالدكان سنارة وحبل تسلّق وجزمة 🛒', 7, MERCHANT);
+        say('تسلم إيدك يا بطل! 🙌 هاي جائزتك: 500 عملة 💰 وقبعة المغامر 🤠. وباقي طلباتي على اللوحة بساحة الفجر 📜 — والسنارة والحبل والجزمة عندي بالدكان 🛒', 7, MERCHANT);
         banner('🎁', 'الجائزة!', '+500 🪙  وشخصية «المغامر» 🤠', 'gold', 3600);
         const mw = S3.vq.merW; sparkleAt(mw.x, h.y + 1.7, mw.z, ['#FFD23F', '#FFB703'], 'coin', 34, 1.5);
         break;
@@ -3474,7 +3490,7 @@
     if (m.fade > 0 && !(S3.hero.mode === 'faint')) m.fade = Math.max(0, m.fade - dt * (m.fadeCol === '255,255,255' ? 1.1 : 1.6));
     else if (S3.hero.mode === 'faint') m.fade = Math.min(0.9, m.fade + dt * 1.2);
     m.hurtT = Math.max(0, m.hurtT - dt);
-    if (state === 'world' && !m.mapOpen && !m.shopOpen) {
+    if (state === 'world' && !m.mapOpen && !m.shopOpen && !m.boardOpen) {
       const inp = valleyInput(dt);
       const n = Math.max(1, Math.ceil(dt / (1 / 60) - 0.01)), hs = dt / n;
       for (let i = 0; i < n; i++) {
@@ -3521,9 +3537,8 @@
     const tools = save.tools || {}, S3 = WD.S;
     $('mshopCoins').textContent = `عندك ${save.coins} 🪙`;
     document.querySelectorAll('#mshop [data-tool]').forEach((b) => { const own = tools[b.dataset.tool]; b.disabled = !!own || save.coins < +b.dataset.price; b.textContent = own ? '✅ عندك' : `${b.dataset.price} 🪙`; });
-    const req = S3.req, sell = $('mshopSell');
-    if (req && !req.done && S3.fish >= req.need) { sell.hidden = false; sell.textContent = `🐟 سلّم الطلب (${req.need} سمچات) +300 🪙`; sell.dataset.mode = 'req'; }
-    else if (S3.fish > 0) { sell.hidden = false; sell.textContent = `🐟 بيع السمچ (${S3.fish} × 30 🪙)`; sell.dataset.mode = 'sell'; }
+    const sell = $('mshopSell');
+    if (S3.fish > 0) { sell.hidden = false; sell.textContent = `🐟 بيع السمچ (${S3.fish} × 30 🪙)`; sell.dataset.mode = 'sell'; }
     else sell.hidden = true;
   }
   document.querySelectorAll('#mshop [data-tool]').forEach((b) => { b.onclick = () => {
@@ -3534,12 +3549,33 @@
     refreshShop3d();
   }; });
   $('mshopSell').onclick = () => {
-    const S3 = WD.S, req = S3.req;
-    if ($('mshopSell').dataset.mode === 'req' && req) { S3.fish -= req.need; req.done = true; save.coins += 300; Sfx.reward(); Music.celebrate(); banner('🐟', 'سلّمت الطلب!', '+300 🪙', 'gold', 2600); say('عاشت إيدك! 🐟🐟 هاي 300 عملة… الجزيرة كلها إلك، استكشفها 🏝️', 5, MERCHANT); }
-    else { const n = S3.fish; S3.fish = 0; save.coins += n * 30; Sfx.coin(); toast(`🐟 بعت ${n} سمچات (+${n * 30} 🪙)`, 2000); }
+    const S3 = WD.S;
+    { const n = S3.fish; S3.fish = 0; save.coins += n * 30; Sfx.coin(); toast(`🐟 بعت ${n} سمچات (+${n * 30} 🪙)`, 2000); }
     persist(); refreshShop3d();
   };
   $('mshopX').onclick = () => { Sfx.click(); closeShop3d(); };
+
+  // ---------------------------------------------------------------- 📜 لوحة طلبات أبو جاسم (ساحة الفجر): تقراها وتختار شتتبع
+  function openBoard() {
+    if (!WS || state !== 'world') return;
+    WS.boardOpen = true; J.id = null; CAMD.id = null; Sfx.click(); renderBoard(); $('mboard').hidden = false; clearTimeout(toastT); $('toast').classList.remove('show');
+  }
+  function closeBoard() { if (!WS) return; WS.boardOpen = false; $('mboard').hidden = true; }
+  function renderBoard() {
+    const S3 = WD.S, tg = WD.trackTarget(), pins = ['#E63946', '#2A9D8F', '#457B9D', '#F4A261', '#8E44AD', '#E9C46A'];
+    $('mboardList').innerHTML = S3.tasks.map((t, i) => {
+      const d = t.def, n = WD.have(t), ready = !t.done && n >= d.need, zn = (WD.G.I.zones.find((z) => z.id === d.zone) || {}).name || '';
+      const on = !t.done && (S3.track === t.id || (!S3.track && tg && tg.icon === d.icon));
+      const st = t.done ? '<span class="st" style="color:#2E8C3C">✔ تم</span>' : ready ? '<span class="st" style="color:#D62839">🎒 جاهز</span>' : '';
+      const btn = t.done ? '' : `<button class="btn ${on ? '' : 'primary'} tr" data-track="${t.id}">${on ? '✅ تتبعه هسه' : '🧭 تتبّع'}</button>`;
+      return `<div class="note${on ? ' on' : ''}${t.done ? ' done' : ''}" style="--r:${((i * 37) % 7 - 3) * 0.6}deg;--pin:${pins[i % pins.length]}">${st}<div class="ic">${d.icon}</div><div class="nm">${d.name}</div><div class="zn">📍 ${zn}</div><div class="ds">${d.note}</div>${d.need > 1 ? `<div class="pg"><i style="width:${Math.round((n / d.need) * 100)}%"></i></div><div class="zn">${n}/${d.need}</div>` : ''}<div class="rw">💰 ${d.reward} 🪙${t.id === 'gazelle' ? ' + 🤠' : ''}</div>${btn}</div>`;
+    }).join('');
+    $('mboardList').querySelectorAll('[data-track]').forEach((b) => { b.onclick = () => {
+      const t = S3.tasks.find((q) => q.id === b.dataset.track); WD.setTrack(t.id); Sfx.coin(); renderBoard();
+      toast(`🧭 البوصلة تدلّك على ${t.def.icon} ${t.def.name}`, 2600); setTimeout(closeBoard, 350);
+    }; });
+  }
+  $('mboardX').onclick = () => { Sfx.click(); closeBoard(); };
 
   // ---------------------------------------------------------------- 🗺️ الخريطة: العالم كله، تنكشف بس اللي مشيت بيه، وإنت تحط العلامات
   const PIN_ICON = { camp: '🏕️', gazelle: '🦌', flag: '📍' };
@@ -3580,6 +3616,12 @@
       g.strokeText(t, x, yy); g.fillText(t, x, yy);
     }
     for (const pin of WS.pins) { const [x, y] = at(pin.x, pin.z); g.font = `${24 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText(PIN_ICON[pin.type], x, y - 10 * f.d); g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(x, y + 3 * f.d, 6 * f.d, 2.5 * f.d, 0, 0, TAU); g.fill(); g.fillStyle = '#FFFFFF'; }
+    for (const t of WD.S.tasks) { // 📜 الطلبات: علامة بمنطقة كل طلب، والمتتبَّع بحلقة صفرة
+      if (t.done) continue; const d = t.def, tg = WD.trackTarget(), on = WD.S.track === t.id || (tg && tg.icon === d.icon), [x, y] = at(d.at.x, d.at.z);
+      if (on) { g.strokeStyle = '#FFD23F'; g.lineWidth = 3 * f.d; g.beginPath(); g.arc(x, y, 17 * f.d, 0, TAU); g.stroke(); }
+      g.fillStyle = 'rgba(90,55,32,.88)'; g.beginPath(); g.arc(x, y, 13 * f.d, 0, TAU); g.fill(); g.font = `${15 * f.d}px -apple-system,system-ui,sans-serif`; g.fillStyle = '#FFFFFF'; g.fillText(d.icon, x, y + 1);
+    }
+    { const b = WD.G.I.board, [x, y] = at(b.x, b.z); g.font = `${16 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText('📜', x - 14 * f.d, y - 12 * f.d); }
     const [px, py] = at(p.x, p.z);
     drawArrow(g, px, py, p.face, 11 * f.d, '#FFD23F');
     g.restore();
@@ -3671,9 +3713,8 @@
     }
     ctx.font = '15px -apple-system,system-ui,sans-serif';
     const marks = [...WS.pins.map((pin) => [pin.x, pin.z, PIN_ICON[pin.type]])];
-    const vq = WD.S.vq;
-    if (!vq.delivered && (!vq.met || vq.caught)) marks.push([WD.info.M.x, WD.info.M.z, '🏔️']);
-    if (vq.met && !vq.caught) marks.push([WD.G.I.valley.x, WD.G.I.valley.z, '🦌']);
+    const tg = WD.trackTarget(); if (tg) marks.push([tg.x, tg.z, tg.icon]); // 🧭 الطلب اللي تتبعه
+    if (!WD.S.boardRead && !WD.S.vq.met) { const b = WD.G.I.board; marks.push([b.x, b.z, '📜']); }
     for (const [mx, mz, ic] of marks) {
       const b = ((Math.atan2(mz - p.z, mx - p.x) * 180) / Math.PI + 360) % 360, d = ((b - hd + 540) % 360) - 180;
       if (Math.abs(d) > 58) continue;
@@ -3698,6 +3739,9 @@
     ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, ca - 0.45, ca + 0.45); ctx.closePath(); ctx.fill();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '15px -apple-system,system-ui,sans-serif';
     for (const pin of WS.pins) { let dx = (pin.z - p.z) * (r / view), dy = -(pin.x - p.x) * (r / view); const l = Math.hypot(dx, dy); if (l > r - 9) { dx *= (r - 9) / l; dy *= (r - 9) / l; } ctx.fillText(PIN_ICON[pin.type], cx + dx, cy + dy); }
+    ctx.font = '13px -apple-system,system-ui,sans-serif';
+    for (const it of WD.S.items) { if (it.taken || Math.abs(it.x - p.x) > view || Math.abs(it.z - p.z) > view) continue; const dx = (it.z - p.z) * (r / view), dy = -(it.x - p.x) * (r / view); if (Math.hypot(dx, dy) < r - 6) ctx.fillText(WD.S.tasks.find((q) => q.id === it.task).def.icon, cx + dx, cy + dy); }
+    { const tg = WD.trackTarget(); if (tg) { let dx = (tg.z - p.z) * (r / view), dy = -(tg.x - p.x) * (r / view); const l = Math.hypot(dx, dy); if (l > r - 10) { dx *= (r - 10) / l; dy *= (r - 10) / l; ctx.fillStyle = 'rgba(255,210,63,.9)'; ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 9, 0, TAU); ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = '12px -apple-system,system-ui,sans-serif'; ctx.fillText(tg.icon, cx + dx, cy + dy + 0.5); } } }
     ctx.restore();
     drawArrow(ctx, cx, cy, p.face, 8, '#FFD23F');
     ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
@@ -3717,13 +3761,9 @@
     ctx.fillText(WS.hurtT > 0 && Math.sin(time * 40) > 0 ? '💔' : '❤️', hx - hw / 2 + 13, y + 13.5);
     chip(`🪙 ${WD.S.coinsGot}`, C.W / 2 + 22);
     chip(`⛰️ ${Math.max(0, Math.round(h.y - WD.G.SEA))}م`, C.W / 2 + 84); // الارتفاع فوك البحر
-    if (WD.S.fish > 0) chip(`🐟 ${WD.S.fish}`, 44); // سمچ مصيود
-    if (h.st < 99.5) { // 💨 النفَس
-      const sw = 96, sx = hx - sw / 2, k2 = clamp(h.st / 100, 0, 1), low = h.st < 25;
-      ctx.fillStyle = 'rgba(20,28,56,.5)'; rr(ctx, sx, y + 30, sw, 16, 8); ctx.fill();
-      ctx.fillStyle = low && Math.sin(time * 14) > 0 ? '#FF7A7A' : '#7FD1FF'; if (k2 > 0) { rr(ctx, sx + 22, y + 35, (sw - 30) * k2, 6, 3); ctx.fill(); }
-      ctx.font = '11px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFFFFF'; ctx.fillText(h.swim ? '🏊' : '💨', sx + 11, y + 38.5);
-    }
+    // 🎒 الجنطة: شگد جمعت من كل طلب
+    const bag = []; for (const t of WD.S.tasks) { if (t.done || t.id === 'gazelle') continue; const n = WD.have(t); if (t.id === 'fish' ? WD.S.fish > 0 : n > 0) bag.push(t.id === 'fish' ? `🐟 ${WD.S.fish}` : `${t.def.icon} ${n}/${t.def.need}`); }
+    bag.forEach((txt, i) => { const w = ctx.measureText(txt).width + 22; ctx.fillStyle = 'rgba(20,28,56,.5)'; rr(ctx, 14, y + 34 + i * 30, w, 26, 13); ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.fillText(txt, 14 + w / 2, y + 47.5 + i * 30); });
     ctx.restore();
   }
   function drawAltitude() { // شريط الارتفاع على اليمين: من البحر لقمة السحاب (395 م)
@@ -3774,7 +3814,7 @@
       if (q.vis && q.x > 0.02 && q.x < 0.98 && q.y > 0.05 && q.y < 0.95) drawGzMarks(q.x * C.W, q.y * viewH + 84, { sus: g.sus, state: g.state, face: 1 }, t, false);
     }
     drawUParts();
-    const live = state === 'world' && !S3.scope && !m.mapOpen && !m.shopOpen && ['walk', 'glide', 'fish', 'climb'].includes(h.mode);
+    const live = state === 'world' && !S3.scope && !m.mapOpen && !m.shopOpen && !m.boardOpen && ['walk', 'glide', 'fish', 'climb'].includes(h.mode);
     if (live) { if (h.mode === 'walk') drawThreats(t); drawCompass(); drawMinimap(); drawStatus(); drawAltitude(); drawJoystick(t, m); }
     if (m.hurtT > 0) { ctx.fillStyle = `rgba(255,30,30,${m.hurtT * 0.45})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
     if (m.fade > 0) { ctx.fillStyle = `rgba(${m.fadeCol},${m.fade})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
