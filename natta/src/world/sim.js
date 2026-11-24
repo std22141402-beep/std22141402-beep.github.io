@@ -2,6 +2,7 @@
 // كل كائن يتحرك بأوامر (مشي باتجاه، نطة، فعالية): البطل من اللاعب، والحيوانات من «عقل» بسيط.
 // بالمستقبل أوامر اللاعبين الثانيين تجي من الإنترنت بنفس الشكل، والمحاكاة تشتغل على السيرفر (ما بيها رسم).
 import { TAU, clamp, lerp, smooth, damp, rng, angDiff, dampAngle } from '../lib3d.js';
+import { createBuggy, BUGGY } from './vehicle.js';
 
 const GRAV = 9.81, SLOPE_MAX = 1.0, SLIDE = 1.15, BOOT_SLOPE = 1.45, BOOT_SLIDE = 1.6; // 🥾 جزمة الجبل: تصعد منحدرات أشد
 // 🏃 سرعات مثل لاعب ببجي موبايل (م/ث): مشي 1.7، ركض 4.7، ركض سريع 6.3 (23 كم/س). سباحة 1.0–1.5، الجاذبية 9.81 والنطة ~0.7 م
@@ -97,8 +98,8 @@ export function createSim(G, opts = {}) {
     return h;
   }
   function hurt(e, dmg, cause) {
-    if (e.kind !== 'hero' || e.mode !== 'walk' || dmg <= 0) return;
-    e.hp = Math.max(0, e.hp - dmg); e.lastHurt = S.t;
+    if (e.kind !== 'hero' || (e.mode !== 'walk' && e.mode !== 'drive') || dmg <= 0) return;
+    e.hp = Math.max(e.mode === 'drive' ? 10 : 0, e.hp - dmg); e.lastHurt = S.t; // بالسيارة: قفص الحماية والحزام يحمونك
     emit(['hurt', dmg, cause, e.hp]);
     if (e.hp <= 0) { e.mode = 'faint'; e.faintT = 0; e.vx = e.vz = 0; emit(['faint', cause]); }
   }
@@ -157,6 +158,7 @@ export function createSim(G, opts = {}) {
     if (h.mode === 'faint') { h.faintT += dt; if (h.faintT > 1.6) respawn(h, 'faint'); return; }
     if (h.mode === 'zip') return stepZip(h, dt);
     if (h.mode === 'climb') return stepClimb(h, dt);
+    if (h.mode === 'getin' || h.mode === 'drive' || h.mode === 'getout') return stepDriver(h, c, dt);
     if (h.mode === 'fish') { if ((c.mag || 0) > 0.3) { h.mode = 'walk'; S.fishing = null; emit('fishStop'); } else return stepFish(h, dt); }
     if (h.mode !== 'walk') return stepAirborneStory(h, c, dt);
     if (S.scope) { h.vx = h.vz = 0; h.speed = 0; return; }
@@ -203,17 +205,85 @@ export function createSim(G, opts = {}) {
     }
     // العملات
     for (const k of S.coins) if (!k.taken && Math.abs(k.x - h.x) < 1.25 && Math.abs(k.z - h.z) < 1.25 && Math.hypot(k.x - h.x, k.z - h.z) < 1.0 && Math.abs(k.y - (h.y + 0.6)) < 1.2) { k.taken = true; S.coinsGot++; emit(['coin', k]); }
-    // 📜 أغراض الطلبات (زعتر، محار، عسل، ريشة)
-    for (const it of S.items) if (!it.taken && Math.abs(it.x - h.x) < 1.6 && Math.abs(it.z - h.z) < 1.6 && Math.hypot(it.x - h.x, it.z - h.z) < 1.45 && Math.abs(it.y - h.y) < 1.8) {
-      it.taken = true; const t = task(it.task); t.got++; emit(['pick', it.task, t.got, t.def.need]);
-      if (!S.track || S.track === it.task || task(S.track).done) S.track = it.task;
-    }
+    pickItems(h.x, h.z, h.y, 1.45);
     // القمة
     if (!S.summit && M.rad(h.x, h.z) < M.RP - 1 && Math.abs(h.y - M.HS) < 1 && !S.carry) {
       S.summit = { t: 0, phase: 'wait', wind: 0 };
       if (!S.climb.done) { S.climb.done = true; S.climb.time = S.t - (S.climb.t0 || 0); emit(['summit', S.climb.time, true]); } else emit(['summit', 0, false]);
     }
     if (S.summit && S.summit.phase === 'wait' && M.rad(h.x, h.z) > M.RP + 8) S.summit = null; // طلع من الساحة
+  }
+  /** 📜 أغراض الطلبات (زعتر، محار، عسل، ريشة) */
+  function pickItems(x, z, y, r) {
+    for (const it of S.items) if (!it.taken && Math.abs(it.x - x) < r + 0.2 && Math.abs(it.z - z) < r + 0.2 && Math.hypot(it.x - x, it.z - z) < r && Math.abs(it.y - y) < 1.8) {
+      it.taken = true; const t = task(it.task); t.got++; emit(['pick', it.task, t.got, t.def.need]);
+      if (!S.track || S.track === it.task || task(S.track).done) S.track = it.task;
+    }
+  }
+  // ================================================================ 🚙 البكي: تركب من الباب اليسار، تسوق، وتنزل
+  const VEH = createBuggy(G, G.I.garage.car), car = VEH.car; S.car = car;
+  const doorWorld = () => VEH.seatWorld(BUGGY.door);
+  function canEnter(h) {
+    if (h.mode !== 'walk' || h.air || h.swim) return false;
+    const d = doorWorld(); return Math.hypot(h.x - d.x, h.z - d.z) < 1.9 && Math.abs(h.y - (car.y - 0.5)) < 1.6 && !(Math.abs(car.roll) > 0.8);
+  }
+  function startEnter(h) {
+    if (S.vq.caught && !S.vq.delivered) { emit(['carNo', 'gazelle']); return false; }
+    const d = doorWorld(); h.mode = 'getin'; h.carT = 0; h.from = { x: h.x, z: h.z, y: h.y, face: h.face, dx: d.x, dz: d.z }; h.vx = h.vz = 0; h.speed = 0; S.fishing = null; emit('carDoor'); return true;
+  }
+  function startExit(h) {
+    if (Math.abs(car.vf) > 3) return false;
+    h.mode = 'getout'; h.carT = 0; car.driven = false; emit('carDoor'); emit('carOff'); return true;
+  }
+  function stepDriver(h, c, dt) {
+    G.ensureVeg(car.x, car.z, 170);
+    const seat = VEH.seatWorld();
+    if (h.mode === 'getin') {
+      h.carT += dt; const k = clamp(h.carT / 1.05, 0, 1), F = h.from;
+      car.door = Math.min(1, h.carT / 0.3) * (1 - smooth(0.7, 1.0, k));
+      const d = doorWorld(), k1 = smooth(0, 0.45, k), k2 = smooth(0.4, 1, k); // يمشي للباب، بعدين يكعد بالمقعد
+      h.x = lerp(lerp(F.x, d.x, k1), seat.x, k2); h.z = lerp(lerp(F.z, d.z, k1), seat.z, k2); h.y = lerp(lerp(F.y, car.y - 0.5, k1), seat.y, k2);
+      h.face = k1 < 1 ? Math.atan2(d.z - F.z, d.x - F.x) : car.yaw;
+      if (k2 > 0) h.face = dampAngle(h.face, car.yaw, 10, dt);
+      h.speed = 0; h.drive = k2;
+      if (k >= 1) { h.mode = 'drive'; car.driven = true; car.engine = true; car.door = 0; emit('carStart'); }
+      VEH.step(dt, {}); return;
+    }
+    if (h.mode === 'getout') {
+      h.carT += dt; const k = clamp(h.carT / 0.85, 0, 1);
+      car.door = Math.min(1, h.carT / 0.25) * (1 - smooth(0.75, 1, k)); car.engine = false;
+      const d = doorWorld(), out = { x: d.x - Math.sin(car.yaw) * -0.15, z: d.z + Math.cos(car.yaw) * -0.15 };
+      h.x = lerp(seat.x, out.x, smooth(0.2, 0.9, k)); h.z = lerp(seat.z, out.z, smooth(0.2, 0.9, k)); h.y = lerp(seat.y, G.H(out.x, out.z), smooth(0.1, 0.6, k));
+      h.face = car.yaw - Math.PI / 2 * smooth(0.5, 1, k); h.drive = 1 - smooth(0.15, 0.75, k);
+      VEH.step(dt, {});
+      if (k >= 1) {
+        car.door = 0; h.drive = 0;
+        const [px, pz] = G.collide(out.x, out.z, h.r); const s2 = G.surfaceAt(px, pz, G.H(px, pz) + 0.5);
+        Object.assign(h, { mode: 'walk', x: px, z: pz, y: s2.y, vx: 0, vz: 0, vy: 0, air: false, surf: s2.kind, hopPh: 0, speed: 0 });
+      }
+      return;
+    }
+    // 🚙 سواقة: الجويستك لفوك بنزين، لتحت فرامل/ريوس، يمين ويسار دركسون. زر النطة = فرامل يد
+    const raw = c.kx != null ? { x: c.kx, y: c.ky } : { x: c.jx || 0, y: c.jy || 0 };
+    const out = VEH.step(dt, { ty: clamp(raw.y * 1.25, -1, 1), sx: clamp(raw.x * 1.3, -1, 1), hand: !!c.hand });
+    for (const e of out) emit(e);
+    if (out.some((e) => e[0] === 'carCrash' && e[1] > 13)) hurt(h, Math.round((out.find((e) => e[0] === 'carCrash')[1] - 13) * 4), 'crash');
+    if (out.some((e) => e[0] === 'carLand' && e[1] > 9)) hurt(h, Math.round((out.find((e) => e[0] === 'carLand')[1] - 9) * 5), 'land');
+    if (h.mode !== 'drive') return; // غاب من الضربة
+    h.x = seat.x; h.z = seat.z; h.y = seat.y; h.face = car.yaw; h.speed = Math.abs(car.vf); h.vx = car.vx; h.vz = car.vz; h.drive = 1;
+    h.hp = Math.max(h.hp, 1);
+    if (S.t - h.lastHurt > 6 && h.hp < h.maxHp) h.hp = Math.min(h.maxHp, h.hp + dt * 3);
+    // استراحات، عملات، أغراض الطلبات (تلزمها من الشباك إذا عديت يمها)
+    for (const r of G.restPoints) if ((!r.dyn || r.on) && !r.plaza && Math.hypot(h.x - r.x, h.z - r.z) < (r.fire ? 7 : 3.5) && Math.abs(h.y - r.y) < 3) { if (S.rest !== r) { S.rest = r; if (!S.reached.has(r.id)) { S.reached.add(r.id); if (r.flag || r.fire || r.id === 'valley') emit(['rest', r.name, r.id]); } } }
+    pickItems(car.x, car.z, car.y - 0.5, 2.6);
+    // الماي الغميج يوكّف المحرك؛ إذا بقت غاطسة نسحبها للكراج
+    if (car.depth > 0.9) { car.drownT = (car.drownT || 0) + dt; if (car.drownT > 2.5) { car.drownT = 0; towHome(h); } } else car.drownT = 0;
+  }
+  /** 🛻 يسحب البكي للكراج (إذا غطس أو ضاع) والسايق ينزل يمه */
+  function towHome(h) {
+    car.driven = false; car.engine = false; VEH.place(car.home.x, car.home.z, car.home.yaw);
+    if (h && (h.mode === 'drive' || h.mode === 'getin' || h.mode === 'getout')) { const d = doorWorld(); Object.assign(h, { mode: 'walk', x: d.x, z: d.z, y: G.H(d.x, d.z), vx: 0, vz: 0, air: false, drive: 0 }); }
+    emit('carTow');
   }
   // ---- الريح تشيل البطل ← تطيّره للوادي ← مظلة ← ينزل
   function stepAirborneStory(h, c, dt) {
@@ -495,6 +565,7 @@ export function createSim(G, opts = {}) {
     Object.assign(S.vq, { met: false, called: false, caught: false, delivered: false }); campRest.on = false;
     S.coins = M.coins.map((k) => ({ ...k, taken: false }));
     S.zip = null; S.climbing = null; S.fishing = null; S.fish = 0;
+    Object.assign(car, { driven: false, engine: false, door: 0 }); VEH.place(car.home.x, car.home.z, car.home.yaw); // البكي بالكراج
     S.tasks = TASKS.map((def) => ({ id: def.id, def, got: 0, done: false })); S.track = null; S.boardRead = false;
     S.items = TASKS.flatMap((def) => def.items.map((it) => ({ ...it, task: def.id, taken: false })));
     S.coinsGot = 0; S.summit = null; S.scope = false; S.carry = null; S.focus = null; S.wind = 0; S.t = 0; S.drop = null;
@@ -511,12 +582,13 @@ export function createSim(G, opts = {}) {
   // ---------------------------------------------------------------- 💾 حفظ الرحلة: إذا سفاري سكّر الصفحة أو ضاع الرسم، ترجع لنفس مكانك وطلباتك
   function snapshot() {
     const h = S.hero; if (!h) return null;
-    const safe = (h.mode === 'walk' && !h.air) || h.mode === 'fish';
+    const safe = (h.mode === 'walk' && !h.air) || h.mode === 'fish', drv = h.mode === 'drive' || h.mode === 'getin' || h.mode === 'getout', dw = drv ? doorWorld() : null;
     return {
-      v: 1, seed: S.seed, t: +S.t.toFixed(1), pos: safe ? { x: +h.x.toFixed(2), z: +h.z.toFixed(2), y: +h.y.toFixed(2) } : null, face: +h.face.toFixed(3), hp: Math.round(h.hp),
+      v: 1, seed: S.seed, t: +S.t.toFixed(1), pos: safe ? { x: +h.x.toFixed(2), z: +h.z.toFixed(2), y: +h.y.toFixed(2) } : dw ? { x: +dw.x.toFixed(2), z: +dw.z.toFixed(2), y: +G.H(dw.x, dw.z).toFixed(2) } : null, face: +h.face.toFixed(3), hp: Math.round(h.hp),
       rest: S.rest && S.rest.id, reached: [...S.reached], tasks: S.tasks.map((t) => [t.id, t.got, t.done ? 1 : 0]), items: S.items.map((it) => (it.taken ? 1 : 0)).join(''),
       fish: S.fish, track: S.track, board: S.boardRead ? 1 : 0, vq: { met: S.vq.met ? 1 : 0, called: S.vq.called ? 1 : 0, caught: S.vq.caught && !S.vq.delivered ? 1 : 0, delivered: S.vq.delivered ? 1 : 0 },
       climbDone: S.climb.done ? 1 : 0, coins: S.coins.map((k) => (k.taken ? 1 : 0)).join(''), coinsGot: S.coinsGot,
+      car: { x: +car.x.toFixed(2), z: +car.z.toFixed(2), yaw: +car.yaw.toFixed(3) },
     };
   }
   function restore(sn) {
@@ -532,6 +604,7 @@ export function createSim(G, opts = {}) {
     Object.assign(vq, { met: !!sn.vq.met, called: !!sn.vq.called, delivered: !!sn.vq.delivered });
     if (sn.climbDone) S.climb.done = true;
     (sn.coins || '').split('').forEach((c, i) => { if (S.coins[i]) S.coins[i].taken = c === '1'; }); S.coinsGot = sn.coinsGot || 0;
+    if (sn.car) { const ok = Number.isFinite(sn.car.x) && G.H(sn.car.x, sn.car.z) > G.SEA - 0.6; if (ok) VEH.place(sn.car.x, sn.car.z, sn.car.yaw); }
     const p = sn.pos || (r ? { x: r.x, z: r.z, y: r.y } : null);
     if (p) { const s = G.surfaceAt(p.x, p.z, p.y + 0.6); Object.assign(h, { x: p.x, z: p.z, y: Math.max(s.y, Math.min(p.y, s.y + 0.05)), vx: 0, vz: 0, vy: 0, air: false, mode: 'walk', surf: s.kind, plat: s.plat }); }
     h.face = sn.face || 0; h.hp = clamp(sn.hp || h.maxHp, 35, h.maxHp);
@@ -547,12 +620,17 @@ export function createSim(G, opts = {}) {
     if (kind === 'fish') { const w = fishWater(S.hero); if (!S.tools.rod) { emit(['needTool', 'rod']); return false; } if (w) startFish(w); return true; }
     if (kind === 'shop') { emit('shop'); return true; }
     if (kind === 'board') { S.boardRead = true; emit('board'); return true; }
+    if (kind === 'car') { const h = S.hero; if (h.mode === 'drive') return startExit(h); if (canEnter(h)) return startEnter(h); return false; }
+    if (kind === 'tow') { towHome(S.hero); return true; }
     if (id === 'scope') { S.scope = !S.scope; return true; }
     if (id === 'tea') { S.hero.hp = S.hero.maxHp; return true; }
     return true;
   }
   function nearInteract() {
-    const h = S.hero; if (h.mode !== 'walk' || h.air) return null;
+    const h = S.hero;
+    if (h.mode === 'drive') return Math.abs(car.vf) < 3 ? { id: 'car', label: '🚪 انزل' } : null;
+    if (h.mode !== 'walk' || h.air) return null;
+    if (canEnter(h)) return { id: 'car', label: '🚙 اركب البكي', r: 1.9 };
     let best = null, bd = 1e9;
     if (S.summit && S.summit.phase === 'wait') {
       for (const it of M.plaza.inter) { const d = Math.hypot(h.x - it.x, h.z - it.z); if (d < it.r && d < bd) { bd = d; best = it; } }
@@ -596,6 +674,7 @@ export function createSim(G, opts = {}) {
     S.t += dt;
     const h = S.hero; if (!h) return [];
     stepHero(h, cmd || {}, dt);
+    if (h.mode !== 'drive' && h.mode !== 'getin' && h.mode !== 'getout') for (const e of VEH.step(dt, {})) if (e[0] === 'carFlip') emit(e); // البكي واكف (أو يتدحرج وحده)
     updateSummit(dt);
     if (!S.summit && !S.carry) S.wind = Math.max(0, S.wind - dt * 0.35);
     updateBeasts(dt);

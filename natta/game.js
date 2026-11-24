@@ -385,7 +385,57 @@
       toll() { if (ok()) FXS.toll(plain()); }, pour() { if (ok()) FXS.pour(plain()); }, hurt() { if (ok()) FXS.hurt(plain()); }, fallW() { if (ok()) FXS.fallW(plain()); },
       click() { if (!ok()) return; plain().voice({ f: 620, f1: 820, dur: 0.06, vol: 0.12, rev: 0 }); },
       buy() { if (!ok()) return; const s = plain(); [880, 1175, 1568].forEach((f, i) => s.voice({ type: 'square', f, t: i * 0.07, dur: 0.1, vol: 0.07, filter: ['lowpass', 5000] })); },
+      // 🚙 البكي: باب، تشغيل، هورن، ضربة
+      door() { if (!ok()) return; const s = plain(); s.noise({ type: 'lowpass', f: 900, dur: 0.08, vol: 0.22 }); s.voice({ type: 'square', f: 140, f1: 70, dur: 0.07, vol: 0.12, filter: ['lowpass', 600] }); },
+      carStart() { if (!ok()) return; const s = plain(); for (let i = 0; i < 4; i++) s.noise({ type: 'bandpass', f: 220, t: i * 0.13, dur: 0.09, vol: 0.18 }); s.voice({ type: 'sawtooth', f: 40, f1: 75, t: 0.5, dur: 0.35, vol: 0.12, filter: ['lowpass', 700] }); },
+      crash(v = 6) { if (!ok()) return; const s = plain(), k = Math.min(1, v / 16); s.noise({ type: 'lowpass', f: 600, f1: 120, dur: 0.35, vol: 0.18 + k * 0.25 }); s.noise({ type: 'bandpass', f: 2400, f1: 900, dur: 0.22, vol: 0.06 + k * 0.12 }); s.voice({ type: 'triangle', f: 90, f1: 40, dur: 0.3, vol: 0.2 * k + 0.08 }); },
+      horn(on) {
+        if (!ok() || !ac) return;
+        if (on && !api._horn) { const g = ac.createGain(); g.gain.value = 0; const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200; lp.connect(g); g.connect(ac.destination); const os = [415, 520].map((f) => { const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(lp); o.start(); return o; }); g.gain.setTargetAtTime(0.06, ac.currentTime, 0.01); api._horn = { g, os }; }
+        else if (!on && api._horn) { const h = api._horn; api._horn = null; h.g.gain.setTargetAtTime(0, ac.currentTime, 0.02); h.os.forEach((o) => o.stop(ac.currentTime + 0.15)); }
+      },
+      /** صوت المحرك المستمر (3 سلندر تيربو): الدورة تحدد النغمة، البنزين يفتح الصوت، وفوكها صفير التيربو وطگة التنفيس، صوت التايرات على الأرض، وتزحيط */
+      engine(p) {
+        if (!ac || !save.sound) p = null;
+        if (!p) { if (api._eng) { const e = api._eng; api._eng = null; e.out.gain.setTargetAtTime(0, ac.currentTime, 0.12); setTimeout(() => e.nodes.forEach((n) => { try { n.stop(); } catch (er) { /* */ } }), 900); } return; }
+        if (!api._eng) api._eng = makeEngine(ac);
+        api._eng.set(p);
+      },
+      /** للفحص والفيديو: يسجّل صوت البكي بدون سماعات — كل لقطة [وقت، حالة المحرك أو null، [أصوات بوقتها]] */
+      renderCar(timeline, seconds) {
+        const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext, oac = new OAC(1, Math.ceil(44100 * seconds), 44100), live = [ac, S, api._eng, save.sound];
+        ac = oac; S = createSynth(oac); api._eng = null; save.sound = true;
+        for (const [t, p, evs] of timeline) oac.suspend(t).then(() => { for (const [k, a] of evs || []) api[k](...(a || [])); api.engine(p); oac.resume(); });
+        return oac.startRendering().then((buf) => { [ac, S, api._eng, save.sound] = live; return buf.getChannelData(0); });
+      },
     };
+    function makeEngine(ac) {
+      const T = () => ac.currentTime, out = ac.createGain(); out.gain.value = 0; out.connect(ac.destination);
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 1.4; lp.connect(out);
+      const osc = (type, g0) => { const o = ac.createOscillator(); o.type = type; const g = ac.createGain(); g.gain.value = g0; o.connect(g); g.connect(lp); o.start(); return { o, g }; };
+      const o1 = osc('sawtooth', 0.42), o2 = osc('square', 0.3), o3 = osc('sawtooth', 0.16);
+      const nb = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+      const noiseVia = (type, f, Q) => { const s = ac.createBufferSource(); s.buffer = nb; s.loop = true; s.playbackRate.value = 0.7 + Math.random() * 0.6; const b = ac.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = Q; const g = ac.createGain(); g.gain.value = 0; s.connect(b); b.connect(g); g.connect(out); s.start(); return { s, b, g }; };
+      const intake = noiseVia('bandpass', 700, 0.9), tire = noiseVia('lowpass', 500, 0.7), skid = noiseVia('bandpass', 1400, 2.2);
+      const tw = ac.createOscillator(); tw.type = 'sine'; const twg = ac.createGain(); twg.gain.value = 0; tw.connect(twg); twg.connect(out); tw.start();
+      let lastThr = 0, lastRpm = 0;
+      return {
+        out, nodes: [o1.o, o2.o, o3.o, intake.s, tire.s, skid.s, tw],
+        set({ rpm, thr, speed, slip, kind, on }) {
+          const t = T(), f = Math.max(18, (rpm / 60) * 1.5), k = 0.06;
+          o1.o.frequency.setTargetAtTime(f, t, k); o2.o.frequency.setTargetAtTime(f / 2, t, k); o3.o.frequency.setTargetAtTime(f * 2.01, t, k);
+          lp.frequency.setTargetAtTime(260 + rpm * 0.11 + thr * 900, t, 0.08);
+          out.gain.setTargetAtTime(on ? 0.16 + 0.1 * thr : 0, t, on ? 0.1 : 0.25);
+          intake.b.frequency.setTargetAtTime(380 + rpm * 0.24, t, 0.1); intake.g.gain.setTargetAtTime(on ? 0.03 + thr * 0.07 * (rpm / 8000) : 0, t, 0.08);
+          tw.frequency.setTargetAtTime(1700 + rpm * 0.45, t, 0.15); twg.gain.setTargetAtTime(on ? thr * (rpm / 8000) ** 2 * 0.022 : 0, t, 0.2);
+          const surf = { sand: 1.25, water: 1.6, grass: 0.85, forest: 0.9, trail: 1, path: 1, rock: 1.1, plaza: 0.35 }[kind] || 1;
+          tire.b.frequency.setTargetAtTime(kind === 'plaza' ? 900 : 420, t, 0.2); tire.g.gain.setTargetAtTime(Math.min(0.16, speed * 0.0075) * surf, t, 0.12);
+          skid.b.frequency.setTargetAtTime(kind === 'plaza' ? 1900 : 750, t, 0.1); skid.g.gain.setTargetAtTime(Math.min(0.14, Math.max(0, slip - 1.1) * 0.06) * (kind === 'plaza' ? 1.4 : 0.8), t, 0.06);
+          if (lastThr > 0.6 && thr < 0.1 && lastRpm > 5200) { const s = plain(); s.noise({ type: 'highpass', f: 2600, f1: 1400, dur: 0.32, vol: 0.07 }); } // طگة التيربو
+          lastThr = thr; lastRpm = rpm;
+        },
+      };
+    }
     return api;
   })();
 
@@ -1833,7 +1883,8 @@
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') { if (e.key === 'Enter') { e.preventDefault(); tryCode(); } return; }
     if ((e.code === 'ArrowUp' || e.code === 'KeyW') && state === 'play') { useTurbo(); return; }
-    if (state === 'world' && e.code === 'Space') { e.preventDefault(); mtJump(); return; }
+    if (state === 'world' && e.code === 'Space') { e.preventDefault(); keyHand = true; mtJump(); return; }
+    if (state === 'world' && e.code === 'KeyH') { Sfx.horn(true); return; }
     if (state === 'world' && (e.code === 'KeyF' || e.code === 'Enter')) { e.preventDefault(); mtAction(); return; }
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keyL = true; tutSeen(); }
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') { keyR = true; tutSeen(); }
@@ -1855,6 +1906,8 @@
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keyL = false;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keyR = false;
     if (e.code === 'ArrowUp' || e.code === 'KeyW') keyU = false;
+    if (e.code === 'Space') keyHand = false;
+    if (e.code === 'KeyH') Sfx.horn(false);
     if (e.code === 'ArrowDown' || e.code === 'KeyS') keyD = false;
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keySh = false;
     if (e.code === 'KeyQ') keyQ = false;
@@ -1948,7 +2001,7 @@
     if (state !== 'countdown') resumeTo = state === 'valley' || state === 'world' ? state : 'play';
     $('jumpBtn').hidden = true; $('actBtn').hidden = true; $('skip').hidden = true;
     clearTimeout(countTimer); $('count').hidden = true; $('vbar').hidden = true; $('dlg').hidden = true;
-    state = 'pause'; show('pause'); $('rest').hidden = resumeTo !== 'world'; Sfx.rocketStop(); ptr.clear(); keyL = keyR = false; $('turbo').hidden = true; Music.setMode('pause');
+    state = 'pause'; show('pause'); $('rest').hidden = resumeTo !== 'world'; Sfx.rocketStop(); Sfx.engine(null); Sfx.horn(false); ptr.clear(); keyL = keyR = false; $('turbo').hidden = true; Music.setMode('pause');
   }
   function resume() {
     if (state !== 'pause') return;
@@ -3248,7 +3301,7 @@
   // إبهام يسار = جويستك (دفعة خفيفة مشي هادئ، دفعة كاملة ركض)، إصبع يمين = تلف الكاميرا. كيبورد: WASD/الأسهم، Shift هادئ، Q/E كاميرا، المسافة نطة، F فعالية، M خريطة
   const JOY_R = 52;
   const J = { id: null, cx: 0, cy: 0, x: 0, y: 0 }, CAMD = { id: null, x: 0, y: 0, dx: 0, dy: 0 };
-  let keyU = false, keyD = false, keySh = false, keyQ = false, keyE = false;
+  let keyU = false, keyD = false, keySh = false, keyQ = false, keyE = false, keyHand = false;
   const MINI = { x: () => C.W - 60, y: () => 150, r: 46 };
   const toLogical = (e) => { const r = cvs.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; };
   function valleyPointer(type, e) {
@@ -3276,11 +3329,12 @@
       if (l > 4) { const k = Math.min(1, l / JOY_R); jx = (dx / l) * k; jy = (-dy / l) * k; mag = k; }
     } else if (keyL || keyR || keyU || keyD) {
       jx = (keyR ? 1 : 0) - (keyL ? 1 : 0); jy = (keyU ? 1 : 0) - (keyD ? 1 : 0);
+      var kx = jx, ky = jy; // للسواقة: بنزين ودركسون سوا
       const l = Math.hypot(jx, jy) || 1; jx /= l; jy /= l; mag = keySh ? 0.5 : 1;
     }
     const dyaw = CAMD.dx * 0.0085 + ((keyE ? 1 : 0) - (keyQ ? 1 : 0)) * 1.9 * dt, dpitch = CAMD.dy * 0.006;
     CAMD.dx = 0; CAMD.dy = 0;
-    return { jx, jy, mag, sneak: keySh, dyaw, dpitch };
+    return { jx, jy, mag, sneak: keySh, dyaw, dpitch, kx, ky, hand: keyHand || (WS && WS.hand) };
   }
   const uparts = [];
   function sparkleAt(x, y, z, colors, kind = 'star', n = 8, spd = 1) {
@@ -3348,7 +3402,7 @@
   function payCoins() { const S3 = WD.S, due = Math.max(0, S3.coinsGot - WS.paid); if (due) { save.coins += due; WS.paid += due; persist(); } return due; }
   function leaveWorld() {
     if (!WS) return;
-    saveWorld(); payCoins();
+    saveWorld(); payCoins(); Sfx.engine(null); Sfx.horn(false);
     if (WS.mapOpen) closeMap();
     WS.boardOpen = false; WS.shopOpen = false; $('mboard').hidden = true; $('mshop').hidden = true;
     WD.S.scope = false;
@@ -3384,13 +3438,23 @@
   function onWorldEvent(type, a) {
     const S3 = WD.S, m = WS, h = S3.hero;
     switch (type) {
-      case 'jump': Sfx.jump(save.skin); break;
+      case 'jump': if (h.mode === 'walk') Sfx.jump(save.skin); break;
       case 'land': Sfx.step(1); break;
+      // 🚙 البكي
+      case 'carDoor': Sfx.door(); break;
+      case 'carStart': Sfx.carStart(); if (!save.carTips) { save.carTips = 1; persist(); toast('🕹️ الجويستك: لفوك بنزين، لتحت فرامل وريوس، يمين ويسار دركسون · 🅿️ فرامل يد للتفحيط', 5200); } else toast('🚙 يلا!', 900); break;
+      case 'carOff': break;
+      case 'carCrash': Sfx.crash(a[0]); shake = Math.max(shake, Math.min(0.5, a[0] * 0.03)); if (a[0] > 13) toast('💥 ضربة قوية!', 1300); break;
+      case 'carLand': Sfx.thud(); shake = Math.max(shake, Math.min(0.4, a[0] * 0.03)); break;
+      case 'carFlip': Sfx.thud(); toast('🔄 البكي انقلب… ورجع عدل', 2000); break;
+      case 'carTow': toast('🛻 سحبنا البكي للكراج', 2200); break;
+      case 'deepWater': toast('🌊 الماي غميج! البكي ما يعبر', 1800); break;
+      case 'carNo': toast('🦌 الغزال ما يصعد بالبكي… امشِ ويّاه', 2200); break;
       case 'landStone': Sfx.step(1); Sfx.splash(); break;
       case 'step': Sfx.step(a[0] ? 1 : 0); if (a[1] === 'bridge' && Math.random() < 0.4) Sfx.creak(); break;
       case 'splash': Sfx.splash(); break;
       case 'coin': { Sfx.coin(); const c = a[0]; sparkleAt(c.x, c.y, c.z, ['#FFD23F', '#FFF6C4'], 'star', 7); break; }
-      case 'hurt': m.hurtT = 0.5; shake = Math.max(shake, Math.min(0.35, a[0] / 120)); if (a[1] === 'fall') { Sfx.thud(); toast(a[0] >= 40 ? `😵 وكعة قوية! -${a[0]} ❤️` : `🤕 -${a[0]} ❤️`, 1500); } else Sfx.hurt(); break;
+      case 'hurt': m.hurtT = 0.5; shake = Math.max(shake, Math.min(0.35, a[0] / 120)); if (a[1] === 'crash' || a[1] === 'land') toast(`🤕 -${a[0]} ❤️`, 1200); else if (a[1] === 'fall') { Sfx.thud(); toast(a[0] >= 40 ? `😵 وكعة قوية! -${a[0]} ❤️` : `🤕 -${a[0]} ❤️`, 1500); } else Sfx.hurt(); break;
       case 'faint': Sfx.fallW(); toast('😵 غِبت عن الوعي…', 1600); m.fade = 0.01; m.fadeCol = '18,22,40'; break;
       case 'swept': Sfx.splash(); toast('💦 الساقية سحبتك!', 1800); break;
       case 'respawn': m.fade = 0.85; m.fadeCol = '18,22,40'; toast(a[1] ? `🚩 صحيت بـ «${a[0]}» وخسرت ${a[1]} 🪙` : `🚩 رجعت لـ «${a[0]}»`, 2200); break;
@@ -3530,7 +3594,13 @@
     const label = S3.scope ? '🔭 طلّع من التلسكوب' : it ? it.label : '';
     const ab = $('actBtn');
     if (state === 'world' && label) { if (ab.hidden || ab.textContent !== label) { ab.textContent = label; ab.hidden = false; } } else if (!ab.hidden) ab.hidden = true;
-    $('jumpBtn').hidden = !(state === 'world' && !S3.scope && S3.hero.mode === 'walk' && !(S3.summit && S3.summit.phase !== 'wait'));
+    const drv = S3.hero.mode === 'drive';
+    $('jumpBtn').hidden = !(state === 'world' && !S3.scope && (S3.hero.mode === 'walk' || drv) && !(S3.summit && S3.summit.phase !== 'wait'));
+    if (m.jbDrive !== drv) { m.jbDrive = drv; $('jumpBtn').innerHTML = drv ? '🅿️<br>فرامل يد' : '🦘<br>نط'; $('jumpBtn').classList.toggle('hb', drv); }
+    $('hornBtn').hidden = !(state === 'world' && drv);
+    // 🔊 صوت المحرك
+    const car = S3.car, near = car && car.engine && (car.x - S3.hero.x) ** 2 + (car.z - S3.hero.z) ** 2 < 120 * 120;
+    Sfx.engine(near && state === 'world' ? { rpm: car.rpm, thr: Math.abs(car.throttle), speed: Math.hypot(car.vx, car.vz), slip: car.slip, kind: car.kind, on: true } : null);
     const sk = state === 'world' && S3.windStory && S3.summit && S3.summit.phase === 'wait' && S3.summit.t > 3;
     if ($('skip').hidden === !!sk) $('skip').hidden = !sk;
     const obj = WD.objective(); if (m.obj !== obj) { m.obj = obj; $('vobj').textContent = obj; }
@@ -3642,6 +3712,7 @@
       g.fillStyle = 'rgba(90,55,32,.88)'; g.beginPath(); g.arc(x, y, 13 * f.d, 0, TAU); g.fill(); g.font = `${15 * f.d}px -apple-system,system-ui,sans-serif`; g.fillStyle = '#FFFFFF'; g.fillText(d.icon, x, y + 1);
     }
     { const b = WD.G.I.board, [x, y] = at(b.x, b.z); g.font = `${16 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText('📜', x - 14 * f.d, y - 12 * f.d); }
+    { const gg = WD.G.I.garage, [x, y] = at(gg.x, gg.z); g.font = `${15 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText('🔧', x, y); const c = WD.S.car; if (c && WD.S.hero.mode !== 'drive' && Math.hypot(c.x - gg.x, c.z - gg.z) > 15) { const [cx2, cy2] = at(c.x, c.z); g.fillText('🚙', cx2, cy2); } }
     const [px, py] = at(p.x, p.z);
     drawArrow(g, px, py, p.face, 11 * f.d, '#FFD23F');
     g.restore();
@@ -3702,6 +3773,25 @@
     }
     ctx.globalAlpha = 1;
   }
+  /** 🏎️ عدّاد السرعة (كم/س) والدورة والگير */
+  function drawSpeedo(car) {
+    const cx = C.W / 2, cy = viewH - 74, R = 54, kmh = Math.abs(car.vf) * 3.6, a0 = Math.PI * 0.75, sweep = Math.PI * 1.5, max = 120;
+    ctx.save();
+    ctx.fillStyle = 'rgba(14,20,38,.62)'; ctx.beginPath(); ctx.arc(cx, cy, R + 8, 0, TAU); ctx.fill();
+    ctx.lineCap = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.arc(cx, cy, R - 4, a0, a0 + sweep); ctx.stroke();
+    const k = Math.min(1, kmh / max), gr = ctx.createLinearGradient(cx - R, cy, cx + R, cy); gr.addColorStop(0, '#5EE7FF'); gr.addColorStop(0.6, '#FFD23F'); gr.addColorStop(1, '#FF4D4D');
+    if (k > 0.005) { ctx.strokeStyle = gr; ctx.beginPath(); ctx.arc(cx, cy, R - 4, a0, a0 + sweep * k); ctx.stroke(); }
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.font = '700 9px -apple-system,system-ui,sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let v = 0; v <= max; v += 10) { const a = a0 + sweep * (v / max), big = v % 20 === 0, r1 = R - 12, r2 = big ? R - 19 : R - 15; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); ctx.stroke(); if (big && v % 40 === 0) ctx.fillText(String(v), cx + Math.cos(a) * (R - 28), cy + Math.sin(a) * (R - 28)); }
+    const rk = Math.min(1, car.rpm / 8000); ctx.lineWidth = 3; ctx.strokeStyle = rk > 0.9 ? '#FF4D4D' : '#FF9A3A'; ctx.beginPath(); ctx.arc(cx, cy, R + 4, a0, a0 + sweep * rk); ctx.stroke(); // الدورة
+    const na = a0 + sweep * k; ctx.strokeStyle = '#FF5A1F'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - Math.cos(na) * 6, cy - Math.sin(na) * 6); ctx.lineTo(cx + Math.cos(na) * (R - 10), cy + Math.sin(na) * (R - 10)); ctx.stroke();
+    ctx.fillStyle = '#FFFFFF'; ctx.font = '900 24px -apple-system,system-ui,sans-serif'; ctx.fillText(String(Math.round(kmh)), cx, cy + 16);
+    ctx.font = '700 9px -apple-system,system-ui,sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillText('كم/س', cx, cy + 33);
+    const gear = car.gear || 'N', gc = gear === 'R' ? '#FF6B6B' : gear === 'D' ? '#7CF29A' : '#C9D3E8';
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(ctx, cx - 11, cy - 30, 22, 20, 6); ctx.fill(); ctx.fillStyle = gc; ctx.font = '900 14px -apple-system,system-ui,sans-serif'; ctx.fillText(gear, cx, cy - 19.5);
+    if (car.hand) { ctx.fillStyle = '#FF6B6B'; ctx.font = '900 11px -apple-system,system-ui,sans-serif'; ctx.fillText('🅿️', cx + 30, cy - 20); }
+    ctx.restore();
+  }
   function drawJoystick(t, h = WS) {
     if (J.id !== null) {
       const dx = J.x - J.cx, dy = J.y - J.cy, l = Math.hypot(dx, dy), k = l > JOY_R ? JOY_R / l : 1, run = l > JOY_R * 0.62;
@@ -3734,6 +3824,7 @@
     ctx.font = '15px -apple-system,system-ui,sans-serif';
     const marks = [...WS.pins.map((pin) => [pin.x, pin.z, PIN_ICON[pin.type]])];
     const tg = WD.trackTarget(); if (tg) marks.push([tg.x, tg.z, tg.icon]); // 🧭 الطلب اللي تتبعه
+    { const c = WD.S.car, hh = WD.S.hero; if (c && hh.mode !== 'drive' && (c.x - hh.x) ** 2 + (c.z - hh.z) ** 2 > 30 * 30) marks.push([c.x, c.z, '🚙']); }
     if (!WD.S.boardRead && !WD.S.vq.met) { const b = WD.G.I.board; marks.push([b.x, b.z, '📜']); }
     for (const [mx, mz, ic] of marks) {
       const b = ((Math.atan2(mz - p.z, mx - p.x) * 180) / Math.PI + 360) % 360, d = ((b - hd + 540) % 360) - 180;
@@ -3760,6 +3851,7 @@
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '15px -apple-system,system-ui,sans-serif';
     for (const pin of WS.pins) { let dx = (pin.z - p.z) * (r / view), dy = -(pin.x - p.x) * (r / view); const l = Math.hypot(dx, dy); if (l > r - 9) { dx *= (r - 9) / l; dy *= (r - 9) / l; } ctx.fillText(PIN_ICON[pin.type], cx + dx, cy + dy); }
     ctx.font = '13px -apple-system,system-ui,sans-serif';
+    { const c = WD.S.car; if (c && WD.S.hero.mode !== 'drive' && Math.abs(c.x - p.x) < view && Math.abs(c.z - p.z) < view) { const dx = (c.z - p.z) * (r / view), dy = -(c.x - p.x) * (r / view); if (Math.hypot(dx, dy) < r - 6) ctx.fillText('🚙', cx + dx, cy + dy); } }
     for (const it of WD.S.items) { if (it.taken || Math.abs(it.x - p.x) > view || Math.abs(it.z - p.z) > view) continue; const dx = (it.z - p.z) * (r / view), dy = -(it.x - p.x) * (r / view); if (Math.hypot(dx, dy) < r - 6) ctx.fillText(WD.S.tasks.find((q) => q.id === it.task).def.icon, cx + dx, cy + dy); }
     { const tg = WD.trackTarget(); if (tg) { let dx = (tg.z - p.z) * (r / view), dy = -(tg.x - p.x) * (r / view); const l = Math.hypot(dx, dy); if (l > r - 10) { dx *= (r - 10) / l; dy *= (r - 10) / l; ctx.fillStyle = 'rgba(255,210,63,.9)'; ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 9, 0, TAU); ctx.fill(); ctx.fillStyle = '#FFFFFF'; ctx.font = '12px -apple-system,system-ui,sans-serif'; ctx.fillText(tg.icon, cx + dx, cy + dy + 0.5); } } }
     ctx.restore();
@@ -3834,13 +3926,15 @@
       if (q.vis && q.x > 0.02 && q.x < 0.98 && q.y > 0.05 && q.y < 0.95) drawGzMarks(q.x * C.W, q.y * viewH + 84, { sus: g.sus, state: g.state, face: 1 }, t, false);
     }
     drawUParts();
-    const live = state === 'world' && !S3.scope && !m.mapOpen && !m.shopOpen && !m.boardOpen && ['walk', 'glide', 'fish', 'climb'].includes(h.mode);
-    if (live) { if (h.mode === 'walk') drawThreats(t); drawCompass(); drawMinimap(); drawStatus(); drawAltitude(); drawJoystick(t, m); }
+    const live = state === 'world' && !S3.scope && !m.mapOpen && !m.shopOpen && !m.boardOpen && ['walk', 'glide', 'fish', 'climb', 'drive'].includes(h.mode);
+    if (live) { if (h.mode === 'walk') drawThreats(t); drawCompass(); drawMinimap(); drawStatus(); drawAltitude(); drawJoystick(t, m); if (h.mode === 'drive') drawSpeedo(S3.car); }
     if (m.hurtT > 0) { ctx.fillStyle = `rgba(255,30,30,${m.hurtT * 0.45})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
     if (m.fade > 0) { ctx.fillStyle = `rgba(${m.fadeCol},${m.fade})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
   }
-  $('jumpBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); Sfx.init(); mtJump(); $('jumpBtn').classList.add('on'); });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('jumpBtn').addEventListener(ev, () => $('jumpBtn').classList.remove('on')));
+  $('jumpBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); Sfx.init(); mtJump(); if (WS) WS.hand = true; $('jumpBtn').classList.add('on'); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('jumpBtn').addEventListener(ev, () => { if (WS) WS.hand = false; $('jumpBtn').classList.remove('on'); }));
+  $('hornBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); Sfx.init(); Sfx.horn(true); $('hornBtn').classList.add('on'); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => $('hornBtn').addEventListener(ev, () => { Sfx.horn(false); $('hornBtn').classList.remove('on'); }));
   $('actBtn').onclick = () => mtAction();
 
   /** شنو لازم تعزف الموسيقى هسه: النمط حسب العالم والارتفاع، والحماس حسب النتيجة والصاروخ */

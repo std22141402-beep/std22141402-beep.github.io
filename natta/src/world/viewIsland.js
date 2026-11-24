@@ -291,6 +291,43 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
       P.push(paint(tf(new BoxGeometry(3.1, 0.08, 2.3), 0, 2.62, 0, 0.12, 0, 0), (c, x) => c.set(Math.floor((x + 2) * 2.5) % 2 ? c0 : '#FFF5E0')));
       P.push(box(2.8, 0.85, 1.0, '#8B5E3C', 0, 0.43, 0.3));
       for (let i = 0; i < 6; i++) P.push(box(0.35, 0.3, 0.3, ['#E76F51', '#F4D35E', '#7FB069', '#C2185B', '#FFB703', '#8D6E63'][i], -1.1 + i * 0.44, 1.0, 0.3));
+    } else if (k === 'garage') { // 🔧 كراج الفجر (10.4 × 8.4 × 4.6 م): كونكريت، حيطان بلوك، سقف جينكو، باب رول مرفوع، منضدة وعدّة وتايرات وبراميل
+      const W = st.w, D = st.d, Hh = 4.2;
+      const conc = (c, x, y, z) => mix(c, '#9E9C95', '#BDBAB1', 0.5 + (hash2(Math.round(x * 2), Math.round(z * 2)) - 0.5) * 0.35);
+      const block = (c, x, y, z) => { const row = Math.floor((y + 0.01) / 0.2), off = row % 2 ? 0.2 : 0, b = Math.floor((z + x + off + 20) / 0.4); return y < 0.6 ? c.set('#8E877A') : mix(c, '#D4CDBD', '#E9E3D5', hash2(b, row)); };
+      P.push(paint(tf(new BoxGeometry(W + 0.4, 0.14, D + 0.4), 0, 0.07, 0), conc));
+      P.push(paint(tf(new BoxGeometry(0.28, Hh, D), -W / 2 + 0.14, Hh / 2 + 0.14, 0), block));
+      for (const sz of [-1, 1]) {
+        P.push(paint(tf(new BoxGeometry(W, Hh, 0.28), 0, Hh / 2 + 0.14, sz * (D / 2 - 0.14)), block));
+        P.push(box(0.26, Hh, 0.26, '#59616B', W / 2 - 0.13, Hh / 2 + 0.14, sz * (D / 2 - 0.13))); // عمود حديد
+        P.push(box(0.07, Hh - 0.5, 0.1, '#6E7680', W / 2 - 0.32, (Hh - 0.5) / 2 + 0.14, sz * (D / 2 - 0.36))); // سكة الباب
+        for (const u of [-3, 0.5]) P.push(box(0.04, 0.9, 1.4, '#7FA6C4', u, 2.4, sz * (D / 2 + 0.005))); // شبابيك
+      }
+      P.push(paint(tf(new BoxGeometry(0.32, 0.7, D), W / 2 - 0.16, Hh - 0.21, 0), block)); // فوك الباب
+      P.push(paint(tf(new CylinderGeometry(0.3, 0.3, D - 0.7, 18), W / 2 - 0.4, Hh - 0.72, 0, Math.PI / 2, 0, 0), (c, x, y) => c.set(Math.floor((Math.atan2(y - Hh + 0.72, x) + 4) * 4) % 2 ? '#9AA3AD' : '#B6BEC6'))); // الباب ملفوف
+      P.push(paint(tf(new BoxGeometry(W + 0.9, 0.07, D + 0.7), 0.1, Hh + 0.32, 0, 0, 0, 0.05), (c, x, y, z) => c.set(Math.floor((z + 10) * 5) % 2 ? '#A9B2BA' : '#8D97A1'))); // سقف جينكو
+      // جوّه: لوح عدّة ومنضدة ومنگنة وصندوق عدّة
+      P.push(box(0.04, 1.3, 3.2, '#C9A878', -W / 2 + 0.31, 1.95, -1.2));
+      for (let i = 0; i < 9; i++) P.push(box(0.03, 0.18 + (i % 3) * 0.12, 0.05 + (i % 2) * 0.05, ['#2E2E2E', '#C8283A', '#7A7F86'][i % 3], -W / 2 + 0.35, 2.15 - (i % 2) * 0.45, -2.5 + i * 0.32));
+      P.push(box(4.6, 0.08, 0.84, '#8A5A30', -1.2, 0.98, -D / 2 + 0.56));
+      for (const u of [-3.4, 1.0]) for (const v of [-D / 2 + 0.24, -D / 2 + 0.88]) P.push(box(0.08, 0.86, 0.08, '#4A4A4A', u, 0.55, v));
+      P.push(box(4.4, 0.05, 0.76, '#6B4423', -1.2, 0.42, -D / 2 + 0.56));
+      P.push(box(0.55, 0.32, 0.3, '#C8283A', -2.4, 1.18, -D / 2 + 0.5), box(0.5, 0.05, 0.26, '#2E2E2E', -2.4, 1.36, -D / 2 + 0.5));
+      P.push(box(0.2, 0.18, 0.16, '#3B4D61', 0.2, 1.11, -D / 2 + 0.4), box(0.3, 0.04, 0.12, '#3B4D61', 0.2, 1.22, -D / 2 + 0.4));
+      // تايرات (28 إنج) متراكمة، وبراميل دهن، وجك
+      for (let i = 0; i < 4; i++) { P.push(cyl(0.355, 0.355, 0.26, '#1D1D1F', -3.9, 0.27 + i * 0.27, D / 2 - 0.62, 20)); P.push(cyl(0.18, 0.18, 0.265, '#6E7680', -3.9, 0.27 + i * 0.27, D / 2 - 0.62, 14)); }
+      P.push(cyl(0.29, 0.29, 0.88, '#B3261E', 2.2, 0.58, D / 2 - 0.45, 16), cyl(0.29, 0.29, 0.88, '#1F5FA8', 3.0, 0.58, D / 2 - 0.45, 16));
+      for (const u of [2.2, 3.0]) for (const yy of [0.34, 0.82]) P.push(cyl(0.3, 0.3, 0.03, '#2E2E2E', u, yy, D / 2 - 0.45, 16));
+      P.push(paint(tf(new CircleGeometry(1.3, 20), -0.4, 0.145, 0.4, -Math.PI / 2, 0, 0), '#6F6C66')); // بقعة دهن
+      P.push(box(0.9, 0.1, 0.3, '#C8283A', 1.6, 0.2, -2.6), box(0.1, 0.5, 0.06, '#C8283A', 1.2, 0.4, -2.6)); // جك
+    } else if (k === 'apron') { // ساحة كونكريت قدّام الكراج بخطوط صفرة
+      P.push(paint(tf(new BoxGeometry(st.w, 0.1, st.d), 0, 0.03, 0), (c, x, y, z) => mix(c, '#A4A29B', '#BCB9B0', 0.5 + (hash2(Math.round(x * 2), Math.round(z * 2)) - 0.5) * 0.3)));
+      for (const sz of [-1, 1]) P.push(box(st.w - 0.6, 0.02, 0.14, '#E8C33A', 0, 0.09, sz * (st.d / 2 - 0.4)));
+      for (let i = -2; i <= 2; i++) P.push(box(0.6, 0.02, 0.14, '#F2F2F2', i * 2.2, 0.09, 0));
+    } else if (k === 'fuel') { // مضخة بانزين
+      P.push(box(1.0, 0.14, 0.8, '#8E8E8E', 0, 0.07, 0), box(0.55, 1.6, 0.45, '#D62839', 0, 0.94, 0), box(0.6, 0.26, 0.5, '#F4F4F4', 0, 1.86, 0));
+      P.push(box(0.02, 0.28, 0.3, '#1D2733', 0.285, 1.35, 0), box(0.06, 0.22, 0.1, '#2E2E2E', 0.3, 0.95, 0.12));
+      P.push(paint(tf(new TorusGeometry(0.22, 0.02, 5, 14, Math.PI * 1.2), 0.33, 0.72, 0.12, 0, Math.PI / 2, 0), '#1D1D1F'));
     } else if (k === 'board') { // 📜 لوحة الطلبات: دكّة حجر بدرجتين، عمودين خشب منقوش، إطار، سقف قرميد، وأحواض ورد
       const stone = (c, x, y, z) => mix(c, '#C9B596', '#E3D3B5', 0.4 + (hash2(Math.round(x * 3), Math.round(z * 3 + y)) - 0.5) * 0.5);
       P.push(paint(tf(new BoxGeometry(1.9, 0.18, 4.6), 0, 0.09, 0), stone), paint(tf(new BoxGeometry(1.25, 0.16, 4.1), -0.25, 0.26, 0), stone));
@@ -352,6 +389,12 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
     grp.position.set(st.x, st.float ? SEA + 0.15 : st.y, st.z); grp.rotation.y = -(st.rot || 0);
     if (P.length) { const m = new Mesh(merge(P), new MeshLambertMaterial({ vertexColors: true, side: DoubleSide })); m.castShadow = true; m.receiveShadow = true; grp.add(m); }
     if (st.kind === 'palm') { const m = new Mesh(NEAR.palm[0], nearMat.palm); m.scale.setScalar(2.4 * (st.s || 1)); m.castShadow = true; grp.add(m); }
+    if (st.kind === 'garage') { // لافتة وضوية جوّه
+      const sg = new Mesh(new PlaneGeometry(4.2, 0.6), new MeshLambertMaterial({ map: signTex('🔧 كراج الفجر · 🚙', 1024, 150, 92, '#1F3B57', '#FFE7A8'), emissive: '#0E1E2E', emissiveIntensity: 0.4 })); sg.position.set(st.w / 2 + 0.005, 3.88, 0); sg.rotation.y = Math.PI / 2; grp.add(sg);
+      const lampM = new MeshLambertMaterial({ color: '#FFFFFF', emissive: '#FFF4D6', emissiveIntensity: 1 });
+      for (const u of [-2.5, 1.5]) { const lb = new Mesh(new BoxGeometry(1.2, 0.06, 0.14), lampM); lb.position.set(u, 4.05, 0); grp.add(lb); const gl = new Sprite(new SpriteMaterial({ map: glowTex, color: '#FFF0C8', transparent: true, opacity: 0.5, depthWrite: false, blending: AdditiveBlending })); gl.position.set(u, 3.9, 0); gl.scale.setScalar(2.4); grp.add(gl); lamps.push(gl); }
+    }
+    if (st.kind === 'fuel') { const lb = new Mesh(new PlaneGeometry(0.5, 0.2), new MeshLambertMaterial({ map: signTex('⛽ بانزين', 256, 100, 50, '#F4F4F4', '#D62839') })); lb.position.set(0.305, 1.86, 0); lb.rotation.y = Math.PI / 2; grp.add(lb); }
     if (st.kind === 'board') {
       const title = new Mesh(new PlaneGeometry(2.6, 0.46), new MeshLambertMaterial({ map: signTex('📜 طلبات أبو جاسم', 1024, 180, 96, '#5A3720', '#FFE7A8') })); title.position.set(-0.215, 3.55, 0); title.rotation.y = Math.PI / 2; grp.add(title);
       boardTex = canvasTex(1024, 600, () => {}); const cards = new Mesh(new PlaneGeometry(3.4, 1.99), new MeshLambertMaterial({ map: boardTex, emissive: '#2A1C10', emissiveIntensity: 0.25 })); cards.position.set(-0.28, 2.12, 0); cards.rotation.y = Math.PI / 2; grp.add(cards);

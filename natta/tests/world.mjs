@@ -251,6 +251,44 @@ ok(fi.ok, '🎣 من رصيف الخليج صاد سمچة' + (fi.ok ? '' : ' ' 
 const pw = await G(() => { const W = window.__natta.WD, h = W.S.hero, p = W.G.I.sites.find((s) => s.kind === 'pier' && !s.lake), c = Math.cos(p.rot), sn = Math.sin(p.rot); Object.assign(h, { x: p.x - c * 10, z: p.z - sn * 10, air: false, mode: 'walk', face: p.rot }); h.y = W.G.surfaceAt(h.x, h.z, h.y + 50).y; for (let i = 0; i < 180; i++) W.sim.step(1 / 60, { mx: c, mz: sn, mag: 0.5 }); const u = (h.x - p.x) * c + (h.z - p.z) * sn, v = -(h.x - p.x) * sn + (h.z - p.z) * c; return { u: +u.toFixed(1), v: +v.toFixed(2), y: +(h.y - p.y).toFixed(2), surf: h.surf }; });
 ok(Math.abs(pw.v) < 1.6 && pw.u > -8 && Math.abs(pw.y) < 0.2 && pw.surf === 'pier', `🚶 يمشي على رصيف الخليج وما ينسحب لمكان ثاني (${JSON.stringify(pw)})`);
 
+// 11أ) 🔧 كراج الفجر و🚙 البكي: مقاسات حقيقية، تركب، تسوق، وتنزل
+const gar = await G(() => { const W = window.__natta.WD, gg = W.G.I.garage, f = W.G.I.fajr, c = W.S.car; return { d: Math.round(Math.hypot(gg.x - f.x, gg.z - f.z)), inGarage: Math.hypot(c.x - gg.x, c.z - gg.z) < 2, ride: +(c.y - W.G.H(c.x, c.z)).toFixed(3), B: W.sim ? null : null }; });
+ok(gar.d > 60 && gar.d < 110 && gar.inGarage && Math.abs(gar.ride - 0.525) < 0.03, `🔧 الكراج يم ساحة الفجر (${gar.d} م من النص) والبكي جوّه`);
+await G(() => { const W = window.__natta.WD, c = W.S.car, h = W.S.hero, x = c.x + Math.cos(c.yaw) * -0.22 - Math.sin(c.yaw) * -1.6, z = c.z + Math.sin(c.yaw) * -0.22 + Math.cos(c.yaw) * -1.6; Object.assign(h, { x, z, y: W.G.H(x, z), air: false, vx: 0, vz: 0, mode: 'walk', swim: false }); W.warm(x, z, h.y); W.cam.init = false; });
+ok(await until(() => document.getElementById('actBtn').textContent.includes('اركب') && !document.getElementById('actBtn').hidden, 4000), '🚙 يم باب السايق يطلع «اركب البكي»');
+await page.tap('#actBtn', { force: true });
+ok(await until(() => window.__natta.WD.S.hero.mode === 'drive', 4000), 'يفتح الباب ويكعد بالمقعد ويشغّل');
+await wait(600); await shot('11a-seated');
+const dims = await G(() => { const W = window.__natta.WD, v = W.view.heroDims ? 1 : 0, c = W.S.car; return { hy: +(W.S.hero.y - (c.y - 0.5)).toFixed(2), btn: document.getElementById('jumpBtn').textContent, horn: !document.getElementById('hornBtn').hidden }; });
+ok(dims.btn.includes('فرامل') && dims.horn, `بالسيارة: زر «${dims.btn.replace(/\s+/g, ' ')}» وهورن 📯 وعدّاد سرعة`);
+const phys = await G(() => {
+  const W = window.__natta.WD, c = W.S.car, step = (n, cmd) => { for (let i = 0; i < n; i++) W.sim.step(1 / 60, cmd); };
+  const f = W.G.I.fajr, rd = W.G.I.roads.find((q) => q.name === 'طريق الفجر'), p0 = rd.pts.find((p) => Math.hypot(p.x - f.x, p.z - f.z) > 45), p1 = rd.pts.find((p) => Math.hypot(p.x - f.x, p.z - f.z) > 110); const r = {};
+  c.x = p0.x; c.z = p0.z; c.yaw = Math.atan2(p1.z - p0.z, p1.x - p0.x); W.sim.S.hero.x = c.x; c.vx = c.vz = 0; { const yy = W.G.H(c.x, c.z) + 0.53; c.y = yy; } // على طريق الفجر المستقيم
+  let crashes = 0; const step0 = step; const stepC = (n, cmd) => { for (let i = 0; i < n; i++) for (const e of W.sim.step(1 / 60, cmd)) if (e[0] === 'carCrash') crashes++; };
+  // تطلع من الكراج وتسرّع على الكونكريت
+  step(60, {}); let t = 0, t60 = 0; while (t < 8 && c.vf * 3.6 < 60) { stepC(1, { jx: 0, jy: 1 }); t += 1 / 60; } t60 = t; r.t60 = +t60.toFixed(1);
+  r.kind = c.kind; r.rpm = Math.round(c.rpm); r.gear = c.gear;
+  // فرامل
+  const x0 = c.x, z0 = c.z, v0 = c.vf; let tb = 0; while (c.vf > 0.1 && tb < 6) { stepC(1, { jx: 0, jy: -1 }); tb += 1 / 60; } r.brakeV = +(v0 * 3.6).toFixed(0); r.brakeD = +Math.hypot(c.x - x0, c.z - z0).toFixed(1); r.crashes = crashes;
+  // ريوس
+  step(90, { jx: 0, jy: -1 }); r.rev = +(c.vf * 3.6).toFixed(1); r.revGear = c.gear; step(40, { jx: 0, jy: 0.4 }); step(240, { jx: 0, jy: 0 }); r.coast = +(c.vf * 3.6).toFixed(1);
+  return r;
+});
+ok(phys.t60 > 1.8 && phys.t60 < 3.2 && phys.rpm > 3000 && phys.gear === 'D' && !phys.crashes, `⚡ 0–60 كم/س بـ ${phys.t60} ث (الدورة ${phys.rpm}، گير ${phys.gear}، أرض ${phys.kind})`);
+ok(phys.brakeD > 11 && phys.brakeD < 20 && phys.rev < -3 && phys.revGear === 'R' && Math.abs(phys.coast) < 0.5, `🛑 فرامل من ${phys.brakeV} كم/س بـ ${phys.brakeD} م، ريوس ${phys.rev} كم/س، ولمن تشيل رجلك توكف (${phys.coast})`);
+const drv = await G(() => { const W = window.__natta.WD, c = W.S.car, h = W.S.hero; return { seat: Math.hypot(h.x - c.x, h.z - c.z) < 0.6, face: Math.abs(Math.atan2(Math.sin(h.face - c.yaw), Math.cos(h.face - c.yaw))) < 0.01 }; });
+ok(drv.seat && drv.face, 'السايق يتحرك ويّا السيارة بمقعده');
+ok(await until(() => document.getElementById('actBtn').textContent.includes('انزل'), 3000), 'لمن توكف يطلع «انزل»');
+await page.tap('#actBtn', { force: true });
+ok(await until(() => window.__natta.WD.S.hero.mode === 'walk', 4000), '🚪 ينزل من الباب اليسار ويمشي');
+const outd = await G(() => { const W = window.__natta.WD, c = W.S.car, h = W.S.hero; return { d: +Math.hypot(h.x - c.x, h.z - c.z).toFixed(2), eng: c.engine }; });
+ok(outd.d > 0.9 && outd.d < 2.2 && !outd.eng, `واكف يم السيارة (${outd.d} م) والمحرك طافي`);
+const water = await G(() => { const W = window.__natta.WD, c = W.S.car, sh = W.G.I.shBay, f = W.G.I.fajr, L = Math.hypot(sh.x - f.x, sh.z - f.z), ux = (sh.x - f.x) / L, uz = (sh.z - f.z) / L; c.x = sh.x - ux * 30; c.z = sh.z - uz * 30; c.y = W.G.H(c.x, c.z) + 0.53; c.vx = c.vz = 0; W.sim.S.hero.mode = 'drive'; c.driven = true; c.engine = true; const ang = Math.atan2(uz, ux); W.sim.S.car.yaw = ang; let deep = false; for (let i = 0; i < 60 * 40; i++) { const ev = W.sim.step(1 / 60, { jx: 0, jy: 1 }); if (ev.some((e) => e[0] === 'deepWater')) { deep = true; break; } const a2 = Math.atan2(sh.z - c.z, sh.x - c.x); c.yaw += Math.atan2(Math.sin(a2 - c.yaw), Math.cos(a2 - c.yaw)) * 0.05; } const w = W.G.water(c.x, c.z, W.G.H(c.x, c.z) + 0.05); return { deep, depth: w ? +(w.level - W.G.H(c.x, c.z)).toFixed(2) : 0 }; });
+ok(water.deep && water.depth < 0.9, `🌊 ما يدخل الماي الغميج (وكف على عمق ${water.depth} م)`);
+await G(() => { const W = window.__natta.WD; W.interact('tow'); });
+ok(await G(() => { const W = window.__natta.WD, c = W.S.car, gg = W.G.I.garage; return W.S.hero.mode === 'walk' && Math.hypot(c.x - gg.x, c.z - gg.z) < 2; }), '🛻 تنسحب للكراج');
+
 // 11ب) 🛟 إذا ضاع الرسم (الآيفون يسويها لمن تطلع من سفاري) ما يطلّعك للرئيسية، والرحلة تنحفظ وترجعلها
 const lost = await G(() => { const W = window.__natta.WD, ext = W.renderer.getContext().getExtension('WEBGL_lose_context'); window.__ext = ext; if (!ext) return null; ext.loseContext(); return true; });
 await wait(900);

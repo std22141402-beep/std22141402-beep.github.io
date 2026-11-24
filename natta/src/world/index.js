@@ -22,9 +22,9 @@ export function createWorld(canvas, cfg = {}) {
   }
   function step(dt, inp = {}) {
     if (S.scope) { cam.scopeYaw = clamp(cam.scopeYaw + (inp.dyaw || 0) * 0.35, -0.9, 0.9); cam.scopePitch = clamp(cam.scopePitch + (inp.dpitch || 0) * -0.3, -0.75, 0.2); }
-    else { cam.yaw += inp.dyaw || 0; cam.pitch = clamp(cam.pitch + (inp.dpitch || 0), -0.3, 1.15); } // تكدر تباوع لفوك شوية (القمة من الوادي)
+    else { cam.yaw += inp.dyaw || 0; cam.pitch = clamp(cam.pitch + (inp.dpitch || 0), -0.3, 1.15); if (inp.dyaw) cam.dragT = 1.6; } // تكدر تباوع لفوك شوية (القمة من الوادي)؛ بالسيارة الكاميرا ترجع وراك بعد ثانية ونص
     const jx = inp.jx || 0, jy = inp.jy || 0, cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
-    const cmd = { mx: cy * jy - sy * jx, mz: sy * jy + cy * jx, mag: inp.mag || 0, jump: !!inp.jump, sneak: !!inp.sneak };
+    const cmd = { mx: cy * jy - sy * jx, mz: sy * jy + cy * jx, mag: inp.mag || 0, jump: !!inp.jump, sneak: !!inp.sneak, jx, jy, kx: inp.kx, ky: inp.ky, hand: !!inp.hand }; // jx/jy الخام للسواقة
     const ev = sim.step(dt, cmd);
     for (const e of ev) if (Array.isArray(e) && e[0] === 'respawn') { cam.yaw = S.hero.face; cam.init = false; view.IV.warm(S.hero.x, S.hero.z, S.hero.y + 3); }
     return ev;

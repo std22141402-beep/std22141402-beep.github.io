@@ -348,6 +348,11 @@ export function buildGeo(map = NATTA_ISLAND) {
     st.y = I.H(st.x, st.z);
     const k = st.kind, rot = st.rot || 0;
     if (['house', 'hut', 'reedhut', 'mudhif', 'teahouse', 'stall', 'board', 'logs', 'fwall'].includes(k)) addBox({ x: st.x, z: st.z, hw: st.w / 2, hd: st.d / 2, rot, tall: 1, h: st.h, site: st });
+    else if (k === 'garage') { // حيطان من ثلاث جهات (الباب مفتوح صوب الساحة)، والمنضدة والتايرات لاصگة بالحيط
+      const c = Math.cos(rot), s = Math.sin(rot), W = (u, v, hw, hd) => addBox({ x: st.x + u * c - v * s, z: st.z + u * s + v * c, hw, hd, rot, tall: 1, h: st.h, site: st });
+      W(-st.w / 2 + 0.14, 0, 0.14, st.d / 2); W(0, -st.d / 2 + 0.14, st.w / 2, 0.14); W(0, st.d / 2 - 0.14, st.w / 2, 0.14);
+      W(-1.2, -st.d / 2 + 0.55, 2.3, 0.42); W(-3.9, st.d / 2 - 0.62, 0.7, 0.5); W(2.6, st.d / 2 - 0.45, 0.9, 0.3);
+    } else if (k === 'fuel') addBox({ x: st.x, z: st.z, hw: st.w / 2, hd: st.d / 2, rot, tall: 1, h: st.h, site: st });
     else if (k === 'lighthouse') addColl({ x: st.x, z: st.z, r: 3.1, tall: 1 });
     else if (k === 'fountain') addColl({ x: st.x, z: st.z, r: st.r });
     else if (k === 'well' || k === 'ftower') addColl({ x: st.x, z: st.z, r: st.r, tall: k === 'ftower' ? 1 : 0 });
@@ -459,7 +464,7 @@ export function buildGeo(map = NATTA_ISLAND) {
     if (r > 245) {
       const a = y - SEA, rd = I.nearRoad(x, z);
       if (rd && rd.d < rd.hw + 0.3) return 'trail';
-      if (Math.hypot(x - I.fajr.x, z - I.fajr.z) < 50) return 'plaza';
+      if (Math.hypot(x - I.fajr.x, z - I.fajr.z) < 50 || I.paved(x, z)) return 'plaza';
       if (a < 3.5 && I.coastS(x, z) < 150) return 'sand';
     }
     if (slope(x, z) > 0.85) return 'rock';

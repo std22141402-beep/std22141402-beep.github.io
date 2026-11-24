@@ -5,7 +5,7 @@ import {
   PlaneGeometry, SphereGeometry, CylinderGeometry, ConeGeometry, IcosahedronGeometry, DodecahedronGeometry, TorusGeometry, LatheGeometry,
   CapsuleGeometry, BoxGeometry, CircleGeometry, RingGeometry, TubeGeometry, ShapeGeometry, Shape, Vector2, BufferGeometry, BufferAttribute,
   MeshLambertMaterial, MeshPhongMaterial, MeshBasicMaterial, PointsMaterial, Points, DoubleSide, AdditiveBlending, LineSegments, LineBasicMaterial,
-  CatmullRomCurve3, QuadraticBezierCurve3, Sprite, SpriteMaterial,
+  CatmullRomCurve3, QuadraticBezierCurve3, Sprite, SpriteMaterial, Quaternion,
 } from 'three';
 import {
   TAU, clamp, lerp, smooth, damp, rng, hash2, vnoise, fbm, paint, tf, along, merge, mix, canvasTex, _c, _ca, _cb, angDiff, dampAngle,
@@ -13,6 +13,7 @@ import {
 } from '../lib3d.js';
 import { createIslandView } from './viewIsland.js';
 import { createHeroAnimator } from './heroAnim.js';
+import { makeBuggy } from './buggyModel.js';
 
 const D2R = Math.PI / 180;
 
@@ -432,6 +433,30 @@ export function createView(cfg, G, sim) {
   let hero = null;
   // 🧍 البطل إنسان طبيعي بطول 1.72 م (راس، رقبة، جذع، إيدين، رجلين) وحركته من منحنيات مشية الإنسان
   const anim = createHeroAnimator();
+  // 🚙 البكي بالكراج + غبار التايرات
+  const BG = makeBuggy(); scene.add(BG.root);
+  const dustTex = glowTex, dust = [];
+  for (let i = 0; i < 130; i++) { const sp = new Sprite(new SpriteMaterial({ map: dustTex, color: '#D9C49A', transparent: true, opacity: 0, depthWrite: false })); sp.visible = false; scene.add(sp); dust.push({ sp, t: 1, life: 1, vx: 0, vy: 0, vz: 0, s0: 1 }); }
+  let dustI = 0, dustAcc = 0;
+  const DUSTC = { sand: '#DCC79C', grass: '#A9A07A', forest: '#8F8466', trail: '#C2A985', path: '#C2A985', rock: '#B5ADA0', water: '#E8F4FF', plaza: '#C9C4BA', mud: '#7A6248' };
+  function spawnDust(x, y, z, kind, k, vx, vz) { const d = dust[dustI++ % dust.length]; d.sp.visible = true; d.sp.material.color.set(DUSTC[kind] || '#C2A985'); d.sp.position.set(x, y, z); d.t = 0; d.life = 1.1 + Math.random() * 1.5 * k; d.vx = vx * 0.12 + (Math.random() - 0.5) * 1.8; d.vz = vz * 0.12 + (Math.random() - 0.5) * 1.8; d.vy = 0.5 + Math.random() * 1.2; d.s0 = 0.55 + k * 1.05; d.a0 = kind === 'water' ? 0.75 : 0.32 + 0.26 * k; } // الغبار يعلگ بالهوا وتسحبه السيارة شوية وراها، فيطلع عمود ورا البكي
+  const _sw = new Vector3();
+  function animateCar(t, dt) {
+    const car = S.car; if (!car) return;
+    const far = (car.x - camera.position.x) ** 2 + (car.z - camera.position.z) ** 2 > 800 * 800;
+    BG.root.visible = !far; if (far) return;
+    BG.update(car, t, dt);
+    // غبار من التايرات الورا (والرمل يطيّر أكثر)، ورشّ ماي بالمخاضات
+    const v = Math.hypot(car.vx, car.vz), k = clamp((v - 2.5) / 14, 0, 1) + clamp(car.slip / 3, 0, 1);
+    if (!car.air && (k > 0.05) && car.kind !== 'plaza') {
+      dustAcc += dt * ({ sand: 56, water: 40, trail: 46, path: 46, mud: 22, rock: 16, grass: 12, forest: 14 }[car.kind] || 20) * Math.min(1.3, k); // التراب والرمل يغبّرون هواية، العشب شوية
+      while (dustAcc > 1) { dustAcc -= 1; const w = car.wheels[2 + (dustI & 1)]; spawnDust(w.x - Math.cos(car.yaw) * 0.3, w.g + 0.15, w.z - Math.sin(car.yaw) * 0.3, car.kind, Math.min(1, k), car.vx, car.vz); }
+    }
+    for (const d of dust) { if (!d.sp.visible) continue; d.t += dt; const q = d.t / d.life; if (q >= 1) { d.sp.visible = false; continue; } d.sp.position.x += d.vx * dt; d.sp.position.y += d.vy * dt; d.sp.position.z += d.vz * dt; d.vy *= 1 - 0.8 * dt; d.sp.scale.setScalar(d.s0 * (0.6 + q * 3.2)); d.vx *= 1 - 1.4 * dt; d.vz *= 1 - 1.4 * dt; d.sp.material.opacity = d.a0 * (1 - q) * Math.min(1, q * 6); }
+  }
+  /** مكان السايق بالمقعد (بالعالم) ودوران الجسم */
+  const _seatQ = new Quaternion(), _qy = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2);
+  function seatPose(out) { BG.body.updateMatrixWorld(true); BG.body.localToWorld(out.set(BG.seat.ox, -0.02, BG.seat.oz)); BG.body.getWorldQuaternion(_seatQ); _seatQ.multiply(_qy); return _seatQ; }
   const fishLine = new LineSegments(new BufferGeometry(), new LineBasicMaterial({ color: '#F4F4F4', transparent: true, opacity: 0.85 }));
   fishLine.geometry.setAttribute('position', new BufferAttribute(new Float32Array(6), 3)); fishLine.frustumCulled = false; fishLine.visible = false; scene.add(fishLine);
   const bob = new Mesh(new SphereGeometry(0.035, 10, 8), new MeshLambertMaterial({ color: '#E63946' })); bob.visible = false; scene.add(bob);
@@ -463,9 +488,11 @@ export function createView(cfg, G, sim) {
     if (f) cam.yaw = dampAngle(cam.yaw, f.yaw, 2.2, dt);
     if (h.mode === 'carry') cam.yaw = dampAngle(cam.yaw, Math.atan2(h.z - cam.pos.z, h.x - cam.pos.x), 1.5, dt);
     if (h.mode === 'zip') cam.yaw = dampAngle(cam.yaw, h.face, 1.4, dt); // الكاميرا وراك على الحبل
-    const wantDist = f ? f.dist * 0.85 : h.mode === 'carry' ? 11 : h.mode === 'zip' ? 7.2 : story ? 7 : glide ? 9 : h.swim ? 5.2 : S.summit ? 5.6 : 4.9;
+    const driving = h.mode === 'drive' || h.mode === 'getin' || h.mode === 'getout';
+    if (driving) { const car = S.car; _ct.set(car.x + car.vx * 0.08, car.y + 0.95, car.z + car.vz * 0.08); cam.dragT = (cam.dragT || 0) - dt; if (cam.dragT <= 0 && !f && h.mode === 'drive' && Math.abs(car.vf) > 1.5) cam.yaw = dampAngle(cam.yaw, car.yaw, 1.6 + Math.min(2, Math.abs(car.vf) * 0.08), dt); }
+    const wantDist = f ? f.dist * 0.85 : driving ? 6.2 + Math.min(2.2, Math.abs(S.car.vf) * 0.07) : h.mode === 'carry' ? 11 : h.mode === 'zip' ? 7.2 : story ? 7 : glide ? 9 : h.swim ? 5.2 : S.summit ? 5.6 : 4.9;
     if (!cam.init) { cam.tgt.copy(_ct); cam.dist = wantDist; cam.effPitch = null; cam.effDist = null; cam.init = true; }
-    const k = h.mode === 'faint' ? 2 : story ? 6 : 14;
+    const k = h.mode === 'faint' ? 2 : story ? 6 : driving ? 9 : 14;
     cam.tgt.x = damp(cam.tgt.x, _ct.x, k, dt); cam.tgt.z = damp(cam.tgt.z, _ct.z, k, dt); cam.tgt.y = damp(cam.tgt.y, _ct.y, h.air && !story && !glide ? 6 : 10, dt);
     cam.dist = damp(cam.dist, wantDist, 3, dt);
     const dir = (dd, pt) => _cp.set(cam.tgt.x - Math.cos(cam.yaw) * Math.cos(pt) * dd, cam.tgt.y + Math.sin(pt) * dd, cam.tgt.z - Math.sin(cam.yaw) * Math.cos(pt) * dd);
@@ -495,7 +522,7 @@ export function createView(cfg, G, sim) {
   const heading = () => ((cam.yaw * 180) / Math.PI % 360 + 360) % 360;
 
   // ================================================================ الحركة والرسم كل فريم
-  let lastNow = 0, lastT = -1, slow = 0, frames = 0, pr = 2, cssW = 390, cssH = 844;
+  let lastNow = 0, lastT = -1, slow = 0, frames = 0, pr = 2, cssW = 390, cssH = 844, camFov = 62;
   const o3 = new Object3D(); o3.rotation.order = 'YXZ';
   const tmp = new Vector3(), tmp2 = new Vector3();
   function setSize(w, h, ratio) { cssW = w; cssH = h; pr = ratio; renderer.setPixelRatio(ratio); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
@@ -508,8 +535,12 @@ export function createView(cfg, G, sim) {
     const lookAt = (x, z, r) => { const d = Math.hypot(x - e.x, z - e.z); if (d < r && d > 0.8) { look = Math.PI / 2 - Math.atan2(z - e.z, x - e.x); return true; } return false; };
     if (e.mode === 'walk' && !e.swim) { if (!(S.vq.merW && Math.abs(e.y - M.HS) < 4 && lookAt(S.vq.merW.x, S.vq.merW.z, 9))) if (!(!S.vq.caught && lookAt(sim.gz.x, sim.gz.z, 14)) && e.speed < 1.2) { const b = G.I.board; lookAt(b.x, b.z, 9); } }
     const P = anim.update(h, e, S, t, dt, look);
-    h.root.position.set(e.x, e.y + P.by, e.z);
-    h.turn = dampAngle(h.turn, heroYaw(e.face), e.mode === 'walk' ? 11 : 6, dt); h.root.rotation.y = h.turn;
+    if (e.mode === 'drive' || ((e.mode === 'getin' || e.mode === 'getout') && (e.drive || 0) > 0.98)) { // كاعد بالمقعد: يتحرك ويميل ويّا السيارة
+      const q = seatPose(_sw); h.root.position.copy(_sw); h.root.quaternion.copy(q); h.turn = heroYaw(e.face);
+    } else {
+      h.root.position.set(e.x, e.y + P.by, e.z);
+      h.turn = dampAngle(h.turn, heroYaw(e.face), e.mode === 'walk' ? 11 : e.mode === 'getin' || e.mode === 'getout' ? 9 : 6, dt); h.root.rotation.set(0, h.turn, 0);
+    }
     // الوجه: يرمش، ويتخرّع إذا وكع أو عضّه شي
     const scared = e.mode === 'lift' || e.mode === 'carry' || e.stun > 0 || (e.air && e.vy < -7) || e.mode === 'faint';
     h.nextBlink -= dt; if (h.nextBlink < 0) { h.blink = 0.13; h.nextBlink = 2.2 + Math.random() * 3; } h.blink = Math.max(0, h.blink - dt);
@@ -630,7 +661,7 @@ export function createView(cfg, G, sim) {
     const e = S.hero; if (!e || !hero) return;
     if (builtFor !== S.vq.camp) { placeCampVisual(); builtFor = S.vq.camp; }
     buildHi(opts.budget != null ? opts.budget : 4, e.x, e.z);
-    animateHero(t, dt); animateBeasts(t, dt); animateGazelle(t, dt); animateMerchant(t, dt, opts.dlg); updateRope();
+    animateCar(t, dt); animateHero(t, dt); animateBeasts(t, dt); animateGazelle(t, dt); animateMerchant(t, dt, opts.dlg); updateRope();
     if (M.rad(camera.position.x, camera.position.z) < 120 || S.scope) animatePlaza(t, dt);
     let n = 0;
     for (let i = 0; i < S.coins.length && n < coinMax; i++) { const c = S.coins[i]; if (c.taken || (c.x - e.x) ** 2 + (c.z - e.z) ** 2 > 3600) continue; o3.position.set(c.x, c.y + Math.sin(t * 2 + i) * 0.08, c.z); o3.rotation.set(Math.PI / 2, t * 3 + i, 0); o3.scale.setScalar(1); o3.updateMatrix(); coinMesh.setMatrixAt(n++, o3.matrix); }
@@ -650,7 +681,7 @@ export function createView(cfg, G, sim) {
     const altSea = Math.max(0, camera.position.y - G.SEA), hiK = smooth(20, 420, altSea);
     const fNear = S.scope ? 900 : lerp(lerp(320, 90, inForest), 900, hiK), fFar = S.scope ? 6500 : lerp(lerp(3600, 1200, inForest), 6200, hiK);
     scene.fog.near = damp(scene.fog.near, fNear, 2, dt); scene.fog.far = damp(scene.fog.far, fFar, 2, dt);
-    fx.scope.visible = !S.scope; camera.fov = S.scope ? 13 : 62; camera.updateProjectionMatrix();
+    fx.scope.visible = !S.scope; const vCar = e.mode === 'drive' ? Math.abs(S.car.vf) : 0; camFov = damp(camFov, S.scope ? 13 : 62 + clamp(vCar - 8, 0, 22) * 0.35, 3, dt); if (S.scope) camFov = 13; camera.fov = camFov; camera.updateProjectionMatrix(); // السرعة توسّع النظر
     camera.position.copy(cam.pos); camera.lookAt(cam.tgt);
     if (opts.shake > 0) { const m = opts.shake * 0.25; camera.position.x += (Math.random() - 0.5) * m; camera.position.y += (Math.random() - 0.5) * m; }
     sky.position.copy(camera.position);

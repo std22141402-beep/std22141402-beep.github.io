@@ -50,6 +50,18 @@ export function createHeroAnimator() {
       setArm('L', 0.2, 1.15 * k + 0.1, 0.3); setArm('R', 0.1, 0.9 * k + 0.1, 0.5);
       return;
     }
+    if (e.mode === 'drive' || e.mode === 'getin' || e.mode === 'getout') { // 🚙 كاعد بالبكي: رجلين لقدّام على الدواسات، ظهر مايل للمسند، وإيدين على الدركسون
+      const K = smooth(0, 1, clamp(e.drive || 0, 0, 1)), car = S.car, wa = car ? clamp(car.steer * 4.2, -1.5, 1.5) : 0, sw = Math.sin(wa);
+      const rev = car && car.gear === 'R' && car.vf < -0.4, gas = car ? car.throttle : 0, brk = car ? car.brake : 0;
+      const yl = setLeg('L', lerp(0.02, 1.47, K), lerp(0.05, 0.27 + brk * 0.05, K), lerp(0, 0.9 - brk * 0.15, K), lerp(0.03, 0.1, K));
+      const yr = setLeg('R', lerp(-0.02, 1.4, K), lerp(0.05, 0.34 - gas * 0.06, K), lerp(0, 0.82 - gas * 0.25, K), lerp(0.03, 0.13, K));
+      T.py = lerp(Math.max(yl, yr), 0.29, K);
+      T.sx = lerp(0, -0.2, K); T.nx = lerp(0, 0.17, K); T.ny = K * (rev ? 1.15 : -wa * 0.16); T.sy = K * (rev ? 0.25 : 0);
+      setArm('L', lerp(0.03, 0.62 + 0.3 * sw, K), lerp(0.09, -0.05 + 0.08 * sw, K), lerp(0.15, 1.1 - 0.22 * sw, K));
+      setArm('R', lerp(0.03, rev ? 0.4 : 0.62 - 0.3 * sw, K), lerp(0.09, -0.05 - 0.08 * sw, K), lerp(0.15, rev ? 0.6 : 1.1 + 0.22 * sw, K));
+      if (car && car.air && K > 0.9) { T.nx -= 0.15; T.Lsx += 0.1; T.Rsx += 0.1; }
+      return;
+    }
     if (e.mode === 'zip' && S.zip) { // معلّك: الإيدين فوك الراس ماسكة المقبض، الرجلين مطويات شوية ويتمرجح
       const sp = S.zip.v || 0;
       T.bx = -0.05 - 0.12 * smooth(4, 27, sp) + 0.05 * Math.sin(t * 2.3); T.bz = 0.03 * Math.sin(t * 1.7);
