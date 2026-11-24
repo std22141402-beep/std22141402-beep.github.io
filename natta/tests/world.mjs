@@ -157,7 +157,7 @@ ok(climb.ok, `الطريق كامل يوصل للقمة: ${climb.len} م، ${cli
 
 // 6) القمة من خلال اللعبة: المكافأة والرقم
 await G(() => window.__natta.goHome());
-await G(() => window.__natta.startWorld()); await until(() => window.__natta.state === 'world', 30000);
+await G(() => window.__natta.startWorld({ fresh: true })); await until(() => window.__natta.state === 'world', 30000);
 const before = await G(() => ({ coins: window.__natta.save.coins, s: window.__natta.save.mtSummits || 0 }));
 await G(() => { const W = window.__natta.WD, s = W.info.M.C2, p = s.pts[s.pts.length - 6]; Object.assign(W.S.hero, { x: p.x, z: p.z, y: p.y, air: false }); W.cam.yaw = Math.atan2(W.info.M.z - p.z, W.info.M.x - p.x); W.cam.init = false; W.S.coinsGot = 7; });
 await fast(3); await page.keyboard.down('KeyW'); ok(await until(() => window.__natta.WD.S.summit, 15000), 'يمشي بالدرج ويوصل ساحة القمة'); await page.keyboard.up('KeyW'); await fast(0);
@@ -250,6 +250,32 @@ const fi = await G(() => { const W = window.__natta.WD, h = W.S.hero, p = W.G.I.
 ok(fi.ok, '🎣 من رصيف الخليج صاد سمچة' + (fi.ok ? '' : ' ' + JSON.stringify(fi)));
 const pw = await G(() => { const W = window.__natta.WD, h = W.S.hero, p = W.G.I.sites.find((s) => s.kind === 'pier' && !s.lake), c = Math.cos(p.rot), sn = Math.sin(p.rot); Object.assign(h, { x: p.x - c * 10, z: p.z - sn * 10, air: false, mode: 'walk', face: p.rot }); h.y = W.G.surfaceAt(h.x, h.z, h.y + 50).y; for (let i = 0; i < 180; i++) W.sim.step(1 / 60, { mx: c, mz: sn, mag: 0.5 }); const u = (h.x - p.x) * c + (h.z - p.z) * sn, v = -(h.x - p.x) * sn + (h.z - p.z) * c; return { u: +u.toFixed(1), v: +v.toFixed(2), y: +(h.y - p.y).toFixed(2), surf: h.surf }; });
 ok(Math.abs(pw.v) < 1.6 && pw.u > -8 && Math.abs(pw.y) < 0.2 && pw.surf === 'pier', `🚶 يمشي على رصيف الخليج وما ينسحب لمكان ثاني (${JSON.stringify(pw)})`);
+
+// 11ب) 🛟 إذا ضاع الرسم (الآيفون يسويها لمن تطلع من سفاري) ما يطلّعك للرئيسية، والرحلة تنحفظ وترجعلها
+const lost = await G(() => { const W = window.__natta.WD, ext = W.renderer.getContext().getExtension('WEBGL_lose_context'); window.__ext = ext; if (!ext) return null; ext.loseContext(); return true; });
+await wait(900);
+const ls = await G(() => ({ st: window.__natta.state, ov: !document.getElementById('glLost').hidden, ws: !!window.__natta.save.ws }));
+ok(lost && ls.st === 'pause' && ls.ov && ls.ws, `🛟 ضاع الرسم: اللعبة توكّف وتحفظ وما تطلع للرئيسية (${JSON.stringify(ls)})`);
+await G(() => window.__ext.restoreContext());
+ok(await until(() => document.getElementById('glLost').hidden, 6000), '✅ الرسم رجع وحده');
+await page.tap('#resume', { force: true });
+ok(await until(() => window.__natta.state === 'world', 8000), 'تكمّل من نفس المكان بعد ما رجع الرسم');
+await wait(1500);
+ok(await G(() => window.__natta.WD.renderer.info.render.calls > 20), `يرسم طبيعي بعد الرجعة (${await G(() => window.__natta.WD.renderer.info.render.calls)} رسمة)`);
+await shot('11b-restored');
+// 💾 تطلع للرئيسية (أو سفاري يسكّر الصفحة) وترجع: نفس المكان والطلبات والأغراض
+const sv = await G(() => { const N = window.__natta, W = N.WD, h = W.S.hero, f = W.G.I.fajr; Object.assign(h, { x: f.x - 6, z: f.z + 9, air: false, vx: 0, vz: 0, mode: 'walk', swim: false }); h.y = W.G.H(h.x, h.z); W.setTrack('honey'); W.S.items[2].taken = true; W.S.tasks.find((t) => t.id === 'thyme').got = 1; N.saveWorld(); return { x: h.x, z: h.z, kb: Math.round(JSON.stringify(N.save.ws).length / 1024) }; });
+await G(() => window.__natta.goHome());
+const hm = await G(() => ({ play: document.getElementById('play').textContent, nt: !document.getElementById('newTrip').hidden }));
+ok(hm.play.includes('كمّل') && hm.nt, `🏠 الرئيسية: «${hm.play}» و«🔄 رحلة جديدة» (الحفظ ${sv.kb} كيلوبايت)`);
+await G(() => { const raw = JSON.parse(localStorage.getItem('natta.v1')); window.__natta.save.ws = raw.ws; }); // مثل إعادة تحميل الصفحة: من التخزين
+await page.tap('#play', { force: true });
+ok(await until(() => window.__natta.state === 'world', 30000), 'كمّل رحلتك ▶');
+const rs = await G((sv) => { const W = window.__natta.WD, h = W.S.hero; return { d: +Math.hypot(h.x - sv.x, h.z - sv.z).toFixed(2), track: W.S.track, item: W.S.items[2].taken, thyme: W.S.tasks.find((t) => t.id === 'thyme').got, resumed: window.__natta.WS.resumed, banner: document.getElementById('bnTitle').textContent }; }, sv);
+ok(rs.resumed && rs.d < 1 && rs.track === 'honey' && rs.item && rs.thyme === 1 && rs.banner.includes('رحلتك'), `🔄 رجع لنفس مكانه (${rs.d} م) والطلب المتتبَّع 🍯 والأغراض اللي جمعها`);
+await G(() => window.__natta.goHome());
+await page.tap('#newTrip', { force: true });
+ok(await until(() => window.__natta.state === 'world' && !window.__natta.WS.resumed && window.__natta.WD.S.items.every((i) => !i.taken), 30000), '🔄 «رحلة جديدة» تبدي من الساحة بطلبات جديدة');
 
 // 12) الانتقال السريع (بكود سري) يوديك للقمة وللوادي بنفس العالم، وما يكسر الأرقام
 await G(() => window.__natta.goHome());

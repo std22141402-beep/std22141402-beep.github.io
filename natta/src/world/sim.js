@@ -508,6 +508,37 @@ export function createSim(G, opts = {}) {
     if (o.at === 'valley') { const vr = G.restPoints.find((p) => p.id === 'valley'); Object.assign(h, { x: vr.x, z: vr.z, y: vr.y, face: 0 }); S.rest = vr; }
     return { camp: 0, gazelle: [gz.x, gz.z], start: [h.x, h.z] };
   }
+  // ---------------------------------------------------------------- 💾 حفظ الرحلة: إذا سفاري سكّر الصفحة أو ضاع الرسم، ترجع لنفس مكانك وطلباتك
+  function snapshot() {
+    const h = S.hero; if (!h) return null;
+    const safe = (h.mode === 'walk' && !h.air) || h.mode === 'fish';
+    return {
+      v: 1, seed: S.seed, t: +S.t.toFixed(1), pos: safe ? { x: +h.x.toFixed(2), z: +h.z.toFixed(2), y: +h.y.toFixed(2) } : null, face: +h.face.toFixed(3), hp: Math.round(h.hp),
+      rest: S.rest && S.rest.id, reached: [...S.reached], tasks: S.tasks.map((t) => [t.id, t.got, t.done ? 1 : 0]), items: S.items.map((it) => (it.taken ? 1 : 0)).join(''),
+      fish: S.fish, track: S.track, board: S.boardRead ? 1 : 0, vq: { met: S.vq.met ? 1 : 0, called: S.vq.called ? 1 : 0, caught: S.vq.caught && !S.vq.delivered ? 1 : 0, delivered: S.vq.delivered ? 1 : 0 },
+      climbDone: S.climb.done ? 1 : 0, coins: S.coins.map((k) => (k.taken ? 1 : 0)).join(''), coinsGot: S.coinsGot,
+    };
+  }
+  function restore(sn) {
+    if (!sn || sn.v !== 1 || !S.hero) return false;
+    const h = S.hero, vq = S.vq;
+    S.t = sn.t || 0;
+    for (const id of sn.reached || []) S.reached.add(id);
+    const r = G.restPoints.find((p) => p.id === sn.rest); if (r) S.rest = r;
+    for (const [id, got, done] of sn.tasks || []) { const t = task(id); if (t) { t.got = got; t.done = !!done; } }
+    (sn.items || '').split('').forEach((c, i) => { if (S.items[i]) S.items[i].taken = c === '1'; });
+    if (S.tasks.every((t) => t.done)) { for (const t of S.tasks) { t.got = 0; t.done = false; } for (const it of S.items) it.taken = false; } // كمّلت كلشي: طلبات جديدة
+    S.fish = sn.fish || 0; S.track = sn.track || null; S.boardRead = !!sn.board;
+    Object.assign(vq, { met: !!sn.vq.met, called: !!sn.vq.called, delivered: !!sn.vq.delivered });
+    if (sn.climbDone) S.climb.done = true;
+    (sn.coins || '').split('').forEach((c, i) => { if (S.coins[i]) S.coins[i].taken = c === '1'; }); S.coinsGot = sn.coinsGot || 0;
+    const p = sn.pos || (r ? { x: r.x, z: r.z, y: r.y } : null);
+    if (p) { const s = G.surfaceAt(p.x, p.z, p.y + 0.6); Object.assign(h, { x: p.x, z: p.z, y: Math.max(s.y, Math.min(p.y, s.y + 0.05)), vx: 0, vz: 0, vy: 0, air: false, mode: 'walk', surf: s.kind, plat: s.plat }); }
+    h.face = sn.face || 0; h.hp = clamp(sn.hp || h.maxHp, 35, h.maxHp);
+    if (vq.delivered) { gz.state = 'pen'; Object.assign(gz, { x: vq.penW.x, z: vq.penW.z, y: M.HS }); task('gazelle').done = true; }
+    else if (sn.vq.caught) { vq.caught = true; gz.state = 'follow'; Object.assign(gz, { x: h.x - Math.cos(h.face) * 2, z: h.z - Math.sin(h.face) * 2, vx: 0, vz: 0, sus: 0 }); gz.y = G.H(gz.x, gz.z); }
+    return true;
+  }
   function setTools(t) { S.tools = { ...(t || {}) }; if (S.hero) S.hero.boots = !!S.tools.boots; }
   function interact(id) {
     const [kind, n] = String(id).split(':');
@@ -576,5 +607,5 @@ export function createSim(G, opts = {}) {
   }
   S.tools = {}; S.fish = 0; S.tasks = []; S.items = [];
   const setTrack = (id) => { S.track = id; };
-  return { S, ents, beasts, gz, merchant, step, enter, interact, nearInteract, skipWait, objective, trackTarget, setTrack, setTools, have, respawn: () => { if (S.hero && S.hero.mode === 'walk') respawn(S.hero, 'menu'); }, hurt: (d) => hurt(S.hero, d, 'test') };
+  return { S, ents, beasts, gz, merchant, step, enter, interact, nearInteract, skipWait, objective, trackTarget, setTrack, setTools, have, snapshot, restore, respawn: () => { if (S.hero && S.hero.mode === 'walk') respawn(S.hero, 'menu'); }, hurt: (d) => hurt(S.hero, d, 'test') };
 }

@@ -1902,6 +1902,7 @@
 
   function refreshHome() {
     $('hBest').textContent = save.best; $('hCoins').textContent = save.coins;
+    $('play').textContent = save.ws ? 'كمّل رحلتك ▶' : 'العب ▶'; $('newTrip').hidden = !save.ws;
     $('ctrl').textContent = save.control === 'tilt' ? '📱 ميلان' : '👆 لمس';
     $('snd').textContent = save.sound ? '🔊' : '🔇';
     $('mus').textContent = save.music && save.sound ? '🎵' : '🔕';
@@ -1941,6 +1942,7 @@
   }
   function pause() {
     if (V && V.mapOpen) closeMap();
+    if (WS && (state === 'world' || state === 'pause')) saveWorld();
     J.id = null; CAMD.id = null;
     if (state !== 'play' && state !== 'countdown' && state !== 'valley' && state !== 'world') return;
     if (state !== 'countdown') resumeTo = state === 'valley' || state === 'world' ? state : 'play';
@@ -2054,6 +2056,7 @@
 
   // ---- الأزرار
   $('play').onclick = () => startWorld();
+  $('newTrip').onclick = () => { Sfx.click(); save.ws = null; persist(); startWorld({ fresh: true }); };
   $('playJump').onclick = startRun;
   $('again').onclick = startRun;
   $('toHome').onclick = () => { Sfx.click(); goHome(); };
@@ -3226,10 +3229,17 @@
   const inWorld = () => !!WS && (state === 'world' || state === 'ending' || ((state === 'pause' || state === 'countdown') && resumeTo === 'world'));
   const fmtTime = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
   const TEA_SELLER = ['🧔🏻‍♂️', 'أبو علي الچايچي'], GUESTS = ['👳🏻‍♂️', 'زوار القمة'], MERCHANT = ['👳🏻‍♂️', 'أبو جاسم التاجر'];
+  let glLost = 0;
   function sharedRenderer() {
     if (!RR) {
       RR = self.NattaWorld3D.makeRenderer($('g3d'));
-      $('g3d').addEventListener('webglcontextlost', (e) => { e.preventDefault(); r3State = 'failed'; $('g3d').hidden = true; $('vign').hidden = true; if (WS) { goHome(); toast('صار خلل بالرسم 😕 جرّب وضع القفز 🦘', 3000); } });
+      // 🛟 الآيفون أحياناً يسحب الرسم (لمن تطلع من سفاري أو الذاكرة تمتلي): ما نطلّعك، نحفظ ونوكّف ونرجّعه
+      $('g3d').addEventListener('webglcontextlost', (e) => { e.preventDefault(); glLost = performance.now(); if (WS) { saveWorld(); if (state === 'world') pause(); } $('glLost').hidden = false; });
+      $('g3d').addEventListener('webglcontextrestored', () => { glLost = 0; $('glLost').hidden = true; if (WS) { WD.view.IV.warm(WD.S.hero.x, WD.S.hero.z, WD.S.hero.y + 3); toast('✅ رجع الرسم — اضغط «كمّل ▶»', 2600); } });
+      setInterval(() => { // إذا ما رجع وحده: نحفظ ونعيد تحميل الصفحة وترجع لنفس مكانك
+        if (!glLost || document.hidden) { if (glLost && document.hidden) glLost = performance.now(); return; }
+        if (performance.now() - glLost > 6000) { glLost = 0; if (WS) saveWorld(); try { sessionStorage.setItem('natta.resume', '1'); } catch (e) { /* خاص */ } location.reload(); }
+      }, 1000);
     }
     return RR;
   }
@@ -3299,21 +3309,25 @@
     }
     if (V) leaveValley(); if (WS) leaveWorld(); SUM = null;
     if (!world) newDemo();
-    WS = { t: 0, fade: 1, fadeCol: '255,255,255', warp: !!opts.warp, paid: 0, jumpBuf: 0, dlg: null, act: null, threat: 0, warned: {}, usedJ: false, usedCam: false, landedT: 0, pins: [], mapOpen: false, map: null, fog: null, lastReveal: null, revealed: 0, delivered: false, endT: 0, obj: '', hurtT: 0, mapHi: false, portrait: null, phase: 'walk' };
+    WS = { t: 0, fade: 1, fadeCol: '255,255,255', warp: !!opts.warp, paid: 0, jumpBuf: 0, dlg: null, act: null, threat: 0, warned: {}, usedJ: false, usedCam: false, landedT: 0, pins: [], mapOpen: false, map: null, fog: null, lastReveal: null, revealed: 0, delivered: false, endT: 0, obj: '', hurtT: 0, mapHi: false, portrait: null, phase: 'walk', trail: [], saveT: 0 };
     WD.setSize(cssW, cssH, window.__r3dPR || Math.min(window.devicePixelRatio || 1, 2));
-    const seed = window.__seed != null ? window.__seed : (Math.random() * 4294967295) >>> 0;
+    const sn = !opts.fresh && !opts.at && !opts.warp && save.ws && save.ws.v === 1 && Date.now() - (save.ws.at || 0) < 30 * 864e5 ? save.ws : null; // 💾 رحلة محفوظة؟
+    const seed = sn ? sn.seed : window.__seed != null ? window.__seed : (Math.random() * 4294967295) >>> 0;
     WD.setTools(save.tools || {});
     WS.info = WD.enter(skinById(save.skin), { at: opts.at, seed });
+    WS.resumed = !!(sn && WD.restore(sn));
+    if (WS.resumed) { WS.paid = WD.S.coinsGot; WS.trail = (sn.trail || []).slice(); } else if (save.ws) { save.ws = null; persist(); }
     state = 'world'; resumeTo = 'world';
     clearTimeout(toastT); $('toast').classList.remove('show'); // رسالة «نجهّز العالم» تختفي أول ما يبين
     show(null); $('hud').hidden = true; $('turbo').hidden = true; $('tut').hidden = true; $('banner').classList.remove('show'); $('count').hidden = true;
     $('g3d').hidden = false; $('vign').hidden = false; $('app').classList.add('v3d');
     $('vbar').hidden = false; $('vMap').hidden = false; $('jumpBtn').hidden = false; $('actBtn').hidden = true; $('skip').hidden = true;
     J.id = null; CAMD.id = null; uparts.length = 0; ptr.clear();
-    WS.map = null; WS.preTrail = []; WS.zone = null; WS.zoneSeen = {};
+    WS.map = null; WS.preTrail = WS.trail.slice(); WS.zone = null; WS.zoneSeen = {};
     try { WS.portrait = `<img alt="" src="${WD.portrait()}">`; } catch (e) { WS.portrait = null; }
     Music.reset(); Music.setMode('play'); Sfx.click();
-    if (opts.at === 'summit') toast('🚀 للقمة!', 1300);
+    if (WS.resumed) { const zz = WD.G.zoneAt(WD.S.hero.x, WD.S.hero.z); banner('🔄', 'رجعت لرحلتك', zz && zz.name ? `📍 ${zz.name}` : 'نفس مكانك وطلباتك', 'gold', 2800); WS.zone = zz && zz.id; }
+    else if (opts.at === 'summit') toast('🚀 للقمة!', 1300);
     else if (opts.at === 'valley') toast('🚀 للوادي!', 1300);
     else {
       banner('🏝️', 'جزيرة نطّة', '🌅 ساحة الفجر — قدّامك لوحة طلبات أبو جاسم 📜', 'gold', 3600);
@@ -3324,12 +3338,17 @@
   function makeMap() {
     WS.map = WD.mapShot(1024); WS.mapHi = true;
     if (!WS.fog) { WS.fog = document.createElement('canvas'); WS.fog.width = WS.map.canvas.width; WS.fog.height = WS.map.canvas.height; const fg = WS.fog.getContext('2d'); fg.fillStyle = 'rgba(14,20,38,0.55)'; fg.fillRect(0, 0, WS.fog.width, WS.fog.height); }
-    for (const [x, z] of WS.preTrail || []) revealAt(x, z, 130); WS.preTrail = [];
+    for (const [x, z, r] of WS.preTrail || []) revealAt(x, z, r || 130); WS.preTrail = [];
+  }
+  /** 💾 يحفظ الرحلة بالجهاز (مكانك، الطلبات، الأغراض، الخريطة) */
+  function saveWorld() {
+    if (!WS || !WD || !WD.S.hero) return;
+    try { payCoins(); const sn = WD.snapshot(); if (!sn) return; sn.at = Date.now(); sn.trail = WS.trail.slice(-3000); save.ws = sn; WS.saveT = 0; persist(); } catch (e) { console.warn('save', e); }
   }
   function payCoins() { const S3 = WD.S, due = Math.max(0, S3.coinsGot - WS.paid); if (due) { save.coins += due; WS.paid += due; persist(); } return due; }
   function leaveWorld() {
     if (!WS) return;
-    payCoins();
+    saveWorld(); payCoins();
     if (WS.mapOpen) closeMap();
     WS.boardOpen = false; WS.shopOpen = false; $('mboard').hidden = true; $('mshop').hidden = true;
     WD.S.scope = false;
@@ -3375,7 +3394,7 @@
       case 'faint': Sfx.fallW(); toast('😵 غِبت عن الوعي…', 1600); m.fade = 0.01; m.fadeCol = '18,22,40'; break;
       case 'swept': Sfx.splash(); toast('💦 الساقية سحبتك!', 1800); break;
       case 'respawn': m.fade = 0.85; m.fadeCol = '18,22,40'; toast(a[1] ? `🚩 صحيت بـ «${a[0]}» وخسرت ${a[1]} 🪙` : `🚩 رجعت لـ «${a[0]}»`, 2200); break;
-      case 'rest': Sfx.mission(); banner('🚩', 'نقطة استراحة', a[0], '', 2000); break;
+      case 'rest': Sfx.mission(); banner('🚩', 'نقطة استراحة', a[0], '', 2000); saveWorld(); break;
       case 'growl': Sfx.growl(); if (!m.warned.wolf) { m.warned.wolf = 1; toast('🐺 ذيب! اركض بعيد عنه', 2400); } break;
       case 'howl': Sfx.howl(); break;
       case 'grunt': Sfx.grunt(); if (!m.warned.boar) { m.warned.boar = 1; toast('🐗 خنزير بري! يهجم بخط مستقيم… تنحّى عن طريقه', 2800); } break;
@@ -3413,7 +3432,7 @@
         sparkleAt(h.x, h.y + 1.2, h.z, ['#FFD23F', '#FFF6C4', '#8DE26B'], 'star', 12);
         if (a[1] >= a[2]) banner(d.icon, `كمّلت: ${d.name}!`, 'رجّعه لأبو جاسم بقمة السحاب ⛰️', 'gold', 3200);
         else toast(`${d.icon} ${d.name} ${a[1]}/${a[2]} 🎒`, 1800);
-        break;
+        saveWorld(); break;
       }
       case 'handIn': {
         const t = S3.tasks.find((q) => q.id === a[0]), d = t.def, rw = a[1];
@@ -3421,7 +3440,7 @@
         banner('🎁', 'سلّمت الطلب!', `${d.icon} ${d.name}   +${rw} 🪙`, 'gold', 3000);
         say({ thyme: 'الله! ريحة الزعتر البري 🌿 هذا أطيب من كل السوق… هاي حقّك', pearl: 'يا سلام! 🦪 لؤلؤ حقيقي من شاطئ اللؤلؤ… تعبك ما يروح', honey: 'عسل بري! 🍯 سلمت إيدك، والخنازير ما لزمتك؟ 😄', feather: 'ريشة صقر! 🪶 وصلت لعش الصقر بجبل الصقور؟ إنت بطل صدگ', fish: 'سمچ طازة! 🐟 الليلة عشانا سمچ مسگوف 😋' }[a[0]] + ` +${rw} 🪙`, 5.5, MERCHANT);
         const mw = S3.vq.merW; sparkleAt(mw.x, h.y + 1.7, mw.z, ['#FFD23F', '#FFB703'], 'coin', 22, 1.3);
-        break;
+        saveWorld(); break;
       }
       case 'zipStart': Sfx.whoosh(); Sfx.gust(); banner('🚡', a[0], 'تمسّك زين! ' + a[1], 'gold', 2600); break;
       case 'zipEnd': Sfx.thud(); shake = 0.12; toast(`🚡 وصلت! (${a[0]})`, 1800); break;
@@ -3471,6 +3490,7 @@
     if (WS.lastReveal && Math.hypot(h.x - WS.lastReveal[0], h.z - WS.lastReveal[1]) < 10) return;
     WS.lastReveal = [h.x, h.z]; WS.revealed++;
     const r = 130 + Math.max(0, h.y - WD.G.SEA - 60) * 0.6; // من فوك تشوف أبعد
+    { const lt = WS.trail[WS.trail.length - 1]; if (!lt || Math.hypot(h.x - lt[0], h.z - lt[1]) > 30) WS.trail.push([Math.round(h.x), Math.round(h.z), Math.round(r)]); }
     if (!WS.map) { WS.preTrail.push([h.x, h.z]); return; }
     revealAt(h.x, h.z, r);
   }
@@ -3486,7 +3506,7 @@
   }
   function updateWorld(dt) {
     const m = WS, S3 = WD.S;
-    m.t += dt;
+    m.t += dt; m.saveT += dt; if (m.saveT > 5 && state === 'world') saveWorld();
     if (m.fade > 0 && !(S3.hero.mode === 'faint')) m.fade = Math.max(0, m.fade - dt * (m.fadeCol === '255,255,255' ? 1.1 : 1.6));
     else if (S3.hero.mode === 'faint') m.fade = Math.min(0.9, m.fade + dt * 1.2);
     m.hurtT = Math.max(0, m.hurtT - dt);
@@ -3921,5 +3941,6 @@
   requestAnimationFrame((t) => { lastT = t; frame(t); });
 
   // للفحص فقط
-  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, openCode, unlockWarp: () => { save.warp = true; persist(); }, warpTo, want3D, get r3State() { return r3State; }, openMap, closeMap, get J() { return J; }, startWorld, startMountain: startWorld, get WD() { return WD; }, get WS() { return WS; }, mtJump, mtAction, drawMap: () => drawFullMap() };
+  try { if (sessionStorage.getItem('natta.resume')) { sessionStorage.removeItem('natta.resume'); setTimeout(() => { if (state === 'home' && save.ws) startWorld(); }, 400); } } catch (e) { /* خاص */ }
+  window.__natta = { get world() { return world; }, get state() { return state; }, save, startRun, goHome, openShop, Core, Sfx, renderSounds, SKINS, explode, lavaSplash, VOLC, strike, get bolts() { return bolts; }, spawnSquad, squads, Music, renderMusic, offerRevive, checkMissions, bendPlatform, get slowT() { return slowT; }, startSummit, startValley, skipSummit, get V() { return V; }, get SUM() { return SUM; }, openCode, unlockWarp: () => { save.warp = true; persist(); }, warpTo, want3D, get r3State() { return r3State; }, openMap, closeMap, get J() { return J; }, startWorld, saveWorld, startMountain: startWorld, get WD() { return WD; }, get WS() { return WS; }, mtJump, mtAction, drawMap: () => drawFullMap() };
 })();
