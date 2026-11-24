@@ -229,12 +229,16 @@ export function createSim(G, opts = {}) {
     const d = doorWorld(); return Math.hypot(h.x - d.x, h.z - d.z) < 1.9 && Math.abs(h.y - (car.y - 0.5)) < 1.6 && !(Math.abs(car.roll) > 0.8);
   }
   function startEnter(h) {
-    if (S.vq.caught && !S.vq.delivered) { emit(['carNo', 'gazelle']); return false; }
+    if (S.vq.caught && !S.vq.delivered) { // 🦌 الغزال يركب ويّاك: ينط لصندوق البكي (لازم يكون يمّك)
+      if (Math.hypot(gz.x - car.x, gz.z - car.z) > 9) { emit(['carNo', 'gazelle']); return false; }
+      if (gz.state === 'follow') { Object.assign(gz, { state: 'load', t: 0, from: [gz.x, gz.y, gz.z], vx: 0, vz: 0 }); emit('gzLoad'); }
+    }
     const d = doorWorld(); h.mode = 'getin'; h.carT = 0; h.from = { x: h.x, z: h.z, y: h.y, face: h.face, dx: d.x, dz: d.z }; h.vx = h.vz = 0; h.speed = 0; S.fishing = null; emit('carDoor'); return true;
   }
   function startExit(h) {
     if (Math.abs(car.vf) > 3) return false;
     if (S.lap.on) { S.lap.on = false; emit(['lapCancel']); }
+    if (gz.state === 'ride') { const b = bedWorld(); Object.assign(gz, { state: 'unload', t: 0, from: [b.x, b.y, b.z], vx: 0, vz: 0 }); emit('gzUnload'); } // ينزل وراك
     h.mode = 'getout'; h.carT = 0; car.driven = false; emit('carDoor'); emit('carOff'); return true;
   }
   function stepDriver(h, c, dt) {
@@ -279,8 +283,7 @@ export function createSim(G, opts = {}) {
     for (const r of G.restPoints) if ((!r.dyn || r.on) && !r.plaza && Math.hypot(h.x - r.x, h.z - r.z) < (r.fire ? 7 : 3.5) && Math.abs(h.y - r.y) < 3) { if (S.rest !== r) { S.rest = r; if (!S.reached.has(r.id)) { S.reached.add(r.id); if (r.flag || r.fire || r.id === 'valley') emit(['rest', r.name, r.id]); } } }
     pickItems(car.x, car.z, car.y - 0.5, 2.6);
     stepLap(dt);
-    // الماي الغميج يوكّف المحرك؛ إذا بقت غاطسة نسحبها للكراج
-    if (car.depth > 0.9) { car.drownT = (car.drownT || 0) + dt; if (car.drownT > 2.5) { car.drownT = 0; towHome(h); } } else car.drownT = 0;
+    // 🌊 برمائي: ماكو غرگ ولا سحب للكراج — يطوف ويمشي بالماي
   }
   // ---------------------------------------------------------------- 🏁 وقت اللفّة: تعبر البوابة (بالاتجاه الصح) تبدي، تمر بنقاط التفتيش بالترتيب، وترجع للبوابة = لفّة
   const SF = G.I.safari, GATES = SF.gates, gPrev = GATES.map(() => null);
@@ -435,9 +438,20 @@ export function createSim(G, opts = {}) {
     Object.assign(merchant, { x: mx, z: mz, y: M.HS, face });
   }
   function startFlee(g) { g.state = 'flee'; g.t = 0; g.stuck = 0; const h = S.hero, d = Math.hypot(g.x - h.x, g.z - h.z) || 1; g.fx = (g.x - h.x) / d; g.fz = (g.z - h.z) / d; emit('snort'); }
+  /** مكان الغزال بصندوق البكي (ورا المقاعد، مكان التاير الاحتياط) */
+  function bedWorld() { const c = Math.cos(car.yaw), s = Math.sin(car.yaw), bx = -1.12; return { x: car.x + c * bx, z: car.z + s * bx, y: car.y + 0.3 - Math.sin(car.pitch) * bx }; }
   function updateGazelle(dt) {
     const g = gz, h = S.hero, vq = S.vq;
     g.t += dt;
+    if (g.state === 'load' || g.state === 'unload' || g.state === 'ride') { // 🦌🚙 ينط للبكي، يركب، وينزل
+      const b = bedWorld();
+      if (g.state === 'ride') { Object.assign(g, { x: b.x, z: b.z, y: b.y, vx: car.vx, vz: car.vz, hy: 0 }); g.face = car.yaw + Math.PI / 2; return; }
+      const k = Math.min(1, g.t / 0.85), F = g.from, to = g.state === 'load' ? b : (() => { const c = Math.cos(car.yaw), s = Math.sin(car.yaw), x = car.x - c * 3.1 - s * 0.6, z = car.z - s * 3.1 + c * 0.6; return { x, z, y: G.H(x, z) }; })();
+      g.x = lerp(F[0], to.x, k); g.z = lerp(F[2], to.z, k); g.hy = Math.sin(k * Math.PI) * 1.1; g.y = lerp(F[1], to.y, k) + g.hy;
+      g.vx = (to.x - F[0]) / 0.85; g.vz = (to.z - F[2]) / 0.85; g.face = Math.atan2(g.vz, g.vx);
+      if (k >= 1) { g.hy = 0; if (g.state === 'load') g.state = 'ride'; else { g.state = 'follow'; g.vx = g.vz = 0; } }
+      return;
+    }
     const dx = h.x - g.x, dz = h.z - g.z, d = Math.hypot(dx, dz) || 0.001, toP = Math.atan2(dz, dx);
     if (d > 140 && !vq.caught) { g.vx = g.vz = 0; return; }
     const sp = h.mode === 'walk' ? h.speed : 0, moving = Math.hypot(g.vx, g.vz) > 0.2;
@@ -666,7 +680,7 @@ export function createSim(G, opts = {}) {
   function objective() {
     const h = S.hero, vq = S.vq;
     if (h.mode === 'faint') return '😵 …';
-    if (vq.caught && !vq.delivered) return '🏔️ رجّع الغزال لأبو جاسم بالقمة';
+    if (vq.caught && !vq.delivered) return gz.state === 'ride' ? '🚙🦌 الغزال وياك بالبكي — سوق للجبل ونزّله وطلّعه لأبو جاسم' : '🏔️ رجّع الغزال لأبو جاسم بالقمة';
     if (!S.boardRead && !vq.met && !S.track) return '📜 اقرا لوحة الطلبات بساحة الفجر';
     const t = tracked(); if (!t) return '🌍 كمّلت كل الطلبات! استكشف الجزيرة';
     const d = t.def, n = have(t), zn = (G.I.zones.find((z) => z.id === d.zone) || {}).name || '';

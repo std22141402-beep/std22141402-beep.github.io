@@ -260,7 +260,8 @@ await page.tap('#actBtn', { force: true });
 ok(await until(() => window.__natta.WD.S.hero.mode === 'drive', 4000), 'يفتح الباب ويكعد بالمقعد ويشغّل');
 await wait(600); await shot('11a-seated');
 { // 🕹️ مثل ببجي: الجويستك سرعة بس، وتلف الكاميرا بسحب الشاشة والبكي يلف صوبها
-  const st = () => G(() => { const W = window.__natta.WD, c = W.S.car; let d = W.cam.yaw - c.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); return { steer: c.steer, d, vf: c.vf }; });
+  const st = () => G(() => { const W = window.__natta.WD, c = W.S.car; let d = W.cam.yaw - c.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); return { steer: +c.steer.toFixed(2), d, vf: +c.vf.toFixed(1), cy: +c.yaw.toFixed(2), my: +W.cam.yaw.toFixed(2), x: +c.x.toFixed(1), k: c.kind }; });
+  await G(() => { const W = window.__natta.WD, c = W.S.car; c.x += Math.cos(c.yaw) * 14; c.z += Math.sin(c.yaw) * 14; c.y = W.G.H(c.x, c.z) + 0.53; c.vx = c.vz = 0; }); await wait(300); // برّا الكراج حتى ما يضرب بالحايط
   await page.mouse.move(80, 650); await page.mouse.down(); await page.mouse.move(150, 650, { steps: 4 }); await wait(450);
   const sJoy = (await st()).steer; await page.mouse.up(); await wait(300);
   await page.mouse.move(280, 420); await page.mouse.down(); await page.mouse.move(345, 420, { steps: 5 }); await page.mouse.up(); await wait(300);
@@ -288,7 +289,7 @@ const phys = await G(() => {
   step(90, { jx: 0, jy: -1 }); r.rev = +(c.vf * 3.6).toFixed(1); r.revGear = c.gear; step(40, { jx: 0, jy: 0.4 }); step(240, { jx: 0, jy: 0 }); r.coast = +(c.vf * 3.6).toFixed(1);
   return r;
 });
-ok(phys.t60 > 1.8 && phys.t60 < 3.2 && phys.rpm > 3000 && phys.gear === 'D' && !phys.crashes, `⚡ 0–60 كم/س بـ ${phys.t60} ث (الدورة ${phys.rpm}، گير ${phys.gear}، أرض ${phys.kind})`);
+ok(phys.t60 > 1.4 && phys.t60 < 3.0 && phys.rpm > 3000 && phys.gear === 'D' && !phys.crashes, `⚡ 0–60 كم/س بـ ${phys.t60} ث (الدورة ${phys.rpm}، گير ${phys.gear}، أرض ${phys.kind})`);
 ok(phys.brakeD > 11 && phys.brakeD < 20 && phys.rev < -3 && phys.revGear === 'R' && Math.abs(phys.coast) < 0.5, `🛑 فرامل من ${phys.brakeV} كم/س بـ ${phys.brakeD} م، ريوس ${phys.rev} كم/س، ولمن تشيل رجلك توكف (${phys.coast})`);
 const drv = await G(() => { const W = window.__natta.WD, c = W.S.car, h = W.S.hero; return { seat: Math.hypot(h.x - c.x, h.z - c.z) < 0.6, face: Math.abs(Math.atan2(Math.sin(h.face - c.yaw), Math.cos(h.face - c.yaw))) < 0.01 }; });
 ok(drv.seat && drv.face, 'السايق يتحرك ويّا السيارة بمقعده');
@@ -297,10 +298,36 @@ await page.tap('#actBtn', { force: true });
 ok(await until(() => window.__natta.WD.S.hero.mode === 'walk', 4000), '🚪 ينزل من الباب اليسار ويمشي');
 const outd = await G(() => { const W = window.__natta.WD, c = W.S.car, h = W.S.hero; return { d: +Math.hypot(h.x - c.x, h.z - c.z).toFixed(2), eng: c.engine }; });
 ok(outd.d > 0.9 && outd.d < 2.2 && !outd.eng, `واكف يم السيارة (${outd.d} م) والمحرك طافي`);
-const water = await G(() => { const W = window.__natta.WD, c = W.S.car, sh = W.G.I.shBay, f = W.G.I.fajr, L = Math.hypot(sh.x - f.x, sh.z - f.z), ux = (sh.x - f.x) / L, uz = (sh.z - f.z) / L; c.x = sh.x - ux * 30; c.z = sh.z - uz * 30; c.y = W.G.H(c.x, c.z) + 0.53; c.vx = c.vz = 0; W.sim.S.hero.mode = 'drive'; c.driven = true; c.engine = true; const ang = Math.atan2(uz, ux); W.sim.S.car.yaw = ang; let deep = false; for (let i = 0; i < 60 * 40; i++) { const ev = W.sim.step(1 / 60, { jx: 0, jy: 1 }); if (ev.some((e) => e[0] === 'deepWater')) { deep = true; break; } const a2 = Math.atan2(sh.z - c.z, sh.x - c.x); c.yaw += Math.atan2(Math.sin(a2 - c.yaw), Math.cos(a2 - c.yaw)) * 0.05; } const w = W.G.water(c.x, c.z, W.G.H(c.x, c.z) + 0.05); return { deep, depth: w ? +(w.level - W.G.H(c.x, c.z)).toFixed(2) : 0 }; });
-ok(water.deep && water.depth < 0.9, `🌊 ما يدخل الماي الغميج (وكف على عمق ${water.depth} م)`);
-await G(() => { const W = window.__natta.WD; W.interact('tow'); });
-ok(await G(() => { const W = window.__natta.WD, c = W.S.car, gg = W.G.I.garage; return W.S.hero.mode === 'walk' && Math.hypot(c.x - gg.x, c.z - gg.z) < 2; }), '🛻 تنسحب للكراج');
+const water = await G(() => { // 🌊 برمائي: يدخل الخليج، يطوف ويمشي مثل القارب، يلف ويرجع يطلع للشاطئ بالتايرات
+  const W = window.__natta.WD, c = W.S.car, sh = W.G.I.shBay, f = W.G.I.fajr, L = Math.hypot(sh.x - f.x, sh.z - f.z), ux = (sh.x - f.x) / L, uz = (sh.z - f.z) / L;
+  c.x = sh.x - ux * 30; c.z = sh.z - uz * 30; c.y = W.G.H(c.x, c.z) + 0.53; c.vx = c.vz = c.vy = 0; W.sim.S.hero.mode = 'drive'; c.driven = true; c.engine = true; c.yaw = Math.atan2(uz, ux); W.cam.yaw = c.yaw;
+  const aim = (tx, tz) => { const a2 = Math.atan2(tz - c.z, tx - c.x), d = Math.atan2(Math.sin(a2 - c.yaw), Math.cos(a2 - c.yaw)); return Math.max(-1, Math.min(1, d * 2.5)); };
+  let fl = 0, vW = 0, splash = 0, subMin = 9, subMax = 0, deepMax = 0, flips = 0, tx = sh.x + ux * 120, tz = sh.z + uz * 120;
+  for (let i = 0; i < 60 * 30; i++) { const ev = W.sim.step(1 / 60, { jx: aim(tx, tz), jy: 1 }); if (ev.some((e) => e[0] === 'carSplash')) splash++; if (c.float) { fl++; if (fl > 600) vW = Math.max(vW, Math.hypot(c.vx, c.vz)); subMin = Math.min(subMin, c.sub); subMax = Math.max(subMax, c.sub); const w = W.G.water(c.x, c.z, W.G.H(c.x, c.z) + 0.05); if (w) deepMax = Math.max(deepMax, w.level - W.G.H(c.x, c.z)); } if (Math.abs(c.roll) > 1.2) flips++; }
+  const out = { x: c.x, z: c.z }; let back = 0, t = 0;
+  for (; t < 60 * 60; t++) { W.sim.step(1 / 60, { jx: aim(f.x, f.z), jy: 1 }); const w = W.G.water(c.x, c.z, W.G.H(c.x, c.z) + 0.05); if (!c.float && !w && !c.air) { back++; if (back > 60) break; } else back = 0; }
+  for (let i = 0; i < 180; i++) W.sim.step(1 / 60, { jx: 0, jy: 0, hand: true });
+  return { fl: +(fl / 60).toFixed(1), kmh: +(vW * 3.6).toFixed(0), splash, sub: [+subMin.toFixed(2), +subMax.toFixed(2)], deep: +deepMax.toFixed(1), flips, out: +Math.hypot(out.x - sh.x + ux * 30, out.z - sh.z + uz * 30).toFixed(0), backT: +(t / 60).toFixed(1), landed: back > 60, mode: W.S.hero.mode, kind: c.kind };
+});
+ok(water.fl > 8 && water.deep > 2 && water.kmh > 25 && water.kmh < 45 && water.sub[0] > 0.2 && water.sub[1] < 0.75 && !water.flips && water.splash >= 1, `🌊 برمائي: دخل الخليج (غمج ${water.deep} م) وطاف ${water.fl} ث ومشى بالماي ${water.kmh} كم/س (غاطس ${water.sub.join('–')} م) بدون ما ينگلب`);
+ok(water.landed && water.mode === 'drive', `🏖️ لف ورجع طلع للشاطئ بالتايرات بعد ${water.backT} ث (${water.kind})`);
+{ // 🦌🚙 الغزال يركب بصندوق البكي، يگعد لمن يمشي، وينزل وراك
+  const gq = await G(() => { const W = window.__natta.WD, S = W.sim.S, c = S.car, h = S.hero, gz = W.sim.gz, f = W.G.I.fajr;
+    c.x = f.x - 40; c.z = f.z + 70; c.y = W.G.H(c.x, c.z) + 0.53; c.vx = c.vz = c.vy = 0; c.roll = c.pitch = 0; W.cam.yaw = c.yaw; for (let i = 0; i < 60; i++) W.sim.step(1 / 60, { jx: 0, jy: 0, hand: true }); W.interact('car'); for (let i = 0; i < 200 && h.mode !== 'walk'; i++) W.sim.step(1 / 60, {});
+    S.vq.caught = true; S.vq.delivered = false; const dx = c.x - Math.cos(c.yaw) * 3, dz = c.z - Math.sin(c.yaw) * 3; Object.assign(gz, { state: 'follow', x: dx, z: dz, y: W.G.H(dx, dz), vx: 0, vz: 0 });
+    const door = () => { const x = c.x + Math.cos(c.yaw) * -0.22 - Math.sin(c.yaw) * -1.6, z = c.z + Math.sin(c.yaw) * -0.22 + Math.cos(c.yaw) * -1.6; Object.assign(h, { x, z, y: W.G.H(x, z), air: false, vx: 0, vz: 0, mode: 'walk', swim: false }); }; door();
+    const far = (() => { const g0 = { x: gz.x, z: gz.z }; gz.x += 40; const r = W.interact('car'); gz.x = g0.x; return { r, mode: h.mode }; })();
+    for (let i = 0; i < 300 && h.mode !== 'walk'; i++) W.sim.step(1 / 60, {});
+    door(); const ev = []; W.interact('car'); let st = []; for (let i = 0; i < 240; i++) { for (const e of W.sim.step(1 / 60, {})) ev.push(Array.isArray(e) ? e[0] : e); if (!st.includes(gz.state)) st.push(gz.state); }
+    const obj = W.objective(); let dMax = 0, yMin = 9; for (let i = 0; i < 60 * 6; i++) { W.sim.step(1 / 60, { jx: 0.3, jy: 1 }); if (gz.state === 'ride') { const bx = c.x - Math.cos(c.yaw) * 1.12, bz = c.z - Math.sin(c.yaw) * 1.12; dMax = Math.max(dMax, Math.hypot(gz.x - bx, gz.z - bz)); yMin = Math.min(yMin, gz.y - (c.y - 0.53)); } }
+    const sp = Math.hypot(c.vx, c.vz); for (let i = 0; i < 600 && Math.abs(c.vf) > 0.3; i++) W.sim.step(1 / 60, { jx: 0, jy: 0, hand: true });
+    W.interact('car'); let gd = 0, gy = 9; for (let i = 0; i < 400; i++) { for (const e of W.sim.step(1 / 60, {})) ev.push(Array.isArray(e) ? e[0] : e); if (!st.includes(gz.state)) st.push(gz.state); if (gz.state === 'follow' && !gd) { gd = Math.hypot(gz.x - c.x, gz.z - c.z); gy = gz.y - W.G.H(gz.x, gz.z); } }
+    const r = { far: far.mode, st, ev: ev.filter((e) => /^gz|carNo/.test(e)), obj, dMax: +dMax.toFixed(2), yMin: +yMin.toFixed(2), kmh: +(sp * 3.6).toFixed(0), endSt: gz.state, gd: +gd.toFixed(1), gy: +gy.toFixed(2), mode: h.mode };
+    S.vq.caught = false; gz.state = 'graze'; return r; });
+  ok(gq.far === 'walk' && gq.st.includes('load') && gq.st.includes('ride') && gq.ev.includes('gzLoad') && gq.obj.includes('بالبكي'), `🦌 الغزال نط لصندوق البكي (${gq.st.join('→')})، والمهمة: «${gq.obj}»؛ وإذا بعيد ما يركب`);
+  ok(gq.dMax < 0.05 && gq.yMin > 0.1 && gq.kmh > 30, `🚙 يبقى بالصندوق وهو ماشي ${gq.kmh} كم/س (أبعد ${gq.dMax} م)`);
+  ok(gq.ev.includes('gzUnload') && gq.endSt === 'follow' && gq.gd > 2 && gq.gd < 5 && Math.abs(gq.gy) < 0.05 && gq.mode === 'walk', `🦌 لمن تنزل ينط وراك (${gq.gd} م) ويرجع يمشي ويّاك`);
+}
 
 // 11ج) 🛣️ الطرق المعبّدة: شبكة تربط كل المناطق، جسور، لوحات، انحدار معقول، والأرض تحتها مضبوطة
 const net = await G(() => {
@@ -324,11 +351,11 @@ ok(net.signs >= 8 && net.arms >= 16 && net.welcome >= 15, `🪧 ${net.signs} ت�
 const brd = await G(() => { // نعبر جسر نهر الفضة بالبكي
   const W = window.__natta.WD, I = W.G.I, c = W.S.car, b = I.bridges[0], SEA = W.G.SEA; let minY = 1e9, maxDepth = 0, kinds = new Set(), crash = 0;
   W.sim.S.hero.mode = 'drive'; c.driven = true; c.engine = true; c.pitch = c.roll = 0; c.wp = c.wr = c.vy = 0;
-  c.x = b.x - b.c * (b.half + 30); c.z = b.z - b.s * (b.half + 30); c.yaw = Math.atan2(b.s, b.c); c.vx = c.vz = 0; c.y = W.G.H(c.x, c.z) + 0.53; W.G.ensureVeg(c.x, c.z, 170);
-  for (let i = 0; i < 60 * 9; i++) { const ev = W.sim.step(1 / 60, { kx: 0, ky: c.vf * 3.6 < 40 ? 1 : 0.2 }); if (ev.some((e) => e[0] === 'carCrash')) crash++; const al = (c.x - b.x) * b.c + (c.z - b.z) * b.s; if (Math.abs(al) < b.half - 2) { minY = Math.min(minY, c.y - 0.53 - SEA); maxDepth = Math.max(maxDepth, c.depth); kinds.add(c.kind); } if (al > b.half + 25) break; }
+  c.x = b.x - b.c * (b.half + 30); c.z = b.z - b.s * (b.half + 30); c.yaw = Math.atan2(b.s, b.c); W.cam.yaw = c.yaw; c.steer = 0; c.yawRate = 0; c.vx = c.vz = 0; c.y = W.G.H(c.x, c.z) + 0.53; W.G.ensureVeg(c.x, c.z, 170);
+  for (let i = 0; i < 60 * 9; i++) { const ev = W.sim.step(1 / 60, { kx: 0, ky: c.vf * 3.6 < 40 ? 1 : 0.2 }); const al = (c.x - b.x) * b.c + (c.z - b.z) * b.s; if (ev.some((e) => e[0] === 'carCrash')) crash++; if (Math.abs(al) < b.half - 2) { minY = Math.min(minY, c.y - 0.53 - SEA); maxDepth = Math.max(maxDepth, c.depth); kinds.add(c.kind); } if (al > b.half + 25) break; }
   return { deck: b.y, minY: +minY.toFixed(2), depth: maxDepth, kinds: [...kinds], crash, past: (c.x - b.x) * b.c + (c.z - b.z) * b.s > b.half };
 });
-ok(brd.past && brd.minY > brd.deck - 0.35 && brd.depth === 0 && !brd.crash, `🚙 يعبر الجسر فوك السطح (${brd.minY} م، السطح ${brd.deck}) بلا ماي ولا ضربة (${brd.kinds.join('/')})`);
+ok(brd.past && brd.minY > brd.deck - 0.35 && brd.depth === 0 && !brd.crash, `🚙 يعبر الجسر فوك السطح (${brd.minY} م، السطح ${brd.deck}) بلا ماي ولا ضربة (${brd.kinds.join("/")})`);
 // 🏁 السفاري: كثبان، مسار مغلق، قفزة حقيقية، ووقت لفّة
 const sf = await G(() => { const W = window.__natta.WD, I = W.G.I, SF = I.safari, z = I.zones.find((q) => q.id === 'safari'); let hi = 0, lo = 1e9; for (let u = 40; u < 600; u += 6) for (let w = 80; w < 240; w += 6) { const p = SF.W(u, w), a = W.G.H(p.x, p.z) - W.G.SEA; hi = Math.max(hi, a); lo = Math.min(lo, a); } const g0 = SF.gates[0]; return { zone: !!z, len: Math.round(SF.len), kick: SF.feat.filter((f) => f.kind === 'kicker').length, relief: +(hi - lo).toFixed(1), kind: W.G.groundKind(g0.x, g0.z, W.G.H(g0.x, g0.z)), dune: W.G.groundKind(SF.W(300, 150).x, SF.W(300, 150).z, W.G.H(SF.W(300, 150).x, SF.W(300, 150).z)) }; });
 ok(sf.zone && sf.len > 900 && sf.len < 1300 && sf.kick >= 4 && sf.relief > 4, `🏁 سفاري اللؤلؤ: مسار ${sf.len} م، ${sf.kick} قفزات، كثبان بفرق ${sf.relief} م (${sf.kind} / ${sf.dune})`);

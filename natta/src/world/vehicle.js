@@ -1,23 +1,27 @@
 // 🚙 نطّة — بكي الصحراء (سيارة طلعات السفاري): فيزياء سيارة حقيقية مبسّطة.
 // • تعليق مستقل لكل تاير: نابض + ممتص صدمات (مشوار 50 سم)، فالجسم يميل بالتسارع والفرامل والدوران، ويطير من الطعسات وينزل.
-// • محرك 120 حصان بنقل CVT: قوة محدودة بتماسك التايرات، مقاومة هوا وتدحرج (الرمل يثگل أكثر من الطريق).
+// • محرك 200 حصان بنقل CVT: قوة محدودة بتماسك التايرات، مقاومة هوا وتدحرج (الرمل يثگل أكثر من الطريق).
 // • توجيه حسب السرعة (بالسرعة العالية تقل زاوية الدركسون)، انزلاق جانبي إذا تجاوزت التماسك، فرامل يد للتفحيط.
-// • المنحدرات تبطّئك أو تسحبك، الحيطان والشجر تصدّك، الماي الغميج ما تعبره، وإذا انقلبت ترجع تعدل وحدها.
+// • المنحدرات تبطّئك أو تسحبك، الحيطان والشجر تصدّك، وإذا انقلبت ترجع تعدل وحدها.
+// • برمائي 🌊: بالماي الغميج يطوف ويمشي مثل القارب (~35 كم/س)، ويطلع للشاطئ بالتايرات.
 // المحاور: +x شمال، +z شرق. yaw: الاتجاه (cos yaw, sin yaw). اليمين = (−sin yaw, cos yaw).
 import { clamp, lerp, damp, angDiff } from '../lib3d.js';
 
 // مقاسات حقيقية (مرجع: بكي صحراوي «سايد باي سايد» بطول 3.38 م):
 export const BUGGY = {
   L: 3.38, W: 1.69, H: 1.68, WB: 2.59, track: 1.42, R: 0.356, clearance: 0.356,
-  mass: 830, // 750 كغم فارغة + السايق
-  hp: 120, power: 76000, // واط واصلة للتايرات (~102 حصان من 120)
-  fMax: 6800, // أقصى قوة دفع بالسرعات الواطية (نيوتن)
-  vmax: 31, // ~112 كم/س
+  mass: 1050, // نسخة «رزينة» برمائية: شاصي أثقل وطوافات بالأبواب + السايق
+  hp: 200, power: 140000, // واط واصلة للتايرات (~190 حصان من 200، مثل Maverick R)
+  fMax: 10500, // أقصى قوة دفع بالسرعات الواطية (نيوتن)
+  vmax: 44, // ~158 كم/س
   vrev: 7.5,
   droop: 0.3, bump: 0.2, // مشوار التعليق: 30 سم نزول + 20 سم صعود
-  K: 15500, C: 1400, // نابض وممتص لكل تاير (~1.4 هرتز)
-  Ip: 900, Ir: 300, hcg: 0.45, // عزم القصور: ميلان قدّام/ورا، يمين/يسار، وارتفاع مركز الثقل
-  CdA: 1.25, // ½ρ·Cd·A
+  K: 21000, C: 2900, // نابض وممتص لكل تاير (~1.4 هرتز، ممتص أقوى = ما ينطط)
+  Ip: 1300, Ir: 560, hcg: 0.36, // عزم القصور ومركز ثقل واطي = ثابت ما يتمايل
+  ARB: 30000, // عمود موازنة (anti-roll): يقاوم الميلان بالدوران
+  CdA: 1.0, // ½ρ·Cd·A
+  // 🌊 برمائي: يطوف (خط الماي عند محور التاير تقريباً)، والتايرات تدفعه مثل المجاديف + مروحة نفاثة ورا
+  float: { s0: 0.42, thrust: 7200, rev: 3200, dragQ: 78, dragL: 260, turn: 0.95, vmax: 9.6 },
   steerMax: 0.6, // ~34° زاوية التاير
   seat: { ox: -0.22, oz: -0.36, oy: -0.47 }, // مكان السايق: يسار (المقود يسار)، الأرضية تحت مقعده
   door: { ox: -0.22, oz: -1.25 },
@@ -61,6 +65,8 @@ export function createBuggy(G, spawn) {
       w.g = groundY(w.x, w.z);
     }
   }
+  /** مستوى سطح الماي هنا (أو null إذا ماكو ماي) */
+  function waterY(x, z) { const gy = groundY(x, z), w = G.water(x, z, gy + 0.05); return w ? w.level : null; }
   /** ارتفاع الأرض تحت التاير: الأرض أو سطح جسر/رصيف إذا السيارة فوكه (مو جوّه) */
   function groundY(x, z) {
     const g = G.H(x, z), pl = G.platAt ? G.platAt(x, z) : null;
@@ -118,11 +124,16 @@ export function createBuggy(G, spawn) {
       F = Math.max(0, F); w.F = F;
       Fsum += F; Mp += F * w.ox; Mr += F * w.oz;
     }
-    const wasAir = car.air; car.air = nc === 0; car.airT = car.air ? car.airT + dt : 0;
+    if (nc) Mr -= B.ARB * car.roll * (nc / 4); // عمود الموازنة
+    // ---- 🌊 الطفو: إذا الماي أعلى من أسفل التايرات، يدفعه لفوك (أرخميدس) ويهدّي الحركة العمودية
+    const wy = waterY(car.x, car.z), sub0 = wy == null ? 0 : wy - (car.y - B.rideY);
+    if (sub0 > 0) { const F = B.mass * g0 * clamp(sub0 / B.float.s0, 0, 2.4); Fsum += F; car.vy *= 1 - Math.min(1, 2.8 * dt * Math.min(1, sub0)); }
+    car.float = sub0 > 0.22 && nc === 0; car.sub = sub0;
+    const wasAir = car.air; car.air = nc === 0 && !car.float && sub0 <= 0.05; car.airT = car.air ? car.airT + dt : 0;
     // ---- القوى الأفقية
     const f = [c, s], r = [-s, c];
     let vf = car.vx * f[0] + car.vz * f[1], vl = car.vx * r[0] + car.vz * r[1];
-    const [mu0, crr0] = SURF[car.kind] || SURF.grass, mu = mu0 * (car.depth > 0.12 ? 0.75 : 1);
+    const [mu0, crr0] = SURF[car.kind] || SURF.grass, mu = mu0 * (car.depth > 0.12 ? 0.8 : 1) * (1 + Math.min(0.12, Math.abs(car.vf || 0) / 300)); // جناح وعجلات عريضة: تماسك أكثر بالسرعة
     car.mu = mu;
     const N = Math.max(Fsum, 0), m = B.mass, grip = nc / 4;
     let aF = 0, aL = 0;
@@ -141,7 +152,7 @@ export function createBuggy(G, spawn) {
       let Fb = car.brake * 0.92 * tracMax + (car.hand ? 0.45 * tracMax * 0.5 : 0);
       if (!car.driven && !car.engine) Fb = Math.max(Fb, tracMax); // واكفة: هاندبريك
       // تدحرج + هوا + ماي
-      const Fr = crr0 * N + (car.depth > 0.12 ? 900 * Math.min(car.depth, 0.8) * Math.abs(vf) : 0) + (car.driven && car.throttle === 0 && car.brake === 0 ? m * 0.9 : 0); // + كبح المحرك (CVT) لمن تشيل رجلك
+      const Fr = crr0 * N + (car.depth > 0.12 ? 320 * Math.min(car.depth, 0.8) * Math.abs(vf) : 0) + (car.driven && car.throttle === 0 && car.brake === 0 ? m * 0.9 : 0); // + كبح المحرك (CVT) لمن تشيل رجلك
       const dvb = ((Fb + Fr) / m) * dt;
       vf += aF * dt; vf -= (B.CdA * vf * Math.abs(vf) / m) * dt;
       if (Math.abs(vf) <= dvb && (car.throttle === 0 || !car.engine)) vf = 0; else vf -= sgn * Math.min(dvb, Math.abs(vf));
@@ -159,6 +170,16 @@ export function createBuggy(G, spawn) {
       // لحظة الجسم من التسارع: يرفع راسه لمن تدوس، ويدنّك لمن تفرمل، ويميل بالدوران
       const along = (vf - vf0) / dt - aSlope, alat = vf * car.yawRate;
       Mp += m * along * B.hcg; Mr += m * alat * B.hcg;
+    } else if (car.float) { // 🚤 بالماي: دفع من التايرات والمروحة، سحب الماي، جسم يمنع الانزلاق الجانبي، ويلف مثل القارب
+      const W = B.float, T = !car.engine ? 0 : car.throttle > 0 ? W.thrust * car.throttle : car.throttle < 0 ? -W.rev * -car.throttle : 0;
+      vf += ((T - W.dragQ * vf * Math.abs(vf) - W.dragL * vf * 0.1) / m) * dt * 1;
+      if (car.brake > 0) vf *= 1 - 0.9 * dt * car.brake;
+      vl *= Math.exp(-2.6 * dt);
+      const turnK = clamp(Math.abs(vf) / 2.5, 0.35, 1) * (vf < -0.3 ? -1 : 1);
+      car.yawRate = damp(car.yawRate, (car.steer / B.steerMax) * W.turn * turnK, 2.4, dt); car.slip = Math.abs(vl) * 0.5;
+      // موج خفيف: ميلان قدّام/ورا ويمين/يسار يرجع للصفر بنابض ناعم
+      const t = (car.tW = (car.tW || 0) + dt), tp = 0.025 * Math.sin(t * 1.3) - vf * 0.004, tr = 0.035 * Math.sin(t * 0.9 + 1) - vf * car.yawRate * 0.01;
+      car.wp += (-(car.pitch - tp) * 5 - car.wp * 2.6) * dt; car.wr += (-(car.roll - tr) * 5 - car.wr * 2.6) * dt;
     } else { car.yawRate = damp(car.yawRate, 0, 0.4, dt); car.slip = 0; vf -= (B.CdA * vf * Math.abs(vf) / m) * dt; }
     car.vf = vf; car.vl = vl;
     car.vx = f[0] * vf + r[0] * vl; car.vz = f[1] * vf + r[1] * vl;
@@ -166,17 +187,14 @@ export function createBuggy(G, spawn) {
     car.vy += (Fsum / m - g0) * dt;
     car.wp += (Mp * Math.cos(car.pitch) / B.Ip) * dt; car.wr += (Mr * Math.cos(car.roll) / B.Ir) * dt;
     if (car.air) { car.wp *= 1 - 0.6 * dt; car.wr *= 1 - 0.6 * dt; car.wp += -car.pitch * 0.9 * dt; car.wr += -car.roll * 0.9 * dt; } // بالهوا: يعدل شوية
-    else { car.wp *= 1 - 1.2 * dt; car.wr *= 1 - 1.2 * dt; }
+    else if (!car.float) { car.wp *= 1 - 2.2 * dt; car.wr *= 1 - 2.6 * dt; } // ثابت: يهدى بسرعة بعد كل مطب
     // ---- تحريك
     const ox = car.x, oz = car.z, ovy = car.vy;
     car.x += car.vx * dt; car.z += car.vz * dt; car.y += car.vy * dt;
     car.yaw += car.yawRate * dt; car.pitch += car.wp * dt; car.roll += car.wr * dt;
-    // ---- ماي غميج: ما تعبره (المحرك يغرگ)
-    {
-      const gy = groundY(car.x, car.z), hd = G.water(car.x, car.z, gy + 0.05), dd = hd ? hd.level - gy : 0;
-      // يرجع إذا الخطوة تغمّگه أكثر من 75 سم (ويكدر يطلع لمكان أضحل)
-      if (dd > 0.75 && dd > car.depth) { car.x = ox; car.z = oz; const vin = car.vx * car.vx + car.vz * car.vz; car.vx *= -0.2; car.vz *= -0.2; if (vin > 4 && car.deepT <= 0) { ev.push(['deepWater']); car.deepT = 3; } }
-    }
+    // ---- 🌊 برمائي: يدخل البحر والبحيرة والهور ويطوف (ما في منع)؛ بس ما يطلع برّا حدود العالم
+    { const lim = G.HALF - 40; if (Math.abs(car.x) > lim || Math.abs(car.z) > lim) { car.x = clamp(car.x, -lim, lim); car.z = clamp(car.z, -lim, lim); car.vx *= -0.3; car.vz *= -0.3; } }
+    if (car.float && !car.wasFloat && Math.hypot(car.vx, car.vz) > 2) ev.push(['carSplash', +Math.hypot(car.vx, car.vz).toFixed(1)]); car.wasFloat = car.float || car.sub > 0.25;
     car.deepT -= dt;
     // ---- تصادم: ثلاث دوائر على طول السيارة ضد الشجر والصخر والبيوت
     collide(dt);

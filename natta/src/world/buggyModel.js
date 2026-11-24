@@ -87,9 +87,19 @@ export function makeBuggy() {
   P.push(box(0.82, 0.03, 1.16, ROOF, -0.25, 1.165, 0), box(0.07, 0.08, 0.92, BLACK, 0.12, 1.22, 0)); // سقف ألمنيوم + بار ضوية
   for (const sz of [-1, 1]) P.push(box(0.04, 0.07, 0.12, BLACK, 0.3, 0.92, sz * 0.66)); // مرايات
   // ---- تاير احتياط على الشبك
-  const spare = wheelGeo(); spare.rotateX(Math.PI / 2); spare.translate(-1.25, 0.98, 0); P.push(spare);
-  P.push(box(0.04, 0.02, 0.76, '#3A3D44', -1.25, 1.12, 0));
+  const spareG = wheelGeo(); spareG.rotateX(Math.PI / 2); spareG.translate(-1.25, 0.98, 0);
   const shell = new Mesh(merge(P), vc); shell.castShadow = true; shell.receiveShadow = true; body.add(shell);
+  const spareM = new Mesh(merge([spareG, box(0.04, 0.02, 0.76, '#3A3D44', -1.25, 1.12, 0)]), vc); spareM.castShadow = true; body.add(spareM);
+  // 🦌 صندوق نقل الحيوان (يطلع لمن يركب الغزال): فرشة تبن، سياج أنابيب واطي، وشبكة حبال خضرة فوكه
+  const cargo = new Group(); cargo.visible = false; body.add(cargo);
+  { const C2 = [];
+    C2.push(paint(tf(new BoxGeometry(0.98, 0.06, 1.06), -1.2, 0.85, 0), (c, x, y, z) => mix(c, '#C9A24E', '#E6C877', hash2(Math.floor(x * 40), Math.floor(z * 40)))));
+    for (const [x, z] of [[-0.74, -0.55], [-0.74, 0.55], [-1.66, -0.55], [-1.66, 0.55]]) C2.push(tube([[x, 0.84, z], [x, 1.22, z]], 0.022, '#3A3D44'));
+    C2.push(tube([[-0.74, 1.22, -0.55], [-1.66, 1.22, -0.55], [-1.66, 1.22, 0.55], [-0.74, 1.22, 0.55]], 0.02, '#3A3D44'));
+    for (let i = 0; i <= 4; i++) { const x = -0.78 - i * 0.215; C2.push(tube([[x, 1.2, -0.55], [x, 1.46, -0.1], [x, 1.46, 0.1], [x, 1.2, 0.55]], 0.008, '#2F7A3A')); } // حبال الشبكة
+    for (const z of [-0.3, 0, 0.3]) C2.push(tube([[-0.76, 1.42, z], [-1.64, 1.42, z]], 0.008, '#2F7A3A'));
+    cargo.add(new Mesh(merge(C2), vc)); }
+  const setCargo = (on) => { cargo.visible = on; spareM.visible = !on; }; // الاحتياط ينشال حتى يصير مكان
 
   // ---- الضويات (مواد مضيئة تتغير بالفرامل والريوس)
   const headM = new MeshBasicMaterial({ color: '#F4FAFF' }), tailM = new MeshPhongMaterial({ color: '#7A0A0A', emissive: '#FF1A1A', emissiveIntensity: 0.35 }), barM = new MeshBasicMaterial({ color: '#E8F2FF' });
@@ -171,7 +181,7 @@ export function makeBuggy() {
     pa.needsUpdate = true; flagM.rotation.y = Math.sin(t * 1.3) * 0.3 * (1 - sp);
     doors[0].rotation.y = -car.door * 1.15; // الباب اليسار
   }
-  return { root, body, wheels, doors, update, seat: B.seat };
+  return { root, body, wheels, doors, update, seat: B.seat, setCargo, bed: { x: -1.2, y: 0.88, z: 0 } };
 }
 /** أسطوانة بطول 1 على محور y بأنصاف أقطار مختلفة (مخزّنة) */
 function Geo1() { const cache = {}; this.g = (r) => cache[r] || (cache[r] = new CylinderGeometry(r, r, 1, 8)); }

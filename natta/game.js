@@ -3338,7 +3338,7 @@
       const dyaw = CAMD.dx * 0.0085 + ((keyE ? 1 : 0) - (keyQ ? 1 : 0)) * 1.9 * dt, dpitch = CAMD.dy * 0.006; CAMD.dx = 0; CAMD.dy = 0;
       const car = WD.S.car, cam = WD.cam; cam.dragT = 9; if (!WS.drvCam) { WS.drvCam = 1; cam.yaw = car.yaw; } // أول ما تركب: الكاميرا ورا البكي // الكاميرا ما ترجع وحدها: انت توجّهها والبكي يلحگها
       let d = cam.yaw + dyaw - car.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
-      jx = clamp(d * 2, -1, 1) * (car.vf < -0.5 ? -1 : 1); // بالريوس الدركسون ينعكس حتى يبقى الوجه صوب الكاميرا
+      jx = clamp(d * 3, -1, 1) * (car.vf < -0.5 ? -1 : 1); // بالريوس الدركسون ينعكس حتى يبقى الوجه صوب الكاميرا
       return { jx, jy, mag, sneak: false, dyaw, dpitch, kx, ky, hand: keyHand || (WS && WS.hand) };
     }
     if (WS) WS.drvCam = 0;
@@ -3464,8 +3464,10 @@
       case 'lapCancel': toast('⏱️ انلغت اللفّة (طلعت من المسار)', 1400); break;
       case 'carFlip': Sfx.thud(); toast('🔄 البكي انقلب… ورجع عدل', 2000); break;
       case 'carTow': toast('🛻 سحبنا البكي للكراج', 2200); break;
-      case 'deepWater': toast('🌊 الماي غميج! البكي ما يعبر', 1800); break;
-      case 'carNo': toast('🦌 الغزال ما يصعد بالبكي… امشِ ويّاه', 2200); break;
+      case 'carSplash': Sfx.splash(); shake = Math.max(shake, 0.2); if (!save.amphiTip) { save.amphiTip = 1; persist(); toast('🌊 البكي برمائي! يطوف ويمشي بالماي (~35 كم/س) ويطلع للشاطئ وحده', 3400); } else toast('🌊 شلپ!', 700); break;
+      case 'carNo': toast('🦌 الغزال بعيد! جيبه يمّ البكي حتى يركب ويّاك', 2200); break;
+      case 'gzLoad': Sfx.snort(); toast('🦌 نط الغزال لصندوق البكي! سوق على كيفك 😉', 2600); break;
+      case 'gzUnload': Sfx.snort(); toast('🦌 نزل الغزال ويمشي وراك', 1600); break;
       case 'landStone': Sfx.step(1); Sfx.splash(); break;
       case 'step': Sfx.step(a[0] ? 1 : 0); if (a[1] === 'bridge' && Math.random() < 0.4) Sfx.creak(); break;
       case 'splash': Sfx.splash(); break;
@@ -3803,14 +3805,14 @@
     ctx.font = '800 11px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFD23F'; ctx.fillText(sub, cx, y + 13); ctx.restore();
   }
   function drawSpeedo(car) {
-    const cx = C.W / 2, cy = viewH - 74, R = 54, kmh = Math.abs(car.vf) * 3.6, a0 = Math.PI * 0.75, sweep = Math.PI * 1.5, max = 120;
+    const cx = C.W / 2, cy = viewH - 74, R = 54, kmh = Math.abs(car.vf) * 3.6, a0 = Math.PI * 0.75, sweep = Math.PI * 1.5, max = 160;
     ctx.save();
     ctx.fillStyle = 'rgba(14,20,38,.62)'; ctx.beginPath(); ctx.arc(cx, cy, R + 8, 0, TAU); ctx.fill();
     ctx.lineCap = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.beginPath(); ctx.arc(cx, cy, R - 4, a0, a0 + sweep); ctx.stroke();
     const k = Math.min(1, kmh / max), gr = ctx.createLinearGradient(cx - R, cy, cx + R, cy); gr.addColorStop(0, '#5EE7FF'); gr.addColorStop(0.6, '#FFD23F'); gr.addColorStop(1, '#FF4D4D');
     if (k > 0.005) { ctx.strokeStyle = gr; ctx.beginPath(); ctx.arc(cx, cy, R - 4, a0, a0 + sweep * k); ctx.stroke(); }
     ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.font = '700 9px -apple-system,system-ui,sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (let v = 0; v <= max; v += 10) { const a = a0 + sweep * (v / max), big = v % 20 === 0, r1 = R - 12, r2 = big ? R - 19 : R - 15; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); ctx.stroke(); if (big && v % 40 === 0) ctx.fillText(String(v), cx + Math.cos(a) * (R - 28), cy + Math.sin(a) * (R - 28)); }
+    for (let v = 0; v <= max; v += 10) { const a = a0 + sweep * (v / max), big = v % 40 === 0, r1 = R - 12, r2 = big ? R - 19 : R - 15; ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2); ctx.stroke(); if (big && v % 40 === 0) ctx.fillText(String(v), cx + Math.cos(a) * (R - 28), cy + Math.sin(a) * (R - 28)); }
     const rk = Math.min(1, car.rpm / 8000); ctx.lineWidth = 3; ctx.strokeStyle = rk > 0.9 ? '#FF4D4D' : '#FF9A3A'; ctx.beginPath(); ctx.arc(cx, cy, R + 4, a0, a0 + sweep * rk); ctx.stroke(); // الدورة
     const na = a0 + sweep * k; ctx.strokeStyle = '#FF5A1F'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - Math.cos(na) * 6, cy - Math.sin(na) * 6); ctx.lineTo(cx + Math.cos(na) * (R - 10), cy + Math.sin(na) * (R - 10)); ctx.stroke();
     ctx.fillStyle = '#FFFFFF'; ctx.font = '900 24px -apple-system,system-ui,sans-serif'; ctx.fillText(String(Math.round(kmh)), cx, cy + 16);

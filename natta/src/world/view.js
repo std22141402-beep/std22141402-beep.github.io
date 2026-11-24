@@ -15,7 +15,7 @@ import { createIslandView } from './viewIsland.js';
 import { createRoadsView } from './viewRoads.js';
 import { createHeroAnimator } from './heroAnim.js';
 import { makeBuggy } from './buggyModel.js';
-import { HARD } from './vehicle.js';
+import { HARD, BUGGY } from './vehicle.js';
 
 const D2R = Math.PI / 180;
 
@@ -441,6 +441,7 @@ export function createView(cfg, G, sim) {
   const dustTex = glowTex, dust = [];
   for (let i = 0; i < 130; i++) { const sp = new Sprite(new SpriteMaterial({ map: dustTex, color: '#D9C49A', transparent: true, opacity: 0, depthWrite: false })); sp.visible = false; scene.add(sp); dust.push({ sp, t: 1, life: 1, vx: 0, vy: 0, vz: 0, s0: 1 }); }
   let dustI = 0, dustAcc = 0;
+  const B_RIDE = BUGGY.rideY;
   const DUSTC = { dune: '#E3CC98', track: '#D2B883', sand: '#DCC79C', grass: '#A9A07A', forest: '#8F8466', trail: '#C2A985', path: '#C2A985', rock: '#B5ADA0', water: '#E8F4FF', plaza: '#C9C4BA', mud: '#7A6248' };
   function spawnDust(x, y, z, kind, k, vx, vz) { const d = dust[dustI++ % dust.length]; d.sp.visible = true; d.sp.material.color.set(DUSTC[kind] || '#C2A985'); d.sp.position.set(x, y, z); d.t = 0; d.life = 1.1 + Math.random() * 1.5 * k; d.vx = vx * 0.12 + (Math.random() - 0.5) * 1.8; d.vz = vz * 0.12 + (Math.random() - 0.5) * 1.8; d.vy = 0.5 + Math.random() * 1.2; d.s0 = 0.55 + k * 1.05; d.a0 = kind === 'water' ? 0.75 : 0.32 + 0.26 * k; } // الغبار يعلگ بالهوا وتسحبه السيارة شوية وراها، فيطلع عمود ورا البكي
   const _sw = new Vector3();
@@ -453,7 +454,7 @@ export function createView(cfg, G, sim) {
     const v = Math.hypot(car.vx, car.vz), k = clamp((v - 2.5) / 14, 0, 1) + clamp(car.slip / 3, 0, 1);
     if (!car.air && (k > 0.05) && !HARD.has(car.kind)) {
       dustAcc += dt * ({ sand: 56, dune: 62, track: 54, water: 40, trail: 46, path: 46, mud: 22, rock: 16, grass: 12, forest: 14 }[car.kind] || 20) * Math.min(1.3, k); // التراب والرمل يغبّرون هواية، العشب شوية
-      while (dustAcc > 1) { dustAcc -= 1; const w = car.wheels[2 + (dustI & 1)]; spawnDust(w.x - Math.cos(car.yaw) * 0.3, w.g + 0.15, w.z - Math.sin(car.yaw) * 0.3, car.kind, Math.min(1, k), car.vx, car.vz); }
+      while (dustAcc > 1) { dustAcc -= 1; const w = car.wheels[2 + (dustI & 1)]; spawnDust(w.x - Math.cos(car.yaw) * 0.3, car.float || car.sub > 0.2 ? car.y - B_RIDE + car.sub + 0.1 : w.g + 0.15, w.z - Math.sin(car.yaw) * 0.3, car.kind, Math.min(1, k), car.vx, car.vz); } // 🌊 بالماي: رشّة بيضة على السطح
     }
     for (const d of dust) { if (!d.sp.visible) continue; d.t += dt; const q = d.t / d.life; if (q >= 1) { d.sp.visible = false; continue; } d.sp.position.x += d.vx * dt; d.sp.position.y += d.vy * dt; d.sp.position.z += d.vz * dt; d.vy *= 1 - 0.8 * dt; d.sp.scale.setScalar(d.s0 * (0.6 + q * 3.2)); d.vx *= 1 - 1.4 * dt; d.vz *= 1 - 1.4 * dt; d.sp.material.opacity = d.a0 * (1 - q) * Math.min(1, q * 6); }
   }
@@ -589,10 +590,29 @@ export function createView(cfg, G, sim) {
       for (const L of m.legs) { const off = L.front ? (L.s > 0 ? 0 : Math.PI) : (L.s > 0 ? Math.PI : 0) + (fast ? 0.6 : 0); if (moving) { L.hip.rotation.z = Math.sin(b.ph + off) * (fast ? 0.7 : 0.4); L.knee.rotation.z = (L.front ? -1 : 1) * Math.max(0, -Math.cos(b.ph + off)) * 0.5; } else { L.hip.rotation.z = damp(L.hip.rotation.z, 0, 8, dt); L.knee.rotation.z = damp(L.knee.rotation.z, 0, 8, dt); } }
     }
   }
+  const _bq = new Quaternion(), _rq = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI / 2), _bv = new Vector3();
+  /** 🦌🚙 الغزال راكب بصندوق البكي: يگعد (يطوي رجليه) لمن البكي يمشي أو يطير، ويوگف ويتلفّت لمن توكف؛ يميل ويّا الفرامل والدوران، ويهز راسه بالمطبات */
+  function rideGazelle(t, dt) {
+    const g = sim.gz, m = gzM, car = S.car;
+    BG.setCargo(true); BG.body.updateMatrixWorld(); BG.body.getWorldQuaternion(_bq);
+    m.root.position.copy(BG.body.localToWorld(_bv.set(BG.bed.x, BG.bed.y, BG.bed.z))); m.root.quaternion.copy(_bq).multiply(_rq); m.yaw = -g.face;
+    const v = Math.abs(car.vf), acc = (car.vf - (m.pv ?? car.vf)) / Math.max(dt, 1e-3); m.pv = car.vf;
+    m.stillT = v < 1.2 && !car.air ? (m.stillT || 0) + dt : 0;
+    const lie = damp(m.lie || 0, m.stillT > 1.2 ? 0 : 1, m.stillT > 1.2 ? 2.2 : 5, dt); m.lie = lie;
+    m.ax = damp(m.ax || 0, clamp(acc * 0.025, -0.22, 0.22), 6, dt); m.az = damp(m.az || 0, clamp(car.vf * car.yawRate * 0.03, -0.2, 0.2), 6, dt);
+    m.body.position.y = -0.56 * lie + (car.air ? 0.04 : 0) + Math.abs(car.vy) * 0.01 * lie; m.body.rotation.x = m.ax; m.body.rotation.z = m.az * 0.6;
+    m.neckA = damp(m.neckA, lie > 0.5 ? -0.35 : -0.5, 4, dt); m.neck.rotation.z = m.neckA;
+    const look = car.air || v > 14 ? 0.9 : m.stillT > 1.2 ? Math.sin(t * 0.8) * 0.9 + 0.3 : 0.6 + Math.sin(t * 0.5) * 0.4; // يباوع لقدّام (للطريق)، وبالوكفة يتلفّت
+    m.head.rotation.y = damp(m.head.rotation.y, look, 3, dt); m.head.rotation.z = 0.3 + (car.air ? -0.25 : 0) + Math.sin(t * 6) * 0.015 * lie;
+    m.tail.rotation.z = 0.5 + Math.sin(t * 5) * 0.25;
+    for (const L of m.legs) { L.hip.rotation.z = damp(L.hip.rotation.z, (L.front ? 1.45 : -1.3) * lie, 6, dt); L.knee.rotation.z = damp(L.knee.rotation.z, (L.front ? -2.5 : 2.35) * lie, 6, dt); }
+  }
   function animateGazelle(t, dt) {
     const g = sim.gz, m = gzM, st = g.state, moving = Math.hypot(g.vx, g.vz) > 0.25;
+    if (st === 'ride') { m.root.visible = true; rideGazelle(t, dt); return; }
+    BG.setCargo(st === 'load' || st === 'unload'); if (m.lie !== 0) { m.lie = 0; m.body.rotation.x = 0; m.body.position.y = 0; m.root.rotation.set(0, m.yaw, 0); m.head.rotation.y = 0; }
     m.root.visible = (g.x - camera.position.x) ** 2 + (g.z - camera.position.z) ** 2 < 260 * 260; if (!m.root.visible) return;
-    const fast = st === 'flee' || st === 'leap', tired = st === 'tired';
+    const fast = st === 'flee' || st === 'leap' || st === 'load' || st === 'unload', tired = st === 'tired';
     m.root.position.set(g.x, g.y, g.z); m.body.position.y = moving ? Math.abs(Math.sin(g.ph)) * (fast ? 0.07 : 0.025) : tired ? Math.sin(t * 9) * 0.008 : 0;
     m.yaw = dampAngle(m.yaw, -g.face, fast ? 14 : 8, dt); m.root.rotation.y = m.yaw; m.body.rotation.z = fast ? Math.sin(g.ph * 2) * 0.05 : 0;
     const graze = st === 'graze' || (st === 'pen' && !moving);
@@ -600,7 +620,7 @@ export function createView(cfg, G, sim) {
     m.head.rotation.z = graze ? 0.5 + Math.sin(t * 7) * 0.08 : st === 'alert' || st === 'look' ? 0.2 : 0.35;
     m.head.rotation.y = st === 'look' || st === 'alert' || st === 'cornered' ? Math.sin(t * 1.6) * 0.25 : 0;
     m.tail.rotation.z = 0.5 + (st === 'alert' || fast ? 0.9 : Math.sin(t * 3) * 0.2);
-    const amp = fast ? 0.6 : tired ? 0.28 : 0.36, leap = st === 'leap';
+    const amp = fast ? 0.6 : tired ? 0.28 : 0.36, leap = st === 'leap' || st === 'load' || st === 'unload';
     for (const L of m.legs) { const off = L.front ? (L.s > 0 ? 0 : Math.PI) : (L.s > 0 ? Math.PI : 0) + (fast ? 0.6 : 0); if (leap) { L.hip.rotation.z = L.front ? 0.9 : -0.9; L.knee.rotation.z = L.front ? -1.2 : 1.1; continue; } if (moving) { const w = Math.sin(g.ph + off); L.hip.rotation.z = w * amp; L.knee.rotation.z = (L.front ? -1 : 1) * Math.max(0, -Math.cos(g.ph + off)) * amp * 1.1; } else { L.hip.rotation.z = damp(L.hip.rotation.z, 0, 8, dt); L.knee.rotation.z = damp(L.knee.rotation.z, 0, 8, dt); } }
   }
   function animateMerchant(t, dt, dlg) {
@@ -619,7 +639,7 @@ export function createView(cfg, G, sim) {
     else for (const a of m.arms) { a.sh.rotation.z = damp(a.sh.rotation.z, a.s * 0.12, 4, dt); a.el.rotation.z = damp(a.el.rotation.z, 0, 4, dt); a.el.rotation.x = damp(a.el.rotation.x, -0.25, 4, dt); a.sh.rotation.x = 0; }
   }
   function updateRope() {
-    const r = hero.rope; r.visible = S.vq.caught && !S.vq.delivered && gzM.root.visible;
+    const r = hero.rope; r.visible = S.vq.caught && !S.vq.delivered && gzM.root.visible && sim.gz.state === 'follow';
     if (!r.visible) return;
     hero.root.updateMatrixWorld(); gzM.root.updateMatrixWorld();
     const a = hero.arms[1].wr.getWorldPosition(tmp), b = gzM.collar.getWorldPosition(tmp2), mid = a.clone().lerp(b, 0.5); mid.y = Math.min(a.y, b.y) - 0.25; // من إيدك اليمنى لرگبة الغزال
