@@ -428,9 +428,9 @@
           out.gain.setTargetAtTime(on ? 0.16 + 0.1 * thr : 0, t, on ? 0.1 : 0.25);
           intake.b.frequency.setTargetAtTime(380 + rpm * 0.24, t, 0.1); intake.g.gain.setTargetAtTime(on ? 0.03 + thr * 0.07 * (rpm / 8000) : 0, t, 0.08);
           tw.frequency.setTargetAtTime(1700 + rpm * 0.45, t, 0.15); twg.gain.setTargetAtTime(on ? thr * (rpm / 8000) ** 2 * 0.022 : 0, t, 0.2);
-          const surf = { sand: 1.25, water: 1.6, grass: 0.85, forest: 0.9, trail: 1, path: 1, rock: 1.1, plaza: 0.35 }[kind] || 1;
-          tire.b.frequency.setTargetAtTime(kind === 'plaza' ? 900 : 420, t, 0.2); tire.g.gain.setTargetAtTime(Math.min(0.16, speed * 0.0075) * surf, t, 0.12);
-          skid.b.frequency.setTargetAtTime(kind === 'plaza' ? 1900 : 750, t, 0.1); skid.g.gain.setTargetAtTime(Math.min(0.14, Math.max(0, slip - 1.1) * 0.06) * (kind === 'plaza' ? 1.4 : 0.8), t, 0.06);
+          const surf = { sand: 1.25, dune: 1.3, track: 1.1, water: 1.6, grass: 0.85, forest: 0.9, trail: 1, path: 1, rock: 1.1, plaza: 0.35, asphalt: 0.3, pavers: 0.5, cobble: 0.8 }[kind] || 1, hard = kind === 'plaza' || kind === 'asphalt' || kind === 'pavers' || kind === 'cobble';
+          tire.b.frequency.setTargetAtTime(hard ? (kind === 'cobble' ? 620 : 900) : 420, t, 0.2); tire.g.gain.setTargetAtTime(Math.min(0.16, speed * 0.0075) * surf, t, 0.12); // الإسفلت يهمس، والحجر يدگدگ
+          skid.b.frequency.setTargetAtTime(hard ? 1900 : 750, t, 0.1); skid.g.gain.setTargetAtTime(Math.min(0.14, Math.max(0, slip - 1.1) * 0.06) * (hard ? 1.4 : 0.8), t, 0.06); // صرير التايرات عالإسفلت
           if (lastThr > 0.6 && thr < 0.1 && lastRpm > 5200) { const s = plain(); s.noise({ type: 'highpass', f: 2600, f1: 1400, dur: 0.32, vol: 0.07 }); } // طگة التيربو
           lastThr = thr; lastRpm = rpm;
         },
@@ -3370,6 +3370,7 @@
     WD.setTools(save.tools || {});
     WS.info = WD.enter(skinById(save.skin), { at: opts.at, seed });
     WS.resumed = !!(sn && WD.restore(sn));
+    if (save.safariBest && !WD.S.lap.best) WD.S.lap.best = save.safariBest; // 🏆 أحسن لفّة سفاري
     if (WS.resumed) { WS.paid = WD.S.coinsGot; WS.trail = (sn.trail || []).slice(); } else if (save.ws) { save.ws = null; persist(); }
     state = 'world'; resumeTo = 'world';
     clearTimeout(toastT); $('toast').classList.remove('show'); // رسالة «نجهّز العالم» تختفي أول ما يبين
@@ -3445,7 +3446,12 @@
       case 'carStart': Sfx.carStart(); if (!save.carTips) { save.carTips = 1; persist(); toast('🕹️ الجويستك: لفوك بنزين، لتحت فرامل وريوس، يمين ويسار دركسون · 🅿️ فرامل يد للتفحيط', 5200); } else toast('🚙 يلا!', 900); break;
       case 'carOff': break;
       case 'carCrash': Sfx.crash(a[0]); shake = Math.max(shake, Math.min(0.5, a[0] * 0.03)); if (a[0] > 13) toast('💥 ضربة قوية!', 1300); break;
-      case 'carLand': Sfx.thud(); shake = Math.max(shake, Math.min(0.4, a[0] * 0.03)); break;
+      case 'carLand': Sfx.thud(); shake = Math.max(shake, Math.min(0.4, a[0] * 0.03)); if (a[0] > 6) toast(a[0] > 9 ? '💥 نزلة قوية!' : '🦘 طيران!', 900); break;
+      // 🏁 وقت لفّة السفاري
+      case 'lapStart': Sfx.click(); toast(a[0] === 'reset' ? '🔁 لفّة جديدة — مرّ بالتفتيش 1، 2، 3 بالترتيب' : '🏁 بدت اللفّة! مرّ بالتفتيش 1، 2، 3 وارجع للقوس', 2200); WS.lapShow = 0; break;
+      case 'lapCp': Sfx.flag(); toast(`✅ تفتيش ${a[0]}/${a[2]} · ${lapFmt(a[1])}`, 1300); break;
+      case 'lapDone': { Sfx.mission(); const [tt, best, isBest] = a; toast(isBest ? `🏆 لفّة ${lapFmt(tt)} — أحسن وقت!` : `🏁 لفّة ${lapFmt(tt)} · الأحسن ${lapFmt(best)}`, 2800); WS.lapShow = 4; if (isBest) { save.safariBest = tt; persist(); } saveWorld(); break; }
+      case 'lapCancel': toast('⏱️ انلغت اللفّة (طلعت من المسار)', 1400); break;
       case 'carFlip': Sfx.thud(); toast('🔄 البكي انقلب… ورجع عدل', 2000); break;
       case 'carTow': toast('🛻 سحبنا البكي للكراج', 2200); break;
       case 'deepWater': toast('🌊 الماي غميج! البكي ما يعبر', 1800); break;
@@ -3712,6 +3718,7 @@
       g.fillStyle = 'rgba(90,55,32,.88)'; g.beginPath(); g.arc(x, y, 13 * f.d, 0, TAU); g.fill(); g.font = `${15 * f.d}px -apple-system,system-ui,sans-serif`; g.fillStyle = '#FFFFFF'; g.fillText(d.icon, x, y + 1);
     }
     { const b = WD.G.I.board, [x, y] = at(b.x, b.z); g.font = `${16 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText('📜', x - 14 * f.d, y - 12 * f.d); }
+    { const g0 = WD.G.I.safari.gates[0], [x, y] = at(g0.x, g0.z); g.font = `${16 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText('🏁', x, y - 10 * f.d); } // بداية السفاري
     { const gg = WD.G.I.garage, [x, y] = at(gg.x, gg.z); g.font = `${15 * f.d}px -apple-system,system-ui,sans-serif`; g.fillText('🔧', x, y); const c = WD.S.car; if (c && WD.S.hero.mode !== 'drive' && Math.hypot(c.x - gg.x, c.z - gg.z) > 15) { const [cx2, cy2] = at(c.x, c.z); g.fillText('🚙', cx2, cy2); } }
     const [px, py] = at(p.x, p.z);
     drawArrow(g, px, py, p.face, 11 * f.d, '#FFD23F');
@@ -3774,6 +3781,17 @@
     ctx.globalAlpha = 1;
   }
   /** 🏎️ عدّاد السرعة (كم/س) والدورة والگير */
+  const lapFmt = (t) => { const m = Math.floor(t / 60), sec = t - m * 60; return `${m}:${sec < 10 ? '0' : ''}${sec.toFixed(1)}`; };
+  /** ⏱️ وقت اللفّة فوك العداد: الوقت الحالي، نقطة التفتيش الجاية، وأحسن وقت */
+  function drawLap(L, dt) {
+    if (WS.lapShow > 0) WS.lapShow -= dt;
+    if (!L || (!L.on && !(WS.lapShow > 0))) return;
+    const t = L.on ? L.t : L.last || 0, cx = C.W / 2, y = 138, txt = `⏱️ ${lapFmt(t)}`, sub = L.on ? `تفتيش ${Math.min(L.next, 3)}/3${L.best ? ` · 🏆 ${lapFmt(L.best)}` : ''}` : L.best === L.last ? '🏆 أحسن وقت' : `🏆 ${lapFmt(L.best)}`;
+    ctx.save(); ctx.font = '900 22px -apple-system,system-ui,sans-serif'; const w = Math.max(ctx.measureText(txt).width, 120) + 34;
+    ctx.fillStyle = 'rgba(14,20,38,.72)'; rr(ctx, cx - w / 2, y - 22, w, 46, 14); ctx.fill(); ctx.strokeStyle = L.on ? 'rgba(255,210,63,.85)' : 'rgba(124,242,154,.9)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, cx, y - 5);
+    ctx.font = '800 11px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFD23F'; ctx.fillText(sub, cx, y + 13); ctx.restore();
+  }
   function drawSpeedo(car) {
     const cx = C.W / 2, cy = viewH - 74, R = 54, kmh = Math.abs(car.vf) * 3.6, a0 = Math.PI * 0.75, sweep = Math.PI * 1.5, max = 120;
     ctx.save();
@@ -3927,7 +3945,7 @@
     }
     drawUParts();
     const live = state === 'world' && !S3.scope && !m.mapOpen && !m.shopOpen && !m.boardOpen && ['walk', 'glide', 'fish', 'climb', 'drive'].includes(h.mode);
-    if (live) { if (h.mode === 'walk') drawThreats(t); drawCompass(); drawMinimap(); drawStatus(); drawAltitude(); drawJoystick(t, m); if (h.mode === 'drive') drawSpeedo(S3.car); }
+    if (live) { if (h.mode === 'walk') drawThreats(t); drawCompass(); drawMinimap(); drawStatus(); drawAltitude(); drawJoystick(t, m); if (h.mode === 'drive') { drawSpeedo(S3.car); drawLap(S3.lap, 1 / 60); } }
     if (m.hurtT > 0) { ctx.fillStyle = `rgba(255,30,30,${m.hurtT * 0.45})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
     if (m.fade > 0) { ctx.fillStyle = `rgba(${m.fadeCol},${m.fade})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
   }

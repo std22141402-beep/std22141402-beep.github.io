@@ -27,7 +27,11 @@ export const BUGGY = {
 const SURF = {
   plaza: [1.0, 0.015], path: [0.92, 0.03], pier: [0.9, 0.02], grass: [0.82, 0.045], forest: [0.78, 0.05], sand: [0.62, 0.085],
   rock: [0.88, 0.035], trail: [0.9, 0.03], snow: [0.5, 0.06], mud: [0.55, 0.11], water: [0.5, 0.14],
+  asphalt: [1.02, 0.013], pavers: [0.95, 0.017], cobble: [0.86, 0.024], // معبّد
+  track: [0.74, 0.05], dune: [0.6, 0.095], // 🏁 رمل مرصوص بالمسار، ورمل طري بالكثبان
 };
+/** أرض صلبة (بلا غبار، صوت تاير ناعم) */
+export const HARD = new Set(['plaza', 'asphalt', 'pavers', 'cobble', 'pier']);
 const g0 = 9.81;
 
 export function createBuggy(G, spawn) {
@@ -54,8 +58,13 @@ export function createBuggy(G, spawn) {
     const c = Math.cos(car.yaw), s = Math.sin(car.yaw);
     for (const w of wheels) {
       w.x = car.x + c * w.ox - s * w.oz; w.z = car.z + s * w.ox + c * w.oz;
-      w.g = G.H(w.x, w.z);
+      w.g = groundY(w.x, w.z);
     }
+  }
+  /** ارتفاع الأرض تحت التاير: الأرض أو سطح جسر/رصيف إذا السيارة فوكه (مو جوّه) */
+  function groundY(x, z) {
+    const g = G.H(x, z), pl = G.platAt ? G.platAt(x, z) : null;
+    return pl && pl.y > g && pl.y < car.y + 0.9 ? pl.y : g;
   }
   /** نوع الأرض تحت السيارة (كل 6 فريمات يكفي) */
   let kindT = 0;
@@ -63,7 +72,7 @@ export function createBuggy(G, spawn) {
     const gk = G.groundKind ? G.groundKind(car.x, car.z, car.y - B.rideY) : 'grass';
     const k = typeof gk === 'string' ? gk : (gk && gk.kind) || 'grass';
     car.kind = SURF[k] ? k : 'grass';
-    const w = G.water(car.x, car.z, G.H(car.x, car.z) + 0.05); car.depth = w ? Math.max(0, w.level - G.H(car.x, car.z)) : 0;
+    const gy = groundY(car.x, car.z), w = G.water(car.x, car.z, gy + 0.05); car.depth = w ? Math.max(0, w.level - gy) : 0;
     if (car.depth > 0.12) car.kind = 'water';
   }
   /** 🧭 خطوة فيزياء (dt ثابت 1/60، مقسومة لنصّين حتى النوابض تبقى ثابتة) */
@@ -141,7 +150,7 @@ export function createBuggy(G, spawn) {
       const latMax = (mu * g0 * grip * (car.hand ? 0.55 : 1) * dt) / nn;
       const vlBefore = vl;
       vl -= clamp(vl, -latMax, latMax);
-      car.slip = Math.abs(vl) * 0.8 + Math.abs(vlBefore) * 0.2 + (car.throttle > 0.6 && Math.abs(vf) < 5 && car.kind !== 'plaza' ? (1 - Math.abs(vf) / 5) * 2.5 * car.throttle : 0) + (car.hand && Math.abs(vf) > 3 ? 1.5 : 0) + (car.brake > 0.8 && Math.abs(vf) > 8 ? 1.2 : 0);
+      car.slip = Math.abs(vl) * 0.8 + Math.abs(vlBefore) * 0.2 + (car.throttle > 0.6 && Math.abs(vf) < 5 && !HARD.has(car.kind) ? (1 - Math.abs(vf) / 5) * 2.5 * car.throttle : 0) + (car.hand && Math.abs(vf) > 3 ? 1.5 : 0) + (car.brake > 0.8 && Math.abs(vf) > 8 ? 1.2 : 0);
       // الاتجاه: الدراجة المبسطة + حد التماسك (بالسرعة العالية ما يلف حاد = أندرستير)
       let wt = vf * Math.tan(car.steer) / B.WB;
       const wLim = (0.96 * mu * g0 * Math.max(grip, 0.5)) / (Math.max(Math.abs(vf), 2) * nn); // ما يطلب أكثر من تماسك التايرات → ما يتزحلق جانبي بلا سبب
@@ -164,7 +173,7 @@ export function createBuggy(G, spawn) {
     car.yaw += car.yawRate * dt; car.pitch += car.wp * dt; car.roll += car.wr * dt;
     // ---- ماي غميج: ما تعبره (المحرك يغرگ)
     {
-      const hd = G.water(car.x, car.z, G.H(car.x, car.z) + 0.05), dd = hd ? hd.level - G.H(car.x, car.z) : 0;
+      const gy = groundY(car.x, car.z), hd = G.water(car.x, car.z, gy + 0.05), dd = hd ? hd.level - gy : 0;
       // يرجع إذا الخطوة تغمّگه أكثر من 75 سم (ويكدر يطلع لمكان أضحل)
       if (dd > 0.75 && dd > car.depth) { car.x = ox; car.z = oz; const vin = car.vx * car.vx + car.vz * car.vz; car.vx *= -0.2; car.vz *= -0.2; if (vin > 4 && car.deepT <= 0) { ev.push(['deepWater']); car.deepT = 3; } }
     }

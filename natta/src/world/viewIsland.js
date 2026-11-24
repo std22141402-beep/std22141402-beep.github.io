@@ -30,8 +30,17 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
     const wd = Math.hypot(x + 1500, z + 1650); if (wd < 520) { mixK(K3, '#D2AE52', '#E6CB72', vnoise(x * 0.5, 0) * 0.5 + 0.5 * Math.sin(x * 0.9 + z * 0.15) ** 2); out.lerp(K3, smooth(520, 380, wd) * 0.85); } // سهل السنابل
     if (s < 160 && a < 4.5) out.lerp(K3.set('#E4D3A0'), smooth(4.5, 1.6, a));
     if (sl > 0.72) { const dark = I.peaks.some((p) => p.dark && Math.hypot(x - p.x, z - p.z) < p.r); mixK(K3, dark ? '#3E3A37' : '#6C665C', dark ? '#6A645E' : '#ADA595', vnoise(x * 0.2, y * 0.6)); out.lerp(K3, smooth(0.72, 1.1, sl)); }
+    { // 🏁 الكثبان: رمل دافي، القمم أفتح والوديان أغمق، والمسار مرصوص بآثار تايرات
+      const fk = I.safari.fieldK(x, z, s);
+      if (fk > 0.02) {
+        const sh = I.safari.shadeAt(x, z, s); // القمم والوجه اللي يقابل البحر مضوّية، ووجه الانزلاق مظلّل
+        mixK(K3, '#A97A40', '#EAD09A', clamp(0.5 + sh * 0.48 + (vnoise(x * 0.35, z * 0.35) - 0.5) * 0.16, 0, 1)); out.lerp(K3, smooth(0.02, 0.4, fk));
+        const tq = I.safari.nearTrack(x, z); if (tq && tq.d < I.safari.hw + 1.5) out.lerp(K3.set(vnoise(x * 0.8, z * 0.8) > 0.55 ? '#B58F5C' : '#C4A06A'), smooth(I.safari.hw + 1.5, I.safari.hw - 0.5, tq.d) * 0.85);
+      }
+    }
+    { const pv = I.nearPaved(x, z); if (pv && pv.d < pv.hw + 1.4) out.lerp(K3.set(pv.style === 'pavers' ? '#B59C80' : pv.style === 'cobble' ? '#6A645C' : '#56585B'), smooth(pv.hw + 1.4, pv.hw, pv.d)); } // من بعيد: لون الطريق المعبّد
     if (lod > 0) {
-      const rd = I.nearRoad(x, z); if (rd && rd.d < rd.hw + 1.2) out.lerp(K3.set(lod > 1 ? '#A88A5E' : '#9E8A62'), smooth(rd.hw + 1.2, rd.hw - 0.3, rd.d) * 0.9);
+      const rd = I.nearDirt(x, z); if (rd && rd.d < rd.hw + 1.2) out.lerp(K3.set(lod > 1 ? '#A88A5E' : '#9E8A62'), smooth(rd.hw + 1.2, rd.hw - 0.3, rd.d) * 0.9);
       const rv = I.nearRiver(x, z); if (rv && rv.d < rv.w + 2.5) out.lerp(K3.set('#857A55'), smooth(rv.w + 2.5, rv.w, rv.d) * 0.7);
     }
     return out;
@@ -211,7 +220,8 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
     for (let k = 0; k < GRASS_N * 1.6 && n < GRASS_N; k++) {
       const a = r() * TAU, d = Math.sqrt(r()) * 42, x = Math.round((hx + Math.cos(a) * d) * 4) / 4, z = Math.round((hz + Math.sin(a) * d) * 4) / 4;
       const y = G.H(x, z), alt = y - SEA; if (alt < 0.6 || (alt < 4 && I.coastS(x, z) < 160) || I.reserved(x, z)) continue;
-      const rd = I.nearRoad(x, z); if (rd && rd.d < rd.hw + 0.4) continue;
+      const rd = I.nearRoad(x, z); if (rd && rd.d < rd.hw + (rd.road.paved ? 1.5 : 0.4)) continue;
+      if (I.safari.fieldK(x, z, 120) > 0.2) continue; // ماكو عشب بالكثبان
       if (M.rad(x, z) < 250) { const q = M.nearest(x, z, y, 1); if (M.rad(x, z) < M.RP + 1 || (q && q.d < q.p.hw + 0.3)) continue; }
       const rv = I.nearRiver(x, z); if (rv && rv.d < rv.w + 0.5) continue;
       o3.position.set(x, y, z); o3.rotation.set(0, hash2(x, z) * TAU, 0); o3.scale.setScalar(1.0 + hash2(z, x) * 0.75); // عشب حقيقي 35–60 سم o3.updateMatrix(); grass.setMatrixAt(n++, o3.matrix);
@@ -550,6 +560,7 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
     for (const rd of I.roads) { o.strokeStyle = 'rgba(120,80,40,.85)'; o.lineWidth = size / 520; o.setLineDash([size / 260, size / 400]); o.beginPath(); rd.pts.forEach((p, i) => { const [u, v] = P(p.x, p.z); i ? o.lineTo(u, v) : o.moveTo(u, v); }); o.stroke(); }
     o.setLineDash([]);
     for (const rv of I.rivers) { o.strokeStyle = '#3F93C8'; o.lineWidth = size / 340; o.beginPath(); rv.pts.forEach((p, i) => { const [u, v] = P(p.x, p.z); i ? o.lineTo(u, v) : o.moveTo(u, v); }); o.stroke(); }
+    if (api.mapExtra) api.mapExtra(o, P, size); // 🛣️ الطرق المعبّدة ومسار السفاري
     for (const st2 of I.sites) if (['house', 'hut', 'reedhut', 'mudhif', 'teahouse', 'lighthouse'].includes(st2.kind)) { const [u, v] = P(st2.x, st2.z); o.fillStyle = '#7A4A2A'; o.fillRect(u - 1.5, v - 1.5, 3, 3); }
     mapCanvas = out;
     return { canvas: out, x0: -HALF, x1: HALF, z0: -HALF, z1: HALF };
@@ -581,5 +592,6 @@ export function createIslandView({ scene, G, U, camera, waterN, glowTex, colorBa
     updateVeg(x, z, 1e9, 0); refill(x, z); grassAt = null; updateGrass(x, z);
   }
   const pending = () => want.length + (mapRow < MAPN ? 1 : 0);
-  return { update, warm, colorIsland, mapShot, pending, buildSome, selectTerrain, tiles, refill, nearChunks, mid, far, sea, mapRows };
+  const api = { update, warm, colorIsland, mapShot, pending, buildSome, selectTerrain, tiles, refill, nearChunks, mid, far, sea, mapRows, mapExtra: null };
+  return api;
 }

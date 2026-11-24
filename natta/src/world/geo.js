@@ -292,7 +292,7 @@ export function buildGeo(map = NATTA_ISLAND) {
   function H(x, z) {
     const r = M.rad(x, z);
     let h = r < 245 ? (r > 200 ? lerp(M.H(x, z), plains(x, z), smooth(200, 245, r)) : M.H(x, z)) : plains(x, z);
-    const v = V.Hv(x, z); if (v < h) h = v;
+    const v = V.Hv(x, z); if (v < h) { const pv = I.nearPaved(x, z); h = pv && pv.d < pv.hw + 6 ? lerp(h, v, smooth(pv.hw + 1.5, pv.hw + 6, pv.d)) : v; } // الوادي ما يحفر تحت الطريق المعبّد
     return h;
   }
   const slope = (x, z) => Math.hypot(H(x + 0.4, z) - H(x - 0.4, z), H(x, z + 0.4) - H(x, z - 0.4)) / 0.8;
@@ -361,6 +361,16 @@ export function buildGeo(map = NATTA_ISLAND) {
     else if (k === 'gate') for (const sd of [-1, 1]) addColl({ x: st.x - Math.sin(rot) * sd * 4.6, z: st.z + Math.cos(rot) * sd * 4.6, r: 0.55, tall: 1 });
     else if (k === 'pier') { const lake = st.lake ? I.lakes[0] : null, y = lake ? SEA + lake.lv + 0.55 : SEA + 0.95; const pl = { x: st.x, z: st.z, c: Math.cos(rot), s: Math.sin(rot), hw: st.w / 2, hd: st.d / 2, y }; st.y = y; plats.push(pl); const ext = Math.max(st.w, st.d) / 2 + 1; platGrid.addArea(pl, st.x - ext, st.z - ext, st.x + ext, st.z + ext); }
   }
+  // 🌉 جسور الطرق المعبّدة: سطح مستوي فوك النهر (والنهر يمشي جوّه)، وسياج على الجنبين
+  for (const br of I.bridges) {
+    const y = SEA + br.y, pl = { x: br.x, z: br.z, c: br.c, s: br.s, hw: br.half, hd: br.hw + 0.55, y, bridge: true }; plats.push(pl); const ext = br.half + br.hw + 2; platGrid.addArea(pl, br.x - ext, br.z - ext, br.x + ext, br.z + ext);
+    for (const sd of [-1, 1]) addBox({ x: br.x - br.s * sd * (br.hw + 0.75), z: br.z + br.c * sd * (br.hw + 0.75), hw: br.half - 0.5, hd: 0.14, rot: Math.atan2(br.s, br.c), h: 1.1 });
+  }
+  // 🏁 السفاري: جدار التايرات وأعمدة قوس البداية (الأعلام مرنة: تنطوي، ما توكّف)
+  { const SF = I.safari; for (const t of SF.furn.tires) addColl({ x: t.x, z: t.z, r: 0.5 }); const g0 = SF.furn.gates[0]; for (const sd of [-1, 1]) addColl({ x: g0.x - g0.dz * sd * (SF.hw + 1.4), z: g0.z + g0.dx * sd * (SF.hw + 1.4), r: 0.45, tall: 1 }); }
+  // 🪧 لوحات الطرق: عمود رفيع
+  for (const sg of I.signs) addColl({ x: sg.px, z: sg.pz, r: 0.14 });
+  for (const w of I.welcome) for (const sd of [-1, 1]) addColl({ x: w.px - w.dz * sd * 1.2, z: w.pz + w.dx * sd * 1.2, r: 0.1 }); // عمودين على عرض اللوحة
   /** نطلّع الأرصفة: إذا داخل الرصيف يرجّع ارتفاعه */
   function platAt(x, z) { let hit = null; platGrid.each(x, z, 0, (p) => { const dx = x - p.x, dz = z - p.z; if (Math.abs(dx * p.c + dz * p.s) < p.hw + 0.05 && Math.abs(-dx * p.s + dz * p.c) < p.hd) hit = p; }); return hit; }
 
@@ -462,10 +472,14 @@ export function buildGeo(map = NATTA_ISLAND) {
     if (r < 200) { const q = M.nearest(x, z, y, 1); if (q && q.d < q.p.hw) return q.p.kind === 'stones' ? 'trail' : q.p.kind; }
     const [lx, lz] = V.toL(x, z); if (lx > -2 && lx < V.VL + 2 && Math.abs(lz) < V.FLOOR + 1) return 'grass';
     if (r > 245) {
-      const a = y - SEA, rd = I.nearRoad(x, z);
+      const a = y - SEA, pv = I.nearPaved(x, z);
+      if (pv && pv.d < pv.hw + 0.35 && Math.abs(pv.a + SEA - y) < 1.2) return pv.style; // إسفلت / بلاط / حجر
+      const pl = platAt(x, z); if (pl && pl.bridge && Math.abs(pl.y - y) < 0.6) return 'asphalt';
+      const rd = I.nearDirt(x, z);
       if (rd && rd.d < rd.hw + 0.3) return 'trail';
       if (Math.hypot(x - I.fajr.x, z - I.fajr.z) < 50 || I.paved(x, z)) return 'plaza';
-      if (a < 3.5 && I.coastS(x, z) < 150) return 'sand';
+      const cs = I.coastS(x, z), sk = I.safari.kindAt(x, z, cs); if (sk) return sk; // 🏁 مسار السفاري (رمل مرصوص) والكثبان (رمل طري)
+      if (a < 3.5 && cs < 150) return 'sand';
     }
     if (slope(x, z) > 0.85) return 'rock';
     return forestAt(x, z) > 0.55 ? 'forest' : 'grass';

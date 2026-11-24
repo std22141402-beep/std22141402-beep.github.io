@@ -12,8 +12,10 @@ import {
   phong, shadowAll, makeSky, glowTexture, waterNormalTexture, swayMat, seeThroughMat, palmGeo, treeGeo, bushGeo, rockGeo, reedGeo, tuftGeo, makeHuman, makeMan,
 } from '../lib3d.js';
 import { createIslandView } from './viewIsland.js';
+import { createRoadsView } from './viewRoads.js';
 import { createHeroAnimator } from './heroAnim.js';
 import { makeBuggy } from './buggyModel.js';
+import { HARD } from './vehicle.js';
 
 const D2R = Math.PI / 180;
 
@@ -188,6 +190,7 @@ export function createView(cfg, G, sim) {
     for (let i = 0; i < 46; i++) { const a = R() * TAU, r = 600 + R() * 6200, sp = new Sprite(new SpriteMaterial({ map: ctex, transparent: true, opacity: 0.45 + R() * 0.35, depthWrite: false, fog: false })); const w = 380 + R() * 520; sp.scale.set(w, w * 0.38, 1); sp.position.set(Math.cos(a) * r, G.SEA + 1400 + R() * 800, Math.sin(a) * r); clouds.add(sp); } // غيوم حقيقية (1.4–2.2 كم فوك البحر)
   }
   IV = createIslandView({ scene, G, U, camera, waterN, glowTex, colorBase: colorAt, S });
+  const RV = createRoadsView({ scene, G }); IV.mapExtra = RV.drawMap; // 🛣️ الطرق المعبّدة والسفاري
   // ================================================================ الجسور، الحجار، الدرج، اللافتات، الاستراحات، صخور الجرف، الجذوع
   const signTex = (text, w = 256, h = 64, size = 34) => canvasTex(w, h, (g) => { g.fillStyle = '#8B5A2B'; g.fillRect(0, 0, w, h); g.strokeStyle = '#E8C170'; g.lineWidth = Math.max(4, h / 16); g.strokeRect(4, 4, w - 8, h - 8); g.fillStyle = '#FFF3D6'; g.font = `900 ${size}px -apple-system, "Geeza Pro", system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; try { g.direction = 'rtl'; } catch (e) { /* */ } g.fillText(text, w / 2, h / 2 + 2); });
   const flags = new Map();
@@ -438,7 +441,7 @@ export function createView(cfg, G, sim) {
   const dustTex = glowTex, dust = [];
   for (let i = 0; i < 130; i++) { const sp = new Sprite(new SpriteMaterial({ map: dustTex, color: '#D9C49A', transparent: true, opacity: 0, depthWrite: false })); sp.visible = false; scene.add(sp); dust.push({ sp, t: 1, life: 1, vx: 0, vy: 0, vz: 0, s0: 1 }); }
   let dustI = 0, dustAcc = 0;
-  const DUSTC = { sand: '#DCC79C', grass: '#A9A07A', forest: '#8F8466', trail: '#C2A985', path: '#C2A985', rock: '#B5ADA0', water: '#E8F4FF', plaza: '#C9C4BA', mud: '#7A6248' };
+  const DUSTC = { dune: '#E3CC98', track: '#D2B883', sand: '#DCC79C', grass: '#A9A07A', forest: '#8F8466', trail: '#C2A985', path: '#C2A985', rock: '#B5ADA0', water: '#E8F4FF', plaza: '#C9C4BA', mud: '#7A6248' };
   function spawnDust(x, y, z, kind, k, vx, vz) { const d = dust[dustI++ % dust.length]; d.sp.visible = true; d.sp.material.color.set(DUSTC[kind] || '#C2A985'); d.sp.position.set(x, y, z); d.t = 0; d.life = 1.1 + Math.random() * 1.5 * k; d.vx = vx * 0.12 + (Math.random() - 0.5) * 1.8; d.vz = vz * 0.12 + (Math.random() - 0.5) * 1.8; d.vy = 0.5 + Math.random() * 1.2; d.s0 = 0.55 + k * 1.05; d.a0 = kind === 'water' ? 0.75 : 0.32 + 0.26 * k; } // الغبار يعلگ بالهوا وتسحبه السيارة شوية وراها، فيطلع عمود ورا البكي
   const _sw = new Vector3();
   function animateCar(t, dt) {
@@ -448,8 +451,8 @@ export function createView(cfg, G, sim) {
     BG.update(car, t, dt);
     // غبار من التايرات الورا (والرمل يطيّر أكثر)، ورشّ ماي بالمخاضات
     const v = Math.hypot(car.vx, car.vz), k = clamp((v - 2.5) / 14, 0, 1) + clamp(car.slip / 3, 0, 1);
-    if (!car.air && (k > 0.05) && car.kind !== 'plaza') {
-      dustAcc += dt * ({ sand: 56, water: 40, trail: 46, path: 46, mud: 22, rock: 16, grass: 12, forest: 14 }[car.kind] || 20) * Math.min(1.3, k); // التراب والرمل يغبّرون هواية، العشب شوية
+    if (!car.air && (k > 0.05) && !HARD.has(car.kind)) {
+      dustAcc += dt * ({ sand: 56, dune: 62, track: 54, water: 40, trail: 46, path: 46, mud: 22, rock: 16, grass: 12, forest: 14 }[car.kind] || 20) * Math.min(1.3, k); // التراب والرمل يغبّرون هواية، العشب شوية
       while (dustAcc > 1) { dustAcc -= 1; const w = car.wheels[2 + (dustI & 1)]; spawnDust(w.x - Math.cos(car.yaw) * 0.3, w.g + 0.15, w.z - Math.sin(car.yaw) * 0.3, car.kind, Math.min(1, k), car.vx, car.vz); }
     }
     for (const d of dust) { if (!d.sp.visible) continue; d.t += dt; const q = d.t / d.life; if (q >= 1) { d.sp.visible = false; continue; } d.sp.position.x += d.vx * dt; d.sp.position.y += d.vy * dt; d.sp.position.z += d.vz * dt; d.vy *= 1 - 0.8 * dt; d.sp.scale.setScalar(d.s0 * (0.6 + q * 3.2)); d.vx *= 1 - 1.4 * dt; d.vz *= 1 - 1.4 * dt; d.sp.material.opacity = d.a0 * (1 - q) * Math.min(1, q * 6); }
@@ -690,7 +693,7 @@ export function createView(cfg, G, sim) {
       const d2 = (c.x - cx) ** 2 + (c.z - cz) ** 2, far = c.small ? c.far : c.far + bonus, vis = d2 < far * far;
       if (c.lo) { const near = d2 < c.lodAt * c.lodAt && !S.scope; c.m.visible = vis && near; c.lo.visible = vis && !near; } else c.m.visible = vis;
     }
-    IV.update(t, dt, camera.position, e, opts.budget != null ? opts.budget : 6);
+    IV.update(t, dt, camera.position, e, opts.budget != null ? opts.budget : 6); RV.update(camera.position);
     const sx = Math.round(e.x / 0.25) * 0.25, sz = Math.round(e.z / 0.25) * 0.25;
     sun.target.position.set(sx, e.y, sz); sun.position.set(sx + SUN.x * 90, e.y + SUN.y * 90, sz + SUN.z * 90);
     updateSee(e);

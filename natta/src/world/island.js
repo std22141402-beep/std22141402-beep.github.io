@@ -3,6 +3,9 @@
 // الإحداثيات بالأمتار: +x = الشمال، +z = الشرق. البحر عند y = SEA، فالارتفاع فوك البحر = y − SEA.
 // قمة «جبل الهيبة» (مخروط الجبل القديم بطرقه وتحدياته) قاعدتها عند y = −14، يعني ~286 م فوك البحر، والقمة ~395 م.
 import { clamp, lerp, smooth, rng, vnoise, fbm, angDiff } from '../lib3d.js';
+import { segIndex, segDist, mkSeg, resample } from './geom2d.js';
+import { createSafari } from './safari.js';
+import { ROAD_NET } from './roadNet.js';
 
 export const NATTA_ISLAND = {
   id: 'natta-island', name: 'جزيرة نطّة', half: 4330, seed: 7531, sea: -300,
@@ -13,40 +16,6 @@ export const NATTA_ISLAND = {
 const gauss = (d, w) => Math.exp(-(d * d) / (w * w));
 const smax = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.max(a, b) + h * h * k * 0.25; };
 const smin = (a, b, k) => -smax(-a, -b, k);
-
-/** فهرس مكاني للقطع المستقيمة (طرق، أنهار) حتى نلگه الأقرب بسرعة */
-function segIndex(cell) {
-  const m = new Map(), key = (i, j) => i * 100003 + j;
-  return {
-    add(s, pad) {
-      const i0 = Math.floor((Math.min(s.ax, s.bx) - pad) / cell), i1 = Math.floor((Math.max(s.ax, s.bx) + pad) / cell);
-      const j0 = Math.floor((Math.min(s.az, s.bz) - pad) / cell), j1 = Math.floor((Math.max(s.az, s.bz) + pad) / cell);
-      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const k = key(i, j); let l = m.get(k); if (!l) { l = []; m.set(k, l); } l.push(s); }
-    },
-    at(x, z) { return m.get(key(Math.floor(x / cell), Math.floor(z / cell))); },
-  };
-}
-/** أقرب نقطة على قطعة: يرجّع المسافة والنسبة */
-function segDist(s, x, z, out) {
-  const t = clamp(((x - s.ax) * s.dx + (z - s.az) * s.dz) * s.il2, 0, 1), px = s.ax + s.dx * t, pz = s.az + s.dz * t;
-  out.d = Math.hypot(x - px, z - pz); out.t = t; return out;
-}
-const mkSeg = (a, b, extra) => { const dx = b.x - a.x, dz = b.z - a.z; return { ax: a.x, az: a.z, bx: b.x, bz: b.z, dx, dz, il2: 1 / Math.max(1e-6, dx * dx + dz * dz), a, b, ...extra }; };
-/** نعيد أخذ عيّنات من مسار بمسافات متساوية (ونليّنه) */
-function resample(way, step) {
-  const pts = [];
-  for (let k = 0; k < way.length - 1; k++) {
-    const p0 = way[Math.max(0, k - 1)], p1 = way[k], p2 = way[k + 1], p3 = way[Math.min(way.length - 1, k + 2)];
-    const L = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]), n = Math.max(1, Math.round(L / step));
-    for (let i = 0; i < n; i++) { // كاتمل-روم حتى المنعطفات تصير ناعمة
-      const t = i / n, t2 = t * t, t3 = t2 * t;
-      const f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
-      pts.push({ x: f(p0[0], p1[0], p2[0], p3[0]), z: f(p0[1], p1[1], p2[1], p3[1]) });
-    }
-  }
-  const e = way[way.length - 1]; pts.push({ x: e[0], z: e[1] });
-  return pts;
-}
 
 export function buildIsland(def, M, valleyDef) {
   const SEA = def.sea ?? -300, HALF = def.half || 4330, MX = M.x, MZ = M.z, R = rng(def.seed || 7);
@@ -130,8 +99,10 @@ export function buildIsland(def, M, valleyDef) {
       if (d < ISLET.r * 1.6) a = Math.max(a, 13 * Math.pow(clamp(1 - d / ISLET.r, 0, 1), 1.2) * (0.8 + 0.4 * fbm(x * 0.02, z * 0.02)) - 1.2);
       const q = segDist(ISLET.bar, x, z, _sd); if (q.d < 40) a = Math.max(a, -0.5 + (fbm(x * 0.02, z * 0.02) - 0.5) * 0.5 - smooth(18, 40, q.d) * 3);
     }
+    if (SAFARI) a = SAFARI.terrain(x, z, a, s); // 🏁 كثبان سفاري اللؤلؤ ومسارها
     return a;
   }
+  let SAFARI = null;
   const _sd = { d: 0, t: 0 };
 
   /** نلگه الساحل على اتجاه معيّن (نمشي من الجبل لبرّه) */
@@ -140,6 +111,7 @@ export function buildIsland(def, M, valleyDef) {
     while (r < HALF && coastS(MX + c * r, MZ + s * r) > 0) r += 12;
     return { r, x: MX + c * r, z: MZ + s * r, c, s };
   }
+  SAFARI = createSafari({ shoreAt }); SAFARI.bake(coastS); // 🏁 الكثبان ورا شاطئ اللؤلؤ (لازم قبل أي ارتفاع)
   const at = (sh, back, side = 0) => ({ x: sh.x - sh.c * back - sh.s * side, z: sh.z - sh.s * back + sh.c * side });
   { // جزيرة الطيور: مقابل الساحل الجنوبي الشرقي، تمشي لها بالماي الضحل
     const th = 2.29, sh = shoreAt(th), ix = MX + Math.cos(th) * (sh.r + 330), iz = MZ + Math.sin(th) * (sh.r + 330);
@@ -188,24 +160,95 @@ export function buildIsland(def, M, valleyDef) {
     { name: 'درب الهضبة', hw: 1.3, way: [[-1300, 1700], [-1000 + Math.cos(-2.2) * 900, 2500 + Math.sin(-2.2) * 900], [PLATEAU.x, PLATEAU.z]] },
     { name: 'درب الشلال', hw: 1.4, way: [[MX + 197, MZ + 197], [480, 600], [700, 1150], [560, 1780], [650, 2400], [GULLS.x - 120, GULLS.z - 200], P(GULLS)] },
   ];
-  const roads = [], rIdx = segIndex(48);
+  // ================================================================ 🛣️ الطرق المعبّدة (مخطّطة مسبقاً بـ tools/plan-roads.mjs على الأرض الحقيقية)
+  // كل طريق: نقاط كل 10 م بيها ارتفاع السطح بعد الحفر والردم → نليّنها كل 4 م. النوع حسب المنطقة:
+  //   إسفلت (الدائري والفرعية)، بلاط متداخل (الساحة، القرية، المنارة، الشوارع)، حجر بازلت (الحصن، الحطّابين، الهضبة)، وجسر ترابي بالهور
+  const PAVED = [], BRIDGES = [], CULVERTS = [], SIGNS = [], WELCOME = [];
+  const pIdxR = segIndex(32);
+  const STYLE_AT = (x, z, cls) => {
+    const near = (p, r) => Math.hypot(x - p.x, z - p.z) < r;
+    if (cls === 'street') return 'pavers';
+    if (near(VILLAGE, VILLAGE.r + 40) || near(FAJR, 150) || near(LIGHT, 140)) return 'pavers';
+    if (near(FORT, 230) || near(HUTS, 130) || near(PLATEAU, PLATEAU.r * 0.92)) return 'cobble';
+    return 'asphalt';
+  };
+  if (!globalThis.NATTA_PLAN) {
+    for (const rd of ROAD_NET.roads) {
+      const way = []; for (let k = 0; k < rd.pts.length; k += 3) way.push([rd.pts[k], rd.pts[k + 1], rd.pts[k + 2]]);
+      const pts = resample(way, 4, rd.closed);
+      const road = { name: rd.name, cls: rd.cls, hw: rd.hw, closed: rd.closed, paved: true, pts };
+      for (const p of pts) { p.style = STYLE_AT(p.x, p.z, rd.cls); p.causeway = Math.hypot(p.x - MARSH.x, p.z - MARSH.z) < MARSH.r * 0.75; }
+      PAVED.push(road);
+      const n = pts.length;
+      for (let i = 0; i < (rd.closed ? n : n - 1); i++) pIdxR.add(mkSeg(pts[i], pts[(i + 1) % n], { road, i }), rd.hw + 18);
+    }
+    for (const b of ROAD_NET.bridges) { const road = PAVED[b.road]; BRIDGES.push({ ...b, hw: road.hw, c: b.dx, s: b.dz, y: b.deck, name: road.name }); }
+    CULVERTS.push(...ROAD_NET.culverts.map((c) => ({ ...c, hw: PAVED[c.road].hw })));
+    // لوحة الاتجاهات بالتقاطع: على الزاوية الفاضية (بنص أوسع فراغ بين الفروع)، مو بنص الشارع
+    for (const sg of ROAD_NET.signs) {
+      const an = sg.arms.map((a) => a.ang).sort((p, q) => p - q); let gap = -1, mid = 0;
+      an.forEach((a0, i) => { const a1 = i === an.length - 1 ? an[0] + Math.PI * 2 : an[i + 1]; if (a1 - a0 > gap) { gap = a1 - a0; mid = (a0 + a1) / 2; } });
+      if (an.length === 2 && gap > Math.PI * 1.6) mid += Math.PI; // فرعين متقابلين: نطلع على الجنب
+      const off = 7.5; SIGNS.push({ ...sg, px: sg.x + Math.cos(mid) * off, pz: sg.z + Math.sin(mid) * off });
+    }
+    WELCOME.push(...ROAD_NET.welcome.map((w) => ({ ...w, px: w.x - w.dz * (w.hw + 2.2), pz: w.z + w.dx * (w.hw + 2.2) }))); // يمين الشارع، قبال الجاي
+  }
+  const inBridge = (x, z, extra = 0) => BRIDGES.find((b) => { const dx = x - b.x, dz = z - b.z; return Math.abs(dx * b.c + dz * b.s) < b.half + extra && Math.abs(-dx * b.s + dz * b.c) < b.hw + 3; });
+  const _pq2 = { d: 0, t: 0 };
+  /** أقرب طريق معبّد: المسافة، ارتفاع السطح، نص العرض، النوع */
+  function nearPaved(x, z) {
+    const l = pIdxR.at(x, z); if (!l) return null;
+    let best = null, bd = 1e9, bt = 0;
+    for (const sg of l) { segDist(sg, x, z, _pq2); if (_pq2.d < bd) { bd = _pq2.d; best = sg; bt = _pq2.t; } }
+    if (!best) return null;
+    return { d: bd, a: lerp(best.a.a, best.b.a, bt), hw: best.road.hw, road: best.road, style: best.a.style, causeway: best.a.causeway, i: best.i, t: bt };
+  }
+  const _pr = [], _pd = [], _pa = [], RANK = { hwy: 3, road: 2, street: 1 };
+  /** الأرض تحت الطريق المعبّد وجنبه: السطح مستوي، والكتف (حفر أو ردم) ينزل/يصعد للأرض بميل ~1:1.3. التقاطعات تتمازج */
+  function pavedA(x, z, a) {
+    const l = pIdxR.at(x, z); if (!l) return a;
+    let n = 0;
+    for (const sg of l) {
+      segDist(sg, x, z, _pq2); const r = sg.road; let k = _pr.indexOf(r, 0); if (k >= n || k < 0) { k = n++; _pr[k] = r; _pd[k] = 1e9; }
+      if (_pq2.d < _pd[k]) { _pd[k] = _pq2.d; _pa[k] = lerp(sg.a.a, sg.b.a, _pq2.t); }
+    }
+    let wsum = 0, asum = 0, wmax = 0, top = -1, topRank = -1;
+    for (let k = 0; k < n; k++) {
+      const r = _pr[k], band = r.hw + 0.9, D = Math.abs(_pa[k] - a), sh = 2.5 + 1.3 * D, d = _pd[k];
+      if (d >= band + sh) continue;
+      const w = 1 - smooth(band, band + sh, d); wsum += w; asum += w * _pa[k]; if (w > wmax) wmax = w;
+      if (d < band && RANK[r.cls] > topRank) { topRank = RANK[r.cls]; top = k; } // جوّه سطح طريق: الأعلى درجة يحكم (التقاطع ما يتخسّف)
+    }
+    const at = top >= 0 ? _pa[top] : 0; _pr.length = 0;
+    if (!wsum || inBridge(x, z)) return a; // تحت الجسر: النهر يبقى
+    return top >= 0 ? at : lerp(a, asum / wsum, wmax);
+  }
+
+  // ================================================================ الطرق الترابية (تربط المناطق، وتتسوّى بيها الأرض) — اللي صار معبّد ينشال
+  const roads = [], rIdx = segIndex(48), rIdxAll = segIndex(48); // rIdxAll = كل الطرق الترابية قبل التقطيع (الأنهار تنحسب عليها، حتى تبقى نفس اللي خطّط عليها المخطّط)
   for (const rd of ROAD_DEFS) {
     const pts = resample(rd.way, 5);
     for (const p of pts) p.a0 = siteA(p.x, p.z, baseA(p.x, p.z));
     for (let i = 0; i < pts.length; i++) { let s = 0, n = 0; for (let k = -6; k <= 6; k++) { const q = pts[clamp(i + k, 0, pts.length - 1)]; s += q.a0; n++; } pts[i].a = Math.max(s / n, 0.6); }
-    const road = { name: rd.name, hw: rd.hw, pts };
-    roads.push(road);
-    for (let i = 0; i < pts.length - 1; i++) rIdx.add(mkSeg(pts[i], pts[i + 1], { road }), rd.hw + 8);
+    { const whole = { name: rd.name, hw: rd.hw, pts }; for (let i = 0; i < pts.length - 1; i++) rIdxAll.add(mkSeg(pts[i], pts[i + 1], { road: whole }), rd.hw + 8); }
+    // نقطّعه: نشيل كل جزء قريب من طريق معبّد (صار مبلّط أو يعبره)
+    const keep = pts.map((p) => { const q = nearPaved(p.x, p.z); return !(q && q.d < q.hw + 10); });
+    let run = [];
+    const flush = () => { if (run.length >= 8) { const road = { name: rd.name, hw: rd.hw, pts: run }; roads.push(road); for (let i = 0; i < run.length - 1; i++) rIdx.add(mkSeg(run[i], run[i + 1], { road }), rd.hw + 8); } run = []; };
+    pts.forEach((p, i) => { if (keep[i]) run.push(p); else flush(); }); flush();
   }
   const _q = { d: 0, t: 0 };
-  /** أقرب طريق: المسافة وارتفاع الطريق (فوك البحر) */
-  function nearRoad(x, z) {
+  /** أقرب طريق ترابي: المسافة وارتفاع الطريق (فوك البحر) */
+  function nearDirt(x, z) {
     const l = rIdx.at(x, z); if (!l) return null;
     let best = null, bd = 1e9, bt = 0;
     for (const s of l) { segDist(s, x, z, _q); if (_q.d < bd) { bd = _q.d; best = s; bt = _q.t; } }
     return best ? { d: bd, a: lerp(best.a.a, best.b.a, bt), hw: best.road.hw, road: best.road } : null;
   }
-  function roadA(x, z, a) { const r = nearRoad(x, z); if (r && r.d < r.hw + 6) a = lerp(r.a, a, smooth(r.hw + 0.3, r.hw + 6, r.d)); return a; }
+  /** أقرب طريق (ترابي أو معبّد) */
+  function nearRoad(x, z) { const a = nearDirt(x, z), b = nearPaved(x, z); if (!a) return b; if (!b) return a; return b.d - b.hw < a.d - a.hw ? b : a; }
+  function roadA(x, z, a) { const r = nearDirt(x, z); if (r && r.d < r.hw + 6) a = lerp(r.a, a, smooth(r.hw + 0.3, r.hw + 6, r.d)); return a; }
+  function roadAllA(x, z, a) { const l = rIdxAll.at(x, z); if (!l) return a; let best = null, bd = 1e9, bt = 0; for (const sg of l) { segDist(sg, x, z, _q); if (_q.d < bd) { bd = _q.d; best = sg; bt = _q.t; } } if (best && bd < best.road.hw + 6) a = lerp(lerp(best.a.a, best.b.a, bt), a, smooth(best.road.hw + 0.3, best.road.hw + 6, bd)); return a; }
 
   // ================================================================ الأنهار (من نبع بالجبل للبحر) والشلال
   const SCARP = { x: 590, z: 1950, nx: 0.17, nz: -0.985, len: 300, h: 16 }; // جرف شلال المرايا (عكس اتجاه الماي)
@@ -216,7 +259,7 @@ export function buildIsland(def, M, valleyDef) {
     { id: 'dates', name: 'ساقية الرطب', w0: 1.2, w1: 2.4, depth: 0.7, way: [[640, 320], [900, 480], [1250, 560], [GROVES.x + 100, GROVES.z - 40], [shBay.x + 60, 560]] },
   ];
   const rivers = [], wIdx = segIndex(64), falls = [];
-  const preRiver = (x, z) => roadA(x, z, siteA(x, z, baseA(x, z) + scarpA(x, z)));
+  const preRiver = (x, z) => roadAllA(x, z, siteA(x, z, baseA(x, z) + scarpA(x, z)));
   for (const rd of RIVER_DEFS) {
     const pts = resample(rd.way, 8); let lv = 1e9;
     for (let i = 0; i < pts.length; i++) {
@@ -238,7 +281,7 @@ export function buildIsland(def, M, valleyDef) {
   }
   function riverA(x, z, a) {
     const q = nearRiver(x, z); if (!q) return a;
-    if (q.d < q.w) { const ford = nearRoad(x, z), dep = ford && ford.d < ford.hw + 3 ? 0.35 : q.river.depth; a = Math.min(a, q.lv - 0.12 - dep * (1 - (q.d / q.w) ** 2)); }
+    if (q.d < q.w) { const ford = nearDirt(x, z), dep = ford && ford.d < ford.hw + 3 ? 0.35 : q.river.depth; a = Math.min(a, q.lv - 0.12 - dep * (1 - (q.d / q.w) ** 2)); }
     else a = Math.min(a, smin(q.lv + 0.25 + (q.d - q.w) * 0.42, a, 1.5));
     return a;
   }
@@ -265,7 +308,7 @@ export function buildIsland(def, M, valleyDef) {
   const sites = []; // { kind, x, z, rot, w, d, h, ... } (الارتفاع ينحسب بالجغرافيا)
   const pads = [], pIdx = segIndex(32); // تسوية مستطيلة تحت كل بناية
   const addSite = (s, pad = true) => { sites.push(s); if (pad && s.w) { const p = { x: s.x, z: s.z, c: Math.cos(s.rot || 0), s: Math.sin(s.rot || 0), hw: s.w / 2 + 0.6, hd: s.d / 2 + 0.6, a: null }; pads.push(p); s.pad = p; pIdx.add(mkSeg(p, p), Math.max(p.hw, p.hd) + 4); } return s; };
-  const preAll = (x, z) => waterA(x, z, riverA(x, z, roadA(x, z, siteA(x, z, baseA(x, z) + scarpA(x, z)))));
+  const preAll = (x, z) => pavedA(x, z, waterA(x, z, riverA(x, z, roadA(x, z, siteA(x, z, baseA(x, z) + scarpA(x, z))))));
   const freeOf = (x, z, r) => { const rd = nearRoad(x, z); if (rd && rd.d < rd.hw + r) return false; const rv = nearRiver(x, z); if (rv && rv.d < rv.w + r + 4) return false; return !sites.some((s) => Math.hypot(s.x - x, s.z - z) < r + Math.max(s.w || 2, s.d || 2) * 0.6); };
   { // 🌅 ساحة الفجر: نافورة، نخل، سوق، چايخانة، لوحة الطلبات، لافتة، بوابة صوب الجبل، رصيف ومشاحيف
     const F = FAJR, rot = 0, L = (u, v) => ({ x: F.x + u, z: F.z + v });
@@ -340,7 +383,7 @@ export function buildIsland(def, M, valleyDef) {
   }
 
   // ================================================================ الارتفاع النهائي (y بالعالم)
-  function A(x, z) { return padA(x, z, waterA(x, z, riverA(x, z, roadA(x, z, siteA(x, z, baseA(x, z) + scarpA(x, z)))))); }
+  function A(x, z) { return padA(x, z, pavedA(x, z, waterA(x, z, riverA(x, z, roadA(x, z, siteA(x, z, baseA(x, z) + scarpA(x, z))))))); }
   const H = (x, z) => SEA + A(x, z);
 
   /** الماي بهالمكان: بحر، بحيرة، هور، نهر (y = مستوى السطح بالعالم) */
@@ -375,13 +418,16 @@ export function buildIsland(def, M, valleyDef) {
     if (a > 330) o.t *= 0.5;
     if (sl > 0.75) { o.t *= 0.4; o.rock = smooth(0.75, 1.1, sl) * 0.35; }
     o.rock += 0.006;
-    const q = nearRoad(x, z); if (q && q.d < q.hw + 2.2) o.t = o.b = o.rock = 0;
+    const q = nearRoad(x, z); if (q && q.d < q.hw + (q.road.paved ? 5 : 2.2)) o.t = o.b = o.rock = 0; // الطريق المعبّد إله كتف نظيف
+    const fk = SAFARI.fieldK(x, z, s); if (fk > 0.1) { o.t = 0; o.rock = 0; o.b = 0.025 * (1 - fk); o.pine = o.oak = o.olive = 0; } // كثبان: بس شويّة حشيش رملي
     const rv = nearRiver(x, z); if (rv && rv.d < rv.w + 1.5) { o.t = o.rock = 0; if (rv.d > rv.w - 0.5) o.reed = 0.3; }
     return o;
   }
   /** هل المكان محجوز لبناية أو ساحة (بلا شجر) */
   function reserved(x, z) {
     if (Math.hypot(x - FAJR.x, z - FAJR.z) < 62) return true;
+    { const q = SAFARI.nearTrack(x, z); if (q && q.d < SAFARI.hw + 3.5) return true; } // مسار السفاري وأعلامه
+    { const pk = SAFARI.park, dx = x - pk.x, dz = z - pk.z, c = Math.cos(pk.rot), sn = Math.sin(pk.rot); if (Math.abs(dx * c + dz * sn) < pk.w / 2 + 4 && Math.abs(-dx * sn + dz * c) < pk.d / 2 + 4) return true; }
     if (GARAGE && Math.hypot(x - GARAGE.x - GARAGE.fx * 6, z - GARAGE.z - GARAGE.fz * 6) < 17) return true; // فسحة الكراج
     for (const r of rest) if (Math.hypot(x - r.fx, z - r.fz) < 7) return true; // حوالين نار الاستراحة
     if (TASKS && taskNear(x, z, 4.5)) return true; // فسحة حوالين أغراض الطلبات
@@ -413,6 +459,7 @@ export function buildIsland(def, M, valleyDef) {
     { id: 'fort', name: 'أطلال الحصن', icon: '🏰', x: FORT.x, z: FORT.z, r: 260 },
     { id: 'oaks', name: 'غابة البلوط', icon: '🌳', x: OAKS.x, z: OAKS.z, r: OAKS.r },
     { id: 'pearl', name: 'شاطئ اللؤلؤ', icon: '🐚', x: PEARL.x, z: PEARL.z, r: 420 },
+    { id: 'safari', name: 'سفاري اللؤلؤ', icon: '🏁', x: SAFARI.center.x, z: SAFARI.center.z, r: 300, sub: 'كثبان وقفزات ومسار ~1 كم' },
     { id: 'thyme', name: 'تلال الزعتر', icon: '🌿', x: HILLS.x, z: HILLS.z, r: HILLS.r },
     { id: 'plateau', name: 'هضبة الخيّالة', icon: '🐎', x: PLATEAU.x, z: PLATEAU.z, r: PLATEAU.r + 40 },
     { id: 'birds', name: 'جزيرة الطيور', icon: '🕊️', x: ISLET.x, z: ISLET.z, r: ISLET.r + 80 },
@@ -469,6 +516,6 @@ export function buildIsland(def, M, valleyDef) {
   ];
   return {
     SEA, HALF, SHOULDER, beasts: BEASTS, H, A, baseA, coastS, Rc, rivers, falls, lakes: LAKES, marsh: { ...MARSH, lv: MARSH_LV }, roads, sites, zones: ZONES, zoneAt, rest,
-    nearRoad, nearRiver, water, flora, reserved, tasks: TASKS, board: BOARD, garage: GARAGE, paved, peaks: PEAKS, plateau: PLATEAU, islet: ISLET, fajr: FAJR, shBay, valley: VAL, scarp: SCARP, fallsAt: FALLS,
+    safari: SAFARI, pavedRoads: PAVED, bridges: BRIDGES, culverts: CULVERTS, signs: SIGNS, welcome: WELCOME, nearPaved, nearDirt, inBridge, nearRoad, nearRiver, water, flora, reserved, tasks: TASKS, board: BOARD, garage: GARAGE, paved, peaks: PEAKS, plateau: PLATEAU, islet: ISLET, fajr: FAJR, shBay, valley: VAL, scarp: SCARP, fallsAt: FALLS,
   };
 }

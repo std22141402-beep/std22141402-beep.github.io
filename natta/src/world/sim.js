@@ -19,6 +19,7 @@ export function createSim(G, opts = {}) {
     climb: { done: false, time: 0 }, summit: null, scope: false, wind: 0,
     vq: { camp: null, merW: { x: 0, z: 0 }, zoneW: { x: 0, z: 0 }, penW: { x: 0, z: 0 }, met: false, called: false, caught: false, delivered: false },
     carry: null, focus: null, seed: 1,
+    lap: { on: false, t: 0, next: 0, best: null, last: null, splits: [], off: 0, n: 0 }, // 🏁 وقت لفّة السفاري
   };
   const ev = [];
   const emit = (...a) => ev.push(a.length === 1 ? a[0] : a);
@@ -233,6 +234,7 @@ export function createSim(G, opts = {}) {
   }
   function startExit(h) {
     if (Math.abs(car.vf) > 3) return false;
+    if (S.lap.on) { S.lap.on = false; emit(['lapCancel']); }
     h.mode = 'getout'; h.carT = 0; car.driven = false; emit('carDoor'); emit('carOff'); return true;
   }
   function stepDriver(h, c, dt) {
@@ -276,8 +278,24 @@ export function createSim(G, opts = {}) {
     // استراحات، عملات، أغراض الطلبات (تلزمها من الشباك إذا عديت يمها)
     for (const r of G.restPoints) if ((!r.dyn || r.on) && !r.plaza && Math.hypot(h.x - r.x, h.z - r.z) < (r.fire ? 7 : 3.5) && Math.abs(h.y - r.y) < 3) { if (S.rest !== r) { S.rest = r; if (!S.reached.has(r.id)) { S.reached.add(r.id); if (r.flag || r.fire || r.id === 'valley') emit(['rest', r.name, r.id]); } } }
     pickItems(car.x, car.z, car.y - 0.5, 2.6);
+    stepLap(dt);
     // الماي الغميج يوكّف المحرك؛ إذا بقت غاطسة نسحبها للكراج
     if (car.depth > 0.9) { car.drownT = (car.drownT || 0) + dt; if (car.drownT > 2.5) { car.drownT = 0; towHome(h); } } else car.drownT = 0;
+  }
+  // ---------------------------------------------------------------- 🏁 وقت اللفّة: تعبر البوابة (بالاتجاه الصح) تبدي، تمر بنقاط التفتيش بالترتيب، وترجع للبوابة = لفّة
+  const SF = G.I.safari, GATES = SF.gates, gPrev = GATES.map(() => null);
+  function stepLap(dt) {
+    const L = S.lap; if (L.on) L.t += dt;
+    GATES.forEach((g, i) => {
+      const ax = car.x - g.x, az = car.z - g.z, along = ax * g.dx + az * g.dz, lat = Math.abs(-ax * g.dz + az * g.dx), prev = gPrev[i]; gPrev[i] = along;
+      if (prev == null || lat > SF.hw + 4 || !(prev < 0 && along >= 0) || along - prev > 6) return; // عبور لقدّام بس (من بين أعمدة البوابة)
+      if (i === 0) {
+        if (L.on && L.next === GATES.length) { const t = +L.t.toFixed(2), isBest = L.best == null || t < L.best; L.last = t; if (isBest) L.best = t; L.n++; emit(['lapDone', t, L.best, isBest, L.n]); }
+        else emit(['lapStart', L.on ? 'reset' : 'go']);
+        Object.assign(L, { on: true, t: 0, next: 1, splits: [], off: 0 });
+      } else if (L.on && i === L.next) { L.next++; L.splits.push(+L.t.toFixed(2)); emit(['lapCp', i, L.t, GATES.length - 1]); }
+    });
+    if (L.on) { const q = SF.nearTrack(car.x, car.z); L.off = q && q.d < SF.hw + 25 ? 0 : L.off + dt; if (L.off > 6 || L.t > 600) { L.on = false; emit(['lapCancel']); } }
   }
   /** 🛻 يسحب البكي للكراج (إذا غطس أو ضاع) والسايق ينزل يمه */
   function towHome(h) {
@@ -588,7 +606,7 @@ export function createSim(G, opts = {}) {
       rest: S.rest && S.rest.id, reached: [...S.reached], tasks: S.tasks.map((t) => [t.id, t.got, t.done ? 1 : 0]), items: S.items.map((it) => (it.taken ? 1 : 0)).join(''),
       fish: S.fish, track: S.track, board: S.boardRead ? 1 : 0, vq: { met: S.vq.met ? 1 : 0, called: S.vq.called ? 1 : 0, caught: S.vq.caught && !S.vq.delivered ? 1 : 0, delivered: S.vq.delivered ? 1 : 0 },
       climbDone: S.climb.done ? 1 : 0, coins: S.coins.map((k) => (k.taken ? 1 : 0)).join(''), coinsGot: S.coinsGot,
-      car: { x: +car.x.toFixed(2), z: +car.z.toFixed(2), yaw: +car.yaw.toFixed(3) },
+      car: { x: +car.x.toFixed(2), z: +car.z.toFixed(2), yaw: +car.yaw.toFixed(3) }, lapBest: S.lap.best,
     };
   }
   function restore(sn) {
@@ -604,6 +622,7 @@ export function createSim(G, opts = {}) {
     Object.assign(vq, { met: !!sn.vq.met, called: !!sn.vq.called, delivered: !!sn.vq.delivered });
     if (sn.climbDone) S.climb.done = true;
     (sn.coins || '').split('').forEach((c, i) => { if (S.coins[i]) S.coins[i].taken = c === '1'; }); S.coinsGot = sn.coinsGot || 0;
+    if (sn.lapBest) S.lap.best = sn.lapBest;
     if (sn.car) { const ok = Number.isFinite(sn.car.x) && G.H(sn.car.x, sn.car.z) > G.SEA - 0.6; if (ok) VEH.place(sn.car.x, sn.car.z, sn.car.yaw); }
     const p = sn.pos || (r ? { x: r.x, z: r.z, y: r.y } : null);
     if (p) { const s = G.surfaceAt(p.x, p.z, p.y + 0.6); Object.assign(h, { x: p.x, z: p.z, y: Math.max(s.y, Math.min(p.y, s.y + 0.05)), vx: 0, vz: 0, vy: 0, air: false, mode: 'walk', surf: s.kind, plat: s.plat }); }

@@ -263,8 +263,10 @@ const dims = await G(() => { const W = window.__natta.WD, v = W.view.heroDims ? 
 ok(dims.btn.includes('فرامل') && dims.horn, `بالسيارة: زر «${dims.btn.replace(/\s+/g, ' ')}» وهورن 📯 وعدّاد سرعة`);
 const phys = await G(() => {
   const W = window.__natta.WD, c = W.S.car, step = (n, cmd) => { for (let i = 0; i < n; i++) W.sim.step(1 / 60, cmd); };
-  const f = W.G.I.fajr, rd = W.G.I.roads.find((q) => q.name === 'طريق الفجر'), p0 = rd.pts.find((p) => Math.hypot(p.x - f.x, p.z - f.z) > 45), p1 = rd.pts.find((p) => Math.hypot(p.x - f.x, p.z - f.z) > 110); const r = {};
-  c.x = p0.x; c.z = p0.z; c.yaw = Math.atan2(p1.z - p0.z, p1.x - p0.x); W.sim.S.hero.x = c.x; c.vx = c.vz = 0; { const yy = W.G.H(c.x, c.z) + 0.53; c.y = yy; } // على طريق الفجر المستقيم
+  // أكثر قطعة مستقيمة ومستوية بالطريق الدائري (إسفلت) قرب الساحة
+  const P = W.G.I.pavedRoads[0].pts; let bi = 0, bs = 1e9; for (let i = 5; i < 300; i++) { const a = P[i], b = P[i + 30], h1 = Math.atan2(P[i + 1].z - a.z, P[i + 1].x - a.x), h2 = Math.atan2(b.z - P[i + 29].z, b.x - P[i + 29].x), sc = Math.abs(Math.atan2(Math.sin(h2 - h1), Math.cos(h2 - h1))) + Math.abs(b.a - a.a) / 120 * 5; if (sc < bs) { bs = sc; bi = i; } }
+  const p0 = P[bi], p1 = P[bi + 30]; const r = {};
+  c.x = p0.x; c.z = p0.z; c.yaw = Math.atan2(p1.z - p0.z, p1.x - p0.x); W.sim.S.hero.x = c.x; c.vx = c.vz = 0; { const yy = W.G.H(c.x, c.z) + 0.53; c.y = yy; } // على الطريق الدائري المستقيم
   let crashes = 0; const step0 = step; const stepC = (n, cmd) => { for (let i = 0; i < n; i++) for (const e of W.sim.step(1 / 60, cmd)) if (e[0] === 'carCrash') crashes++; };
   // تطلع من الكراج وتسرّع على الكونكريت
   step(60, {}); let t = 0, t60 = 0; while (t < 8 && c.vf * 3.6 < 60) { stepC(1, { jx: 0, jy: 1 }); t += 1 / 60; } t60 = t; r.t60 = +t60.toFixed(1);
@@ -288,6 +290,70 @@ const water = await G(() => { const W = window.__natta.WD, c = W.S.car, sh = W.G
 ok(water.deep && water.depth < 0.9, `🌊 ما يدخل الماي الغميج (وكف على عمق ${water.depth} م)`);
 await G(() => { const W = window.__natta.WD; W.interact('tow'); });
 ok(await G(() => { const W = window.__natta.WD, c = W.S.car, gg = W.G.I.garage; return W.S.hero.mode === 'walk' && Math.hypot(c.x - gg.x, c.z - gg.z) < 2; }), '🛻 تنسحب للكراج');
+
+// 11ج) 🛣️ الطرق المعبّدة: شبكة تربط كل المناطق، جسور، لوحات، انحدار معقول، والأرض تحتها مضبوطة
+const net = await G(() => {
+  const W = window.__natta.WD, I = W.G.I, SEA = W.G.SEA, R = I.pavedRoads; let len = 0, maxErr = 0, maxG = 0, ringG = 0; const kinds = {};
+  for (const [ri, r] of R.entries()) for (let i = 1; i < r.pts.length; i++) {
+    const p = r.pts[i], q = r.pts[i - 1]; len += Math.hypot(p.x - q.x, p.z - q.z);
+    if (i >= 3) { let L = 0; for (let k = i - 2; k <= i; k++) L += Math.hypot(r.pts[k].x - r.pts[k - 1].x, r.pts[k].z - r.pts[k - 1].z); const g = Math.abs(p.a - r.pts[i - 3].a) / Math.max(L, 1e-3); maxG = Math.max(maxG, g); if (ri === 0) ringG = Math.max(ringG, g); } // الانحدار على ~12 م مثل ما ينقاس بالطرق
+    if (i % 3) continue; if (!I.inBridge(p.x, p.z, 2)) { maxErr = Math.max(maxErr, Math.abs(W.G.H(p.x, p.z) - SEA - p.a)); const k = W.G.groundKind(p.x, p.z, W.G.H(p.x, p.z)); kinds[k] = (kinds[k] || 0) + 1; }
+  }
+  const skip = new Set(['summit', 'shoulder', 'mount', 'bay', 'falcons', 'shadows', 'marsh']);
+  const far = I.zones.filter((z) => !skip.has(z.id)).map((z) => { const rp = I.rest.find((q) => q.id === 'z_' + z.id), t = rp ? { x: rp.fx, z: rp.fz } : z; let d = 1e9; for (const r of R) for (const p of r.pts) d = Math.min(d, Math.hypot(p.x - t.x, p.z - t.z)); return [z.name, Math.round(d)]; }).filter(([, d]) => d > 420);
+  const br = I.bridges.map((b) => { const w = I.water(b.x, b.z, W.G.H(b.x, b.z) + 0.05), pl = W.G.platAt(b.x, b.z); return { river: b.river, clear: w ? +(SEA + b.y - w.level).toFixed(1) : 0, plat: !!pl }; });
+  return { n: R.length, ring: R[0].closed, km: +(len / 1000).toFixed(1), maxErr: +maxErr.toFixed(2), maxG: +(maxG * 100).toFixed(1), ringG: +(ringG * 100).toFixed(1), kinds, far, br, signs: I.signs.length, welcome: I.welcome.length, arms: I.signs.reduce((s2, g) => s2 + g.arms.length, 0), dirt: I.roads.length };
+});
+ok(net.n >= 12 && net.ring && net.km > 20, `🛣️ ${net.n} طرق معبّدة (~${net.km} كم): الدائري حلقة كاملة حوالين الجزيرة وفرعيات لكل منطقة`);
+ok(!net.far.length, `🗺️ كل المناطق عليها طريق معبّد (ضمن 420 م)${net.far.length ? ' — ناقص: ' + JSON.stringify(net.far) : ''}`);
+ok(net.maxErr < 0.6 && net.ringG <= 7.6 && net.maxG <= 20.5, `⛰️ الطريق على الأرض بالضبط (فرق ${net.maxErr} م)، الدائري أشد انحدار ${net.ringG}٪، وطريق الهضبة الجبلي ${net.maxG}٪ بمنعطفات الزكزاك`);
+ok(net.kinds.asphalt > 100 && net.kinds.pavers > 10 && net.kinds.cobble > 10, `🧱 إسفلت ${net.kinds.asphalt}، بلاط ${net.kinds.pavers}، حجر ${net.kinds.cobble} (حسب المنطقة)`);
+ok(net.br.length >= 2 && net.br.every((b) => b.plat && b.clear > 1.5), `🌉 ${net.br.length} جسور فوك الأنهار (الماي تحتها بـ ${net.br.map((b) => b.clear).join('، ')} م)`);
+ok(net.signs >= 8 && net.arms >= 16 && net.welcome >= 15, `🪧 ${net.signs} تقاطعات بلوحات اتجاه (${net.arms} سهم بالمسافات) و${net.welcome} لوحة «أهلاً»`);
+const brd = await G(() => { // نعبر جسر نهر الفضة بالبكي
+  const W = window.__natta.WD, I = W.G.I, c = W.S.car, b = I.bridges[0], SEA = W.G.SEA; let minY = 1e9, maxDepth = 0, kinds = new Set(), crash = 0;
+  W.sim.S.hero.mode = 'drive'; c.driven = true; c.engine = true; c.pitch = c.roll = 0; c.wp = c.wr = c.vy = 0;
+  c.x = b.x - b.c * (b.half + 30); c.z = b.z - b.s * (b.half + 30); c.yaw = Math.atan2(b.s, b.c); c.vx = c.vz = 0; c.y = W.G.H(c.x, c.z) + 0.53; W.G.ensureVeg(c.x, c.z, 170);
+  for (let i = 0; i < 60 * 9; i++) { const ev = W.sim.step(1 / 60, { kx: 0, ky: c.vf * 3.6 < 40 ? 1 : 0.2 }); if (ev.some((e) => e[0] === 'carCrash')) crash++; const al = (c.x - b.x) * b.c + (c.z - b.z) * b.s; if (Math.abs(al) < b.half - 2) { minY = Math.min(minY, c.y - 0.53 - SEA); maxDepth = Math.max(maxDepth, c.depth); kinds.add(c.kind); } if (al > b.half + 25) break; }
+  return { deck: b.y, minY: +minY.toFixed(2), depth: maxDepth, kinds: [...kinds], crash, past: (c.x - b.x) * b.c + (c.z - b.z) * b.s > b.half };
+});
+ok(brd.past && brd.minY > brd.deck - 0.35 && brd.depth === 0 && !brd.crash, `🚙 يعبر الجسر فوك السطح (${brd.minY} م، السطح ${brd.deck}) بلا ماي ولا ضربة (${brd.kinds.join('/')})`);
+// 🏁 السفاري: كثبان، مسار مغلق، قفزة حقيقية، ووقت لفّة
+const sf = await G(() => { const W = window.__natta.WD, I = W.G.I, SF = I.safari, z = I.zones.find((q) => q.id === 'safari'); let hi = 0, lo = 1e9; for (let u = 40; u < 600; u += 6) for (let w = 80; w < 240; w += 6) { const p = SF.W(u, w), a = W.G.H(p.x, p.z) - W.G.SEA; hi = Math.max(hi, a); lo = Math.min(lo, a); } const g0 = SF.gates[0]; return { zone: !!z, len: Math.round(SF.len), kick: SF.feat.filter((f) => f.kind === 'kicker').length, relief: +(hi - lo).toFixed(1), kind: W.G.groundKind(g0.x, g0.z, W.G.H(g0.x, g0.z)), dune: W.G.groundKind(SF.W(300, 150).x, SF.W(300, 150).z, W.G.H(SF.W(300, 150).x, SF.W(300, 150).z)) }; });
+ok(sf.zone && sf.len > 900 && sf.len < 1300 && sf.kick >= 4 && sf.relief > 4, `🏁 سفاري اللؤلؤ: مسار ${sf.len} م، ${sf.kick} قفزات، كثبان بفرق ${sf.relief} م (${sf.kind} / ${sf.dune})`);
+const jmp = await G(() => { // على «الطاولة الكبيرة» بسرعة 65 كم/س
+  const W = window.__natta.WD, SF = W.G.I.safari, c = W.S.car, k = SF.feat.find((f) => f.name === 'الطاولة الكبيرة'), N = SF.pts.length;
+  let i0 = 0; { let bd = 1e9; SF.pts.forEach((p, i) => { const d = Math.abs(SF.S[i] - (k.at - 70)); if (d < bd) { bd = d; i0 = i; } }); }
+  const p0 = SF.pts[i0]; c.x = p0.x; c.z = p0.z; c.yaw = Math.atan2(p0.dz, p0.dx); c.vx = p0.dx * 18; c.vz = p0.dz * 18; c.y = W.G.H(c.x, c.z) + 0.53; c.pitch = c.roll = 0; W.G.ensureVeg(c.x, c.z, 170);
+  let air = 0, maxAir = 0, land = 0, flip = false, maxH = 0, idx = i0;
+  for (let n = 0; n < 60 * 7; n++) {
+    let bd = 1e9; for (let m = idx; m < idx + 20; m++) { const q = SF.pts[m % N], d = Math.hypot(q.x - c.x, q.z - c.z); if (d < bd) { bd = d; idx = m % N; } }
+    const tg = SF.pts[(idx + 8) % N], want = Math.atan2(tg.z - c.z, tg.x - c.x); let d = want - c.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+    const ev = W.sim.step(1 / 60, { kx: Math.max(-1, Math.min(1, d * 2.5)), ky: c.vf * 3.6 < 65 ? 1 : 0.1 });
+    for (const e of ev) { if (e[0] === 'carLand') land = Math.max(land, e[1]); if (e[0] === 'carFlip') flip = true; }
+    if (c.air) { air += 1 / 60; maxAir = Math.max(maxAir, air); maxH = Math.max(maxH, c.y - 0.53 - W.G.H(c.x, c.z)); } else air = 0;
+  }
+  return { maxAir: +maxAir.toFixed(2), maxH: +maxH.toFixed(2), land: +land.toFixed(1), flip, hp: W.S.hero.hp };
+});
+ok(jmp.maxAir > 0.4 && !jmp.flip, `🦘 القفزة الكبيرة: يطير ${jmp.maxAir} ث (فوك الرمل ${jmp.maxH} م) وينزل على النوابض (${jmp.land} م/ث) بلا انقلاب`);
+const lap = await G(() => { // لفّة كاملة بسايق آلي: بداية، 3 تفتيش، نهاية
+  const W = window.__natta.WD, SF = W.G.I.safari, c = W.S.car, N = SF.pts.length, g0 = SF.gates[0];
+  let i0 = 0; { let bd = 1e9; SF.pts.forEach((p, i) => { const d = Math.abs(SF.S[i] - (g0.s - 30)); if (d < bd) { bd = d; i0 = i; } }); }
+  const p0 = SF.pts[i0]; c.x = p0.x; c.z = p0.z; c.yaw = Math.atan2(p0.dz, p0.dx); c.vx = c.vz = 0; c.y = W.G.H(c.x, c.z) + 0.53; c.pitch = c.roll = 0; W.S.lap.on = false; W.S.lap.best = null;
+  const evs = []; let idx = i0;
+  for (let n = 0; n < 60 * 200; n++) {
+    let bd = 1e9; for (let m = idx; m < idx + 20; m++) { const q = SF.pts[m % N], d = Math.hypot(q.x - c.x, q.z - c.z); if (d < bd) { bd = d; idx = m % N; } }
+    const tg = SF.pts[(idx + 7) % N], want = Math.atan2(tg.z - c.z, tg.x - c.x); let d = want - c.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+    let kk = 0; for (let m = 0; m < 16; m++) kk = Math.max(kk, Math.abs(SF.pts[(idx + m) % N].k)); const vt = Math.min(48, Math.sqrt(5.5 / Math.max(kk, 1e-3)) * 3.6); // يبطّي قبل المنعطف
+    const ev = W.sim.step(1 / 60, { kx: Math.max(-1, Math.min(1, d * 2.5)), ky: c.vf * 3.6 < vt ? 1 : c.vf * 3.6 > vt + 6 ? -0.5 : 0.1 });
+    for (const e of ev) if (String(e[0]).startsWith('lap')) evs.push(e);
+    if (evs.some((e) => e[0] === 'lapDone')) break;
+  }
+  const done = evs.find((e) => e[0] === 'lapDone');
+  return { kinds: evs.map((e) => e[0]), t: done ? done[1] : null, best: W.S.lap.best, cps: evs.filter((e) => e[0] === 'lapCp').length };
+});
+ok(lap.t && lap.t > 40 && lap.t < 200 && lap.cps === 3 && lap.best === lap.t, `⏱️ لفّة كاملة بـ ${lap.t} ث (بداية ← تفتيش 1، 2، 3 ← نهاية) وانحفظ أحسن وقت`);
+await G(() => { const W = window.__natta.WD; W.S.car.vx = W.S.car.vz = 0; W.interact('tow'); }); // نرجع البكي للكراج والبطل يمشي
 
 // 11ب) 🛟 إذا ضاع الرسم (الآيفون يسويها لمن تطلع من سفاري) ما يطلّعك للرئيسية، والرحلة تنحفظ وترجعلها
 const lost = await G(() => { const W = window.__natta.WD, ext = W.renderer.getContext().getExtension('WEBGL_lose_context'); window.__ext = ext; if (!ext) return null; ext.loseContext(); return true; });
