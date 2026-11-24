@@ -259,15 +259,16 @@ ok(await until(() => document.getElementById('actBtn').textContent.includes('ا�
 await page.tap('#actBtn', { force: true });
 ok(await until(() => window.__natta.WD.S.hero.mode === 'drive', 4000), 'يفتح الباب ويكعد بالمقعد ويشغّل');
 await wait(600); await shot('11a-seated');
-{ // 🕹️ الجويستك سرعة بس، و🛞 الدركسون من سحب الشاشة باليمين
-  const steer = () => G(() => window.__natta.WD.S.car.steer);
+{ // 🕹️ مثل ببجي: الجويستك سرعة بس، وتلف الكاميرا بسحب الشاشة والبكي يلف صوبها
+  const st = () => G(() => { const W = window.__natta.WD, c = W.S.car; let d = W.cam.yaw - c.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); return { steer: c.steer, d, vf: c.vf }; });
   await page.mouse.move(80, 650); await page.mouse.down(); await page.mouse.move(150, 650, { steps: 4 }); await wait(450);
-  const sJoy = await steer(); await page.mouse.up(); await wait(400);
-  await page.mouse.move(280, 420); await page.mouse.down(); await page.mouse.move(350, 420, { steps: 5 }); await wait(450);
-  const sR = await steer(); await page.mouse.move(210, 420, { steps: 6 }); await wait(500); const sL = await steer(); await page.mouse.up(); await wait(700);
-  const s0 = await steer(), cy = await G(() => window.__natta.WD.cam.dragT);
-  ok(Math.abs(sJoy) < 0.03 && sR > 0.15 && sL < -0.15 && Math.abs(s0) < 0.08 && !(cy > 0), `🛞 الدركسون بسحب الشاشة: يمين ${sR.toFixed(2)}، يسار ${sL.toFixed(2)}، ترفع إصبعك يرجع ${s0.toFixed(2)}؛ والجويستك جنب ما يلف (${sJoy.toFixed(2)})`);
-  await G(() => { const c = window.__natta.WD.S.car; c.vx = c.vz = 0; });
+  const sJoy = (await st()).steer; await page.mouse.up(); await wait(300);
+  await page.mouse.move(280, 420); await page.mouse.down(); await page.mouse.move(345, 420, { steps: 5 }); await page.mouse.up(); await wait(300);
+  const a = await st(); // الكاميرا لفّت يمين والدركسون يمين
+  await page.mouse.move(80, 650); await page.mouse.down(); await page.mouse.move(80, 600, { steps: 3 }); await wait(2500); await page.mouse.up(); // بنزين
+  const b = await st();
+  ok(Math.abs(sJoy) < 0.03 && a.d > 0.3 && a.steer > 0.15 && Math.abs(b.d) < a.d * 0.5, `👆 تلف الشاشة (${(a.d * 57).toFixed(0)}°) والبكي يلف صوبها (دركسون ${a.steer.toFixed(2)}) ولمن يمشي يلحگ الكاميرا (باقي ${(b.d * 57).toFixed(0)}°)؛ الجويستك جنب ما يلف (${sJoy.toFixed(2)})`);
+  await G(() => { const W = window.__natta.WD, c = W.S.car, g = W.G.I.garage.car; c.vx = c.vz = 0; c.x = g.x; c.z = g.z; c.yaw = g.yaw; c.y = W.G.H(c.x, c.z) + 0.53; W.cam.yaw = c.yaw; });
 }
 const dims = await G(() => { const W = window.__natta.WD, v = W.view.heroDims ? 1 : 0, c = W.S.car; return { hy: +(W.S.hero.y - (c.y - 0.5)).toFixed(2), btn: document.getElementById('jumpBtn').textContent, horn: !document.getElementById('hornBtn').hidden }; });
 ok(dims.btn.includes('فرامل') && dims.horn, `بالسيارة: زر «${dims.btn.replace(/\s+/g, ' ')}» وهورن 📯 وعدّاد سرعة`);

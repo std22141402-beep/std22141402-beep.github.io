@@ -3302,7 +3302,6 @@
   const JOY_R = 52;
   const J = { id: null, cx: 0, cy: 0, x: 0, y: 0 }, CAMD = { id: null, x: 0, y: 0, dx: 0, dy: 0, sx: 0, sy: 0 };
   const driving = () => !!(WS && WD && WD.S.hero && WD.S.hero.mode === 'drive');
-  const STEER_R = 72; // 🛞 سحبة 72 نقطة يمين/يسار = دركسون للآخر
   let keyU = false, keyD = false, keySh = false, keyQ = false, keyE = false, keyHand = false;
   const MINI = { x: () => C.W - 60, y: () => 150, r: 46 };
   const toLogical = (e) => { const r = cvs.getBoundingClientRect(); return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S }; };
@@ -3334,11 +3333,15 @@
       var kx = jx, ky = jy; // للسواقة: بنزين ودركسون سوا
       const l = Math.hypot(jx, jy) || 1; jx /= l; jy /= l; mag = keySh ? 0.5 : 1;
     }
-    if (driving()) { // 🚙 بالسيارة: الجويستك سرعة بس (لفوك بنزين، لتحت فرامل/ريوس)، والدركسون من سحب الشاشة بالإيد اليمنى
-      jy = J.id !== null ? clamp((J.cy - J.y) / JOY_R, -1, 1) : jy; jx = CAMD.id !== null ? clamp((CAMD.x - CAMD.sx) / STEER_R, -1, 1) : 0;
-      if (Math.abs(jy) < 0.08) jy = 0; mag = Math.abs(jy); CAMD.dx = 0; CAMD.dy = 0;
-      return { jx, jy, mag, sneak: false, dyaw: 0, dpitch: 0, kx, ky, hand: keyHand || (WS && WS.hand) };
+    if (driving()) { // 🚙 مثل ببجي: الجويستك سرعة بس، وتلف الكاميرا (سحب الشاشة باليمين) والبكي يلف ويروح صوب وين تباوع
+      jy = J.id !== null ? clamp((J.cy - J.y) / JOY_R, -1, 1) : jy; if (Math.abs(jy) < 0.08) jy = 0; mag = Math.abs(jy);
+      const dyaw = CAMD.dx * 0.0085 + ((keyE ? 1 : 0) - (keyQ ? 1 : 0)) * 1.9 * dt, dpitch = CAMD.dy * 0.006; CAMD.dx = 0; CAMD.dy = 0;
+      const car = WD.S.car, cam = WD.cam; cam.dragT = 9; if (!WS.drvCam) { WS.drvCam = 1; cam.yaw = car.yaw; } // أول ما تركب: الكاميرا ورا البكي // الكاميرا ما ترجع وحدها: انت توجّهها والبكي يلحگها
+      let d = cam.yaw + dyaw - car.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+      jx = clamp(d * 2, -1, 1) * (car.vf < -0.5 ? -1 : 1); // بالريوس الدركسون ينعكس حتى يبقى الوجه صوب الكاميرا
+      return { jx, jy, mag, sneak: false, dyaw, dpitch, kx, ky, hand: keyHand || (WS && WS.hand) };
     }
+    if (WS) WS.drvCam = 0;
     const dyaw = CAMD.dx * 0.0085 + ((keyE ? 1 : 0) - (keyQ ? 1 : 0)) * 1.9 * dt, dpitch = CAMD.dy * 0.006;
     CAMD.dx = 0; CAMD.dy = 0;
     return { jx, jy, mag, sneak: keySh, dyaw, dpitch, kx, ky, hand: keyHand || (WS && WS.hand) };
@@ -3450,7 +3453,7 @@
       case 'land': Sfx.step(1); break;
       // 🚙 البكي
       case 'carDoor': Sfx.door(); break;
-      case 'carStart': Sfx.carStart(); if (!save.carTips) { save.carTips = 1; persist(); toast('🕹️ الجويستك = السرعة (لفوك بنزين، لتحت فرامل وريوس) · 🛞 الاتجاه: حط إصبعك اليمين عالشاشة واسحب يمين ويسار · 🅿️ فرامل يد', 6000); } else toast('🚙 يلا!', 900); break;
+      case 'carStart': Sfx.carStart(); if (!save.carTips) { save.carTips = 1; persist(); toast('🕹️ الجويستك = السرعة (لفوك بنزين، لتحت فرامل وريوس) · 👆 لف الشاشة بإيدك اليمين والبكي يروح وين تباوع · 🅿️ فرامل يد', 6000); } else toast('🚙 يلا!', 900); break;
       case 'carOff': break;
       case 'carCrash': Sfx.crash(a[0]); shake = Math.max(shake, Math.min(0.5, a[0] * 0.03)); if (a[0] > 13) toast('💥 ضربة قوية!', 1300); break;
       case 'carLand': Sfx.thud(); shake = Math.max(shake, Math.min(0.4, a[0] * 0.03)); if (a[0] > 6) toast(a[0] > 9 ? '💥 نزلة قوية!' : '🦘 طيران!', 900); break;
@@ -3799,15 +3802,6 @@
     ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, cx, y - 5);
     ctx.font = '800 11px -apple-system,system-ui,sans-serif'; ctx.fillStyle = '#FFD23F'; ctx.fillText(sub, cx, y + 13); ctx.restore();
   }
-  /** 🛞 دركسون شفاف تحت إصبعك اليمين: يلف ويّا سحبتك (وإذا ما ماسك يبين وين تحط إصبعك) */
-  function drawWheel(car) {
-    const on = CAMD.id !== null, x = on ? CAMD.sx : C.W * 0.72, y = on ? CAMD.sy : viewH * 0.62, r = 34, st = on ? clamp((CAMD.x - CAMD.sx) / STEER_R, -1, 1) : car.steer / 0.6;
-    ctx.save(); ctx.translate(x, y); ctx.globalAlpha = on ? 0.75 : 0.28; ctx.rotate(st * 2.1);
-    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.moveTo(0, 0); ctx.lineTo(0, r); ctx.stroke();
-    ctx.fillStyle = '#FFD23F'; ctx.beginPath(); ctx.arc(0, -r, 5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-    if (on) { ctx.save(); ctx.globalAlpha = 0.5; ctx.strokeStyle = '#FFD23F'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - STEER_R, y + r + 14); ctx.lineTo(x + STEER_R, y + r + 14); ctx.stroke(); ctx.fillStyle = '#FFD23F'; ctx.beginPath(); ctx.arc(x + st * STEER_R, y + r + 14, 6, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
-  }
   function drawSpeedo(car) {
     const cx = C.W / 2, cy = viewH - 74, R = 54, kmh = Math.abs(car.vf) * 3.6, a0 = Math.PI * 0.75, sweep = Math.PI * 1.5, max = 120;
     ctx.save();
@@ -3961,7 +3955,7 @@
     }
     drawUParts();
     const live = state === 'world' && !S3.scope && !m.mapOpen && !m.shopOpen && !m.boardOpen && ['walk', 'glide', 'fish', 'climb', 'drive'].includes(h.mode);
-    if (live) { if (h.mode === 'walk') drawThreats(t); drawCompass(); drawMinimap(); drawStatus(); drawAltitude(); drawJoystick(t, m); if (h.mode === 'drive') { drawSpeedo(S3.car); drawLap(S3.lap, 1 / 60); drawWheel(S3.car); } }
+    if (live) { if (h.mode === 'walk') drawThreats(t); drawCompass(); drawMinimap(); drawStatus(); drawAltitude(); drawJoystick(t, m); if (h.mode === 'drive') { drawSpeedo(S3.car); drawLap(S3.lap, 1 / 60); } }
     if (m.hurtT > 0) { ctx.fillStyle = `rgba(255,30,30,${m.hurtT * 0.45})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
     if (m.fade > 0) { ctx.fillStyle = `rgba(${m.fadeCol},${m.fade})`; ctx.fillRect(-4, -4, C.W + 8, viewH + 8); }
   }
