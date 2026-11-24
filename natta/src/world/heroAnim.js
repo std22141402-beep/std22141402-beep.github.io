@@ -99,7 +99,8 @@ export function createHeroAnimator() {
       return;
     }
     // 🚶 على الگاع: وكفة ← مشي ← ركض
-    const gw = smooth(0.12, 0.55, v), amp = lerp(0.5, 1, smooth(0.45, 1.35, v)); rk = smooth(1.9, 3.5, v);
+    const gw = smooth(0.12, 0.55, v), amp = lerp(0.5, 1, smooth(0.45, 1.35, v)) * (1 + 0.16 * smooth(4.7, 6.3, v)); rk = smooth(2.0, 3.6, v);
+    const spr = smooth(4.7, 6.3, v); // ركض سريع: الركبة تصعد أكثر والجسم يميل أكثر
     const sn = e.sneak ? 1 : 0, u = (e.hopPh || 0) / TAU, land = clamp((e.landT || 0) / 0.25, 0, 1), stun = clamp((e.stun || 0) / 0.9, 0, 1);
     const leg = (uu) => ({ th: lerp(cyc(WALK.th, uu), cyc(RUN.th, uu), rk) * amp * gw, kn: lerp(cyc(WALK.kn, uu), cyc(RUN.kn, uu), rk) * lerp(0.8, 1, amp) * gw, ft: lerp(cyc(WALK.ft, uu), cyc(RUN.ft, uu), rk) * gw });
     const L = leg(u), R = leg(u + 0.5);
@@ -112,11 +113,11 @@ export function createHeroAnimator() {
     T.prz = (lerp(0.045, 0.03, rk) * Math.sin(TAU * u)) * gw + idle * 0.02 * sway; T.px = 0.016 * Math.sin(TAU * u) * gw * (1 - rk) - idle * 0.012 * sway;
     T.pry = -0.13 * (L.th - R.th) * gw; T.sy = -1.7 * T.pry;
     const breath = Math.sin(t * 1.65) * 0.012 * idle;
-    T.sx = 0.03 * gw + 0.13 * rk + sn * 0.32 + land * 0.3 + breath - stun * 0.28;
+    T.sx = 0.03 * gw + 0.13 * rk + 0.07 * spr + sn * 0.32 + land * 0.3 + breath - stun * 0.28;
     T.sz = -T.prz * 0.7;
     T.bz = clamp(-st.turn * v * 0.018, -0.2, 0.2);
     // الإيدين: عكس الرجل المقابلة، وبالركض الكوع منطوي ~90°
-    const armK = lerp(0.85, 0.62, rk);
+    const armK = lerp(0.85, 0.62, rk) + 0.18 * spr;
     for (const [s, opp] of [['L', R], ['R', L]]) {
       const sw = armK * opp.th, fl = sw + rk * 0.02 + sn * 0.25 + land * 0.5 + stun * 1.5 + idle * 0.03;
       setArm(s, fl, lerp(0.09, 0.13, rk) + idle * 0.02, lerp(0.2 + 0.32 * Math.max(0, sw), 1.5 + 0.35 * sw, rk) + sn * 0.5 + stun * 1.6 + idle * 0.08, 0);

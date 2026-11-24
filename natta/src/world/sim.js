@@ -4,10 +4,10 @@
 import { TAU, clamp, lerp, smooth, damp, rng, angDiff, dampAngle } from '../lib3d.js';
 
 const GRAV = 9.81, SLOPE_MAX = 1.0, SLIDE = 1.15, BOOT_SLOPE = 1.45, BOOT_SLIDE = 1.6; // 🥾 جزمة الجبل: تصعد منحدرات أشد
-// 🚶 سرعات إنسان حقيقي (م/ث): مشي 1.45 (5 كم/س)، ركض 4.2 (15 كم/س)، سباحة 1.0–1.5. والجاذبية 9.81 والنطة ~0.7 م
-export const SPEED = { walk: 1.45, walkMin: 0.55, run: 4.2, swim: 1.0, swimFast: 1.5, jumpV: 3.7, jumpH: 3.2 };
-/** طول الخطوة حسب السرعة (المشي ~0.75 م، الركض ~1.55 م) */
-export const stepLen = (v) => lerp(0.62, 1.55, clamp((v - 1.0) / 3.2, 0, 1));
+// 🏃 سرعات مثل لاعب ببجي موبايل (م/ث): مشي 1.7، ركض 4.7، ركض سريع 6.3 (23 كم/س). سباحة 1.0–1.5، الجاذبية 9.81 والنطة ~0.7 م
+export const SPEED = { walk: 1.7, walkMin: 0.6, jog: 3.6, run: 4.7, sprint: 6.3, swim: 1.0, swimFast: 1.5, jumpV: 3.7, jumpH: 3.2 };
+/** طول الخطوة حسب السرعة (المشي ~0.8 م، الركض ~1.5 م، الركض السريع ~1.85 م) */
+export const stepLen = (v) => lerp(0.62, 1.85, clamp((v - 1.0) / 5.3, 0, 1));
 
 export function createSim(G, opts = {}) {
   const M = G.M, V = G.V;
@@ -164,7 +164,9 @@ export function createSim(G, opts = {}) {
     if (h.stun > 0) { h.stun -= dt; mag = 0; }
     const run = mag > 0.62 && !c.sneak;
     h.sneak = !!c.sneak && mag > 0.08;
-    let spd = mag < 0.08 ? 0 : run ? lerp(3.2, SPEED.run, clamp((mag - 0.62) / 0.3, 0, 1)) : h.sneak ? 0.9 : lerp(SPEED.walkMin, SPEED.walk, clamp((mag - 0.08) / 0.5, 0, 1));
+    // دفعة خفيفة = مشي، أكثر = ركض، للآخر = ركض سريع (مثل ببجي)
+    let spd = mag < 0.08 ? 0 : run ? (mag >= 0.9 ? SPEED.sprint : lerp(SPEED.jog, SPEED.run, clamp((mag - 0.62) / 0.26, 0, 1))) : h.sneak ? 0.9 : lerp(SPEED.walkMin, SPEED.walk, clamp((mag - 0.08) / 0.5, 0, 1));
+    h.sprint = spd >= SPEED.sprint - 0.01;
     G.ensureVeg(h.x, h.z);
     const w = G.water(h.x, h.z, h.y); h.water = w ? w.kind : null;
     const deep = w && (w.kind === 'sea' || w.kind === 'lake' || w.kind === 'marsh') ? w.level - G.H(h.x, h.z) : 0;
@@ -299,7 +301,7 @@ export function createSim(G, opts = {}) {
           if (b.t > (wolf ? 0.6 : 0.9)) { b.state = wolf ? 'chase' : 'charge'; b.t = 0; if (!wolf) { const l = d || 1; b.charge = [dx / l, dz / l]; } emit([wolf ? 'howl' : 'grunt', b.kind]); }
           break;
         case 'chase':
-          go(h.x, h.z, 4.0); // أبطأ شوية من ركضك: تكدر تفلت منه بالسهل، بس بالغابة يلحگك
+          go(h.x, h.z, 5.0); // أبطأ من ركضك السريع: تكدر تفلت منه بالسهل، بس بالغابة يلحگك
           if (!alive || d > 22 || b.t > 7 || Math.hypot(b.x - b.home.x, b.z - b.home.z) > 32) { b.state = 'return'; b.cool = 3; }
           break;
         case 'charge': {
